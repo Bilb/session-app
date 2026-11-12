@@ -900,16 +900,58 @@ struct JSIConverter<::session_bridge::ResponseFrame> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::ConversationList> final {
+    static inline ::session_bridge::ConversationList fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        std::string text = JSIConverter<std::string>::fromJSI(runtime, arg);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::ConversationList>::parse(text);
+        if (!parsed) [[unlikely]]
+            throw std::invalid_argument("Cannot convert \"" + text + "\" to ConversationList");
+        return *parsed;
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, ::session_bridge::ConversationList arg) {
+        return ::session_bridge::ascii(runtime, ::session_bridge::EnumTraits<::session_bridge::ConversationList>::to_string(arg));
+    }
+    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
+        return value.isString() &&
+               ::session_bridge::EnumTraits<::session_bridge::ConversationList>::parse(JSIConverter<std::string>::fromJSI(runtime, value)).has_value();
+    }
+};
+
+template <>
+struct JSIConverter<::session_bridge::ListPlacement> final {
+    static inline ::session_bridge::ListPlacement fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::ListPlacement(
+                JSIConverter<::session_bridge::ConversationList>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "from"))),
+                JSIConverter<::session_bridge::ConversationList>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "to"))),
+                ::session_bridge::optional_from_jsi<std::string>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "after"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ListPlacement& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "from"), JSIConverter<::session_bridge::ConversationList>::toJSI(runtime, arg.from));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "to"), JSIConverter<::session_bridge::ConversationList>::toJSI(runtime, arg.to));
+        if (arg.after)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "after"), JSIConverter<std::string>::toJSI(runtime, *arg.after));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime&, const jsi::Value& value) {
+        return value.isObject();
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::ConversationAddedSessionEvent> final {
     static inline ::session_bridge::ConversationAddedSessionEvent fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::ConversationAddedSessionEvent(
-                JSIConverter<::session_bridge::Conversation>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "conversation"))));
+                JSIConverter<::session_bridge::Conversation>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "conversation"))),
+                JSIConverter<::session_bridge::ListPlacement>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "placement"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ConversationAddedSessionEvent& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ConversationAddedSessionEvent::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "conversation"), JSIConverter<::session_bridge::Conversation>::toJSI(runtime, arg.conversation));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "placement"), JSIConverter<::session_bridge::ListPlacement>::toJSI(runtime, arg.placement));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -925,12 +967,14 @@ struct JSIConverter<::session_bridge::ConversationUpdatedSessionEvent> final {
     static inline ::session_bridge::ConversationUpdatedSessionEvent fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::ConversationUpdatedSessionEvent(
-                JSIConverter<::session_bridge::Conversation>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "conversation"))));
+                JSIConverter<::session_bridge::Conversation>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "conversation"))),
+                JSIConverter<::session_bridge::ListPlacement>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "placement"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ConversationUpdatedSessionEvent& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ConversationUpdatedSessionEvent::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "conversation"), JSIConverter<::session_bridge::Conversation>::toJSI(runtime, arg.conversation));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "placement"), JSIConverter<::session_bridge::ListPlacement>::toJSI(runtime, arg.placement));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -946,12 +990,14 @@ struct JSIConverter<::session_bridge::ConversationRemovedSessionEvent> final {
     static inline ::session_bridge::ConversationRemovedSessionEvent fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::ConversationRemovedSessionEvent(
-                JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "conversationId"))));
+                JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "conversationId"))),
+                JSIConverter<::session_bridge::ConversationList>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "list"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ConversationRemovedSessionEvent& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ConversationRemovedSessionEvent::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "conversationId"), JSIConverter<std::string>::toJSI(runtime, arg.conversation_id));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "list"), JSIConverter<::session_bridge::ConversationList>::toJSI(runtime, arg.list));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -959,48 +1005,6 @@ struct JSIConverter<::session_bridge::ConversationRemovedSessionEvent> final {
             return false;
         jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
         return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::ConversationRemovedSessionEvent::type_tag;
-    }
-};
-
-template <>
-struct JSIConverter<::session_bridge::ConversationListReplacedSessionEvent> final {
-    static inline ::session_bridge::ConversationListReplacedSessionEvent fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
-        jsi::Object obj = arg.asObject(runtime);
-        return ::session_bridge::ConversationListReplacedSessionEvent(
-                JSIConverter<std::vector<::session_bridge::Conversation>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "conversations"))));
-    }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ConversationListReplacedSessionEvent& arg) {
-        jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::ConversationListReplacedSessionEvent::type_tag));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "conversations"), JSIConverter<std::vector<::session_bridge::Conversation>>::toJSI(runtime, arg.conversations));
-        return obj;
-    }
-    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
-        if (!value.isObject())
-            return false;
-        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
-        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::ConversationListReplacedSessionEvent::type_tag;
-    }
-};
-
-template <>
-struct JSIConverter<::session_bridge::RequestListReplacedSessionEvent> final {
-    static inline ::session_bridge::RequestListReplacedSessionEvent fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
-        jsi::Object obj = arg.asObject(runtime);
-        return ::session_bridge::RequestListReplacedSessionEvent(
-                JSIConverter<std::vector<::session_bridge::Conversation>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "conversations"))));
-    }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::RequestListReplacedSessionEvent& arg) {
-        jsi::Object obj(runtime);
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::RequestListReplacedSessionEvent::type_tag));
-        obj.setProperty(runtime, PropNameIDCache::get(runtime, "conversations"), JSIConverter<std::vector<::session_bridge::Conversation>>::toJSI(runtime, arg.conversations));
-        return obj;
-    }
-    static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
-        if (!value.isObject())
-            return false;
-        jsi::Value type = value.getObject(runtime).getProperty(runtime, PropNameIDCache::get(runtime, "type"));
-        return type.isString() && type.getString(runtime).utf8(runtime) == ::session_bridge::RequestListReplacedSessionEvent::type_tag;
     }
 };
 
@@ -1194,10 +1198,6 @@ struct JSIConverter<::session_bridge::SessionEvent> final {
             return JSIConverter<::session_bridge::ConversationUpdatedSessionEvent>::fromJSI(runtime, arg);
         if (tag == "conversation-removed")
             return JSIConverter<::session_bridge::ConversationRemovedSessionEvent>::fromJSI(runtime, arg);
-        if (tag == "conversation-list-replaced")
-            return JSIConverter<::session_bridge::ConversationListReplacedSessionEvent>::fromJSI(runtime, arg);
-        if (tag == "request-list-replaced")
-            return JSIConverter<::session_bridge::RequestListReplacedSessionEvent>::fromJSI(runtime, arg);
         if (tag == "messages-added")
             return JSIConverter<::session_bridge::MessagesAddedSessionEvent>::fromJSI(runtime, arg);
         if (tag == "messages-updated")
@@ -1226,7 +1226,7 @@ struct JSIConverter<::session_bridge::SessionEvent> final {
         if (!type.isString())
             return false;
         std::string tag = type.getString(runtime).utf8(runtime);
-        return tag == "conversation-added" || tag == "conversation-updated" || tag == "conversation-removed" || tag == "conversation-list-replaced" || tag == "request-list-replaced" || tag == "messages-added" || tag == "messages-updated" || tag == "history-replaced" || tag == "attachment-progress" || tag == "network-status-changed" || tag == "log";
+        return tag == "conversation-added" || tag == "conversation-updated" || tag == "conversation-removed" || tag == "messages-added" || tag == "messages-updated" || tag == "history-replaced" || tag == "attachment-progress" || tag == "network-status-changed" || tag == "log";
     }
 };
 

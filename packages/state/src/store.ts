@@ -13,7 +13,13 @@ import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
 import { classifyStartupFailure, type StartupFailureKind } from './startupFailure'
-import { emptyState, type MessageWindow, type SessionState, type StoredAppearance } from './types'
+import {
+  emptyState,
+  type ListName,
+  type MessageWindow,
+  type SessionState,
+  type StoredAppearance,
+} from './types'
 
 /** Where the account's theme and accent are kept, as libsession preferences. */
 const THEME_PREF = 'appearance.theme'
@@ -69,9 +75,9 @@ export interface SessionActions {
   /**
    * Subscribes first, then asks - never the other way round.
    *
-   * Anything that arrives between the two is applied on top of the answer, which is safe
-   * precisely because every event carries whole state. Asking first and subscribing after
-   * is what loses a change that lands in the gap.
+   * What arrives before an answer is already in it, and what arrives after is applied on top of
+   * it: responses and events share one ordered stream. Asking first and subscribing after is
+   * what loses a change that lands in the gap.
    */
   hydrate: () => Promise<void>
   loadHistory: (id: ConversationId) => Promise<void>
@@ -231,6 +237,7 @@ export interface SessionStoreOptions {
 }
 
 const PAGE = 30
+const LIST_NAMES: readonly ListName[] = ['conversations', 'requests']
 
 export function createSessionStore(
   client: SessionClient,
@@ -238,6 +245,50 @@ export function createSessionStore(
 ): SessionStore {
   const log = options.log ?? ((): void => undefined)
   const store = createStore<SessionState>(() => ({ ...emptyState }))
+
+  /**
+   * One list, read and stored the moment it is answered, which also puts it back in step.
+   *
+   * A placement is relative to the list it lands on, so it has to land on the answer it came
+   * after. Responses and events share one ordered stream, and every transport delivers each frame
+   * as its own callback with the microtask queue drained in between, so storing an answer in the
+   * continuation of its own promise puts it under everything that followed it. Waiting for a
+   * second answer first would let a placement that arrived in between land on the old list and
+   * then be overwritten.
+   */
+  async function readList(list: ListName): Promise<void> {
+    if (list === 'conversations') {
+      const conversations = await client.getConversations()
+      store.setState((state) => ({
+        conversations,
+        listsOutOfStep: { ...state.listsOutOfStep, conversations: false },
+      }))
+    } else {
+      const requests = await client.getMessageRequests()
+      store.setState((state) => ({
+        requests,
+        listsOutOfStep: { ...state.listsOutOfStep, requests: false },
+      }))
+    }
+  }
+
+  /**
+   * A read already running is not asked again: the placement that failed during it came before
+   * its answer on the stream, so the answer already covers it.
+   */
+  const rereading = new Set<ListName>()
+  function rereadListsOutOfStep(): void {
+    const { listsOutOfStep } = store.getState()
+    for (const list of LIST_NAMES) {
+      if (!listsOutOfStep[list] || rereading.has(list)) continue
+      rereading.add(list)
+      readList(list)
+        .catch((error: unknown) => {
+          log('warn', 'session', `could not read the ${list} list again: ${String(error)}`)
+        })
+        .finally(() => rereading.delete(list))
+    }
+  }
 
   const unsubscribe = client.onEvent((event) => {
     // libsession's own logging, when the bridge was asked for it. Passed straight through
@@ -248,6 +299,8 @@ export function createSessionStore(
       return
     }
     store.setState((state) => applyEvent(state, event))
+    // Before the first read a placement has nothing to land on, and that read clears it.
+    if (store.getState().hydrated) rereadListsOutOfStep()
   })
 
   // A page that lands after its window was forgotten must not bring it back, even when a new load
@@ -406,18 +459,18 @@ export function createSessionStore(
         return
       }
 
-      const [conversations, requests, theme, accent] = await Promise.all([
-        client.getConversations(),
-        client.getMessageRequests(),
+      const [theme, accent] = await Promise.all([
         client.getPref(THEME_PREF),
         client.getPref(ACCENT_PREF),
+        readList('conversations'),
+        readList('requests'),
         askNetworkStatus(),
       ])
 
       // In the same update as `hydrated`, so the screen the account opens on is drawn once, in its
       // theme. Both or neither: an accent without its theme is half a choice.
       const appearance = theme === undefined || accent === undefined ? null : { theme, accent }
-      store.setState({ conversations, requests, appearance, hydrated: true })
+      store.setState({ appearance, hydrated: true })
     },
 
     async setAppearance(appearance): Promise<void> {
