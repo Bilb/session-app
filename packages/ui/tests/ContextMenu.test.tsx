@@ -1,4 +1,4 @@
-import { act } from '@testing-library/react'
+import { act, fireEvent } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { memo, useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
@@ -152,6 +152,15 @@ describe('a context menu', () => {
     await user.keyboard('{Enter}')
     await user.keyboard('{ArrowDown}[Space]')
     expect(select.mock.calls).toEqual([['reply'], ['copy']])
+  })
+
+  it('chooses nothing on a held Enter or Space, which opened it from the keyboard', () => {
+    const { select } = layer(AT_ELEMENT)
+    fireEvent.keyDown(byId(ITEM('reply')), { key: 'Enter', repeat: true })
+    fireEvent.keyDown(byId(ITEM('reply')), { key: ' ', repeat: true })
+    expect(select).not.toHaveBeenCalled()
+    fireEvent.keyDown(byId(ITEM('reply')), { key: 'Enter' })
+    expect(select.mock.calls).toEqual([['reply']])
   })
 
   it('does nothing for a disabled row, by key or by click', async () => {

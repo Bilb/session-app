@@ -1,4 +1,4 @@
-import type { MenuItemConstructorOptions } from 'electron'
+import type { BaseWindow, MenuItemConstructorOptions } from 'electron'
 
 import { tr } from '@session/localization'
 
@@ -12,17 +12,21 @@ import type { ZoomStep } from './zoom'
  * `setPageZoom` in the UI package) and leave the layout to the window's size.
  *
  * The other menus are Electron's own roles, unchanged, so the platform's standard items -- About,
- * Quit, the editing commands, Minimise -- stay as every Mac and PC app has them.
+ * Quit, the editing commands, Minimise -- stay as every Mac and PC app has them. Help holds the
+ * list of keyboard shortcuts, which the page draws.
  */
 export function appMenuTemplate({
   platform,
   dev,
   onZoom,
+  onKeyboardShortcuts,
 }: {
   platform: NodeJS.Platform
   /** Unpackaged: reload and the developer tools, which the default menu also offers. */
   dev: boolean
   onZoom: (step: ZoomStep) => void
+  /** Opens the page's list of shortcuts in the window it was chosen from. */
+  onKeyboardShortcuts: (window: BaseWindow | undefined) => void
 }): MenuItemConstructorOptions[] {
   const view: MenuItemConstructorOptions[] = [
     {
@@ -74,5 +78,18 @@ export function appMenuTemplate({
     // and translated. Titling the others needs catalogue keys that do not exist yet.
     { role: 'viewMenu', submenu: view },
     { role: 'windowMenu' },
+    // Where Mac and PC apps keep the list of shortcuts, and the accelerator is drawn beside it.
+    {
+      role: 'help',
+      submenu: [
+        {
+          label: tr('keyboardShortcuts'),
+          accelerator: 'CmdOrCtrl+/',
+          click: (_item, window) => {
+            onKeyboardShortcuts(window)
+          },
+        },
+      ],
+    },
   ]
 }

@@ -13,6 +13,8 @@ import type { PanelWidth } from './modalPanelMetrics'
 
 /** One page inside a modal. A modal always has at least one. */
 export interface ModalScreen {
+  /** Names the screen, for a caller that has to know whether it is the one showing. */
+  id?: string | undefined
   /** Drawn in the modal's own header, so a screen does not draw a title of its own. */
   title: string
   render: () => ReactNode
@@ -41,6 +43,11 @@ export interface ModalPresentation {
    * actions include a Cancel; the scrim still closes it, as Clear All Data's does.
    */
   showClose?: boolean
+  /**
+   * A wide window's panel as tall as its content, centred, up to the usual panel's height. For a
+   * modal nothing is pushed onto: a push would move its edges. Defaults to false, the fixed height.
+   */
+  fit?: boolean
   /** The screen it opens on. Further screens arrive through `push`. */
   initial: ModalScreen
 }
@@ -58,6 +65,7 @@ export interface OpenModal extends StackedModal {
   kind: 'panel' | 'alert'
   width: PanelWidth
   showClose: boolean
+  fit: boolean
   testID?: string
   closeTestID?: string
   stack: HeldScreen[]
@@ -122,6 +130,7 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
         width = 'normal',
         kind = 'panel',
         showClose = dismissible,
+        fit = false,
         testID,
         closeTestID,
       }) => {
@@ -134,6 +143,7 @@ export function ModalStackProvider({ children }: { children: ReactNode }) {
             width,
             kind,
             showClose,
+            fit,
             ...(testID === undefined ? {} : { testID }),
             ...(closeTestID === undefined ? {} : { closeTestID }),
             screens: 1,

@@ -73,6 +73,7 @@ export type {
   LanguagePickerTestIDs,
 } from './LanguagePicker.types'
 export { List } from './List'
+export type { ListFocusEntry } from './listFocus'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { MESSAGE_FRAME_INSET_PX, MessageFrame, type MessageFrameProps } from './MessageFrame'
 export { Modal } from './Modal'
@@ -80,7 +81,12 @@ export { Modal } from './Modal'
 export { ROW_TOUCH_TARGET } from './rowTouchTarget'
 export { Sheet, SheetSurface } from './Sheet'
 export type { SheetProps, SheetSurfaceProps } from './Sheet'
-export { ModalStackProvider, useModalNavigation, useModals } from './ModalsProvider'
+export {
+  ModalStackProvider,
+  useModalEntries,
+  useModalNavigation,
+  useModals,
+} from './ModalsProvider'
 export type { Modals, ModalPresentation, ModalScreen } from './ModalsProvider'
 export { ModalStackHost } from './ModalStackHost'
 export { ModalStackRoot } from './ModalStackRoot'
@@ -88,6 +94,7 @@ export type { ListProps } from './List'
 export type { InputProps } from './Input.types'
 export { Progress } from './Progress'
 export { RailButton, type RailButtonProps } from './RailButton'
+export { KeyCombo, type KeyComboProps, type KeyName, type KeyNames } from './KeyCombo'
 export { StatusDot, type StatusTone } from './StatusDot'
 export { ContextMenu, ContextMenuLayer, elementMenuAnchor } from './ContextMenu'
 export type { ContextMenuLayerProps, ContextMenuProps, ContextMenuTestIDs } from './ContextMenu'
