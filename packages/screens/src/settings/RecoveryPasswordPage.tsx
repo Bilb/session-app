@@ -14,6 +14,7 @@ import {
   SettingsRow,
   Text,
   useModals,
+  useToast,
   useWindowSize,
   XStack,
   YStack,
@@ -36,7 +37,31 @@ const QR_INSET_PX = 64
  * The second confirmation, with Cancel where the first had Continue, as the legacy iOS and desktop
  * clients put it: a second tap in the same place cancels rather than hiding for good.
  */
-function confirmHideAgain(modals: Modals, hide: () => Promise<void>): void {
+/**
+ * The final Yes: held while hiding, then back to Settings, where the row has gone, as every legacy
+ * client does. A hide that fails closes the dialog and stays on the page, which still shows the
+ * password, and says so.
+ */
+export function hideAndLeave(
+  modals: Modals,
+  id: string,
+  hide: () => Promise<void>,
+  failed: () => void,
+): void {
+  modals.lock(id)
+  void hide().then(
+    () => {
+      modals.dismiss(id)
+      modals.pop()
+    },
+    () => {
+      modals.dismiss(id)
+      failed()
+    },
+  )
+}
+
+function confirmHideAgain(modals: Modals, hide: () => Promise<void>, failed: () => void): void {
   const id = modals.present({
     kind: 'alert',
     testID: ELEMENT.recoveryPassword.hideConfirm,
@@ -70,12 +95,7 @@ function confirmHideAgain(modals: Modals, hide: () => Promise<void>): void {
             destructive
             testID={ELEMENT.recoveryPassword.hideYes}
             onPress={() => {
-              modals.lock(id)
-              void hide().finally(() => {
-                modals.dismiss(id)
-                // Back to Settings, where the row has gone, as every legacy client does.
-                modals.pop()
-              })
+              hideAndLeave(modals, id, hide, failed)
             }}
           >
             {tr('yes')}
@@ -86,7 +106,7 @@ function confirmHideAgain(modals: Modals, hide: () => Promise<void>): void {
   })
 }
 
-function confirmHide(modals: Modals, hide: () => Promise<void>): void {
+function confirmHide(modals: Modals, hide: () => Promise<void>, failed: () => void): void {
   const id = modals.present({
     kind: 'alert',
     testID: ELEMENT.recoveryPassword.hideConfirm,
@@ -110,7 +130,7 @@ function confirmHide(modals: Modals, hide: () => Promise<void>): void {
             testID={ELEMENT.recoveryPassword.hideContinue}
             onPress={() => {
               modals.dismiss(id)
-              confirmHideAgain(modals, hide)
+              confirmHideAgain(modals, hide, failed)
             }}
           >
             {tr('theContinue')}
@@ -237,6 +257,7 @@ export function RecoveryPasswordPage({
   // set. There is no app password yet; ask for it here once there is.
   const actions = useSessionActions()
   const modals = useModals()
+  const toasts = useToast()
   const window = useWindowSize()
   const ports = requirePorts()
   const [showingQr, setShowingQr] = useState(initialView === 'qr')
@@ -362,7 +383,9 @@ export function RecoveryPasswordPage({
               size="sm"
               testID={ELEMENT.recoveryPassword.hide}
               onPress={() => {
-                confirmHide(modals, actions.hideRecoveryPassword)
+                confirmHide(modals, actions.hideRecoveryPassword, () => {
+                  toasts.show(tr('errorGeneric'))
+                })
               }}
             >
               {tr('hide')}
@@ -385,7 +408,9 @@ export function RecoveryPasswordPage({
               icon: 'share2',
               testID: ELEMENT.contextMenu.item('share'),
               onSelect: () => {
-                void shareQrCode(secret.seedHex)
+                void shareQrCode(secret.seedHex).catch(() => {
+                  toasts.show(tr('errorGeneric'))
+                })
               },
             },
           ]}
@@ -411,7 +436,9 @@ export function RecoveryPasswordPage({
                 icon: 'download',
                 testID: ELEMENT.contextMenu.item('save'),
                 onSelect: () => {
-                  void saveQrCode(secret.seedHex)
+                  void saveQrCode(secret.seedHex).catch(() => {
+                    toasts.show(tr('attachmentsSaveError'))
+                  })
                 },
               },
             ],
