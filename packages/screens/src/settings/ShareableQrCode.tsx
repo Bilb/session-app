@@ -10,6 +10,7 @@ import {
   QrViewer,
   RecoveryPasswordMark,
   type MenuAnchor,
+  useToast,
   type QrCodeProps,
 } from '@session/ui'
 import { useState } from 'react'
@@ -47,6 +48,7 @@ export function ShareableQrCode({
 }: ShareableQrCodeProps) {
   const logo = mark === undefined ? undefined : MARK_GLYPHS[mark]
   const ports = requirePorts()
+  const toasts = useToast()
   const saveQrCode = ports.files.saveQrCode
   const shareQrCode = ports.share.shareQrCode
   const [shareMenu, setShareMenu] = useState<MenuAnchor | null>(null)
@@ -92,7 +94,9 @@ export function ShareableQrCode({
                 icon: 'download',
                 testID: ELEMENT.contextMenu.item('save'),
                 onSelect: () => {
-                  void saveQrCode(value, mark ?? null)
+                  void saveQrCode(value, mark ?? null).catch(() => {
+                    toasts.show(tr('attachmentsSaveError'))
+                  })
                 },
               },
             ],
@@ -133,7 +137,9 @@ export function ShareableQrCode({
           icon: 'share2',
           testID: ELEMENT.qrViewer.share,
           onPress: () => {
-            void shareQrCode(value, mark ?? null)
+            void shareQrCode(value, mark ?? null).catch(() => {
+              toasts.show(tr('errorGeneric'))
+            })
           },
         }}
       />
@@ -150,7 +156,9 @@ export function ShareableQrCode({
             icon: 'share2',
             testID: ELEMENT.contextMenu.item('share'),
             onSelect: () => {
-              void shareQrCode(value, mark ?? null)
+              void shareQrCode(value, mark ?? null).catch(() => {
+                toasts.show(tr('errorGeneric'))
+              })
             },
           },
         ]}
