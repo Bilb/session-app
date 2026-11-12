@@ -151,6 +151,9 @@ function Words({ words }: { words: string[] }) {
   )
 }
 
+/** Whether the row's load is under way, so a second press while it runs opens nothing more. */
+let opening = false
+
 /**
  * Opens the recovery password once it has loaded, as legacy iOS does: the page arrives laid out
  * rather than growing when the words come, and a failure is said in place of it.
@@ -159,40 +162,58 @@ function Words({ words }: { words: string[] }) {
  * JavaScript cannot be wiped, so the fewer places hold one the better.
  */
 export function openRecoveryPassword(modals: Modals, actions: SessionActions): void {
-  actions.getRecoveryPassword().then(
-    (secret) => {
-      modals.push({
-        title: tr('sessionRecoveryPassword'),
-        render: () => <RecoveryPasswordPage secret={secret} />,
-      })
-    },
-    () => {
-      const id = modals.present({
-        kind: 'alert',
-        testID: ELEMENT.recoveryPassword.loadError,
-        initial: {
-          title: tr('theError'),
-          render: () => (
-            <Text size="$body" textAlign="center">
-              {tr('recoveryPasswordErrorLoad')}
-            </Text>
-          ),
-          footer: () => (
-            <Button
-              variant="ghost"
-              fill
-              borderRadius="$none"
-              onPress={() => {
-                modals.dismiss(id)
-              }}
-            >
-              {tr('okay')}
-            </Button>
-          ),
-        },
-      })
-    },
-  )
+  if (opening) return
+  opening = true
+  // Kept out of screenshots, and the modal host's dialog made afresh, before the page is in it: a
+  // tablet's Settings dialog takes the flag only when it is made, and the page must not draw a
+  // frame in one made without. This hold ends once the page is pushed; the page takes its own,
+  // and the flag outlasts its last holder long enough for the page to mount.
+  const preventCapture = requirePorts().window.preventScreenCapture
+  const secured =
+    preventCapture === null
+      ? Promise.resolve()
+      : preventCapture(true).then(() => {
+          modals.secureHost()
+        })
+  Promise.all([actions.getRecoveryPassword(), secured])
+    .then(
+      ([secret]) => {
+        modals.push({
+          title: tr('sessionRecoveryPassword'),
+          render: () => <RecoveryPasswordPage secret={secret} />,
+        })
+      },
+      () => {
+        const id = modals.present({
+          kind: 'alert',
+          testID: ELEMENT.recoveryPassword.loadError,
+          initial: {
+            title: tr('theError'),
+            render: () => (
+              <Text size="$body" textAlign="center">
+                {tr('recoveryPasswordErrorLoad')}
+              </Text>
+            ),
+            footer: () => (
+              <Button
+                variant="ghost"
+                fill
+                borderRadius="$none"
+                onPress={() => {
+                  modals.dismiss(id)
+                }}
+              >
+                {tr('okay')}
+              </Button>
+            ),
+          },
+        })
+      },
+    )
+    .finally(() => {
+      opening = false
+      if (preventCapture !== null) void preventCapture(false)
+    })
 }
 
 /**
