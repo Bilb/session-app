@@ -1,5 +1,5 @@
 import { requirePorts, URLS, useDebugMode, useNav, routes } from '@session/app'
-import { toPlainText, tr } from '@session/localization'
+import { PENDING_COPY, toPlainText, tr } from '@session/localization'
 import {
   useAccount,
   useNetworkStatus,
@@ -15,6 +15,7 @@ import {
   RecoveryPasswordShield,
   SessionTokenMark,
   SettingsGroup,
+  SettingsNote,
   SettingsRow,
   StatusDot,
   Text,
@@ -56,6 +57,9 @@ type RowSpec = Pick<
 > & {
   testID: string
 }
+
+/** Secondary text in place of a row, which says why the row is not there. */
+type NoteSpec = { note: string; testID: string }
 
 const PROFILE_AVATAR = 90
 
@@ -207,7 +211,7 @@ export function SettingsRootPage() {
 
   const row = ELEMENT.settings.row
   // Rows without `onPress` draw disabled: their screens are not built yet.
-  const groups: RowSpec[][] = [
+  const groups: Array<Array<RowSpec | NoteSpec>> = [
     [
       {
         label: tr('upgradeSession'),
@@ -285,9 +289,15 @@ export function SettingsRootPage() {
       { label: tr('preferences'), icon: 'settings', testID: row('preferences') },
     ],
     [
-      // Gone once hidden on this device, as on every legacy client.
+      // Gone once hidden on this device, as on every legacy client, with a line saying so in its
+      // place: people who hid it write in asking where it went.
       ...(recoveryPasswordHidden
-        ? []
+        ? [
+            {
+              note: PENDING_COPY.recoveryPasswordHiddenOnDevice,
+              testID: row('recovery-password-hidden'),
+            } satisfies NoteSpec,
+          ]
         : [
             {
               label: tr('sessionRecoveryPassword'),
@@ -336,9 +346,13 @@ export function SettingsRootPage() {
       <AccountHeader sessionId={sessionId} name={name} />
       {groups.map((rows) => (
         <SettingsGroup key={rows[0]?.testID}>
-          {rows.map((spec) => (
-            <SettingsRow key={spec.testID} {...spec} disabled={spec.onPress === undefined} />
-          ))}
+          {rows.map((spec) =>
+            'note' in spec ? (
+              <SettingsNote key={spec.testID} text={spec.note} testID={spec.testID} />
+            ) : (
+              <SettingsRow key={spec.testID} {...spec} disabled={spec.onPress === undefined} />
+            ),
+          )}
         </SettingsGroup>
       ))}
 

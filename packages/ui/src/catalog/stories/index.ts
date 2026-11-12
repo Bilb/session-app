@@ -8,7 +8,7 @@ import { keyCombo } from './keyCombo'
 import { avatar, progressRing, radio } from './indicators'
 import { qrCode } from './qrCode'
 import { messageFrameFocus } from './messageFrame'
-import { settingsRow } from './settingsRow'
+import { settingsNote, settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
 import { textScale } from './text'
 import { mediaViewer } from './viewer'
@@ -18,6 +18,7 @@ export const STORIES: readonly AnyStory[] = [
   buttonOnAccent,
   buttonSizes,
   settingsRow,
+  settingsNote,
   fileRow,
   fileRowOnAccent,
   fileRowReceived,
