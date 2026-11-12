@@ -4,7 +4,7 @@ import { button, buttonOnAccent, buttonSizes } from './button'
 import { contextMenu } from './contextMenu'
 import { contextMenuPlacement } from './contextMenuPlacement'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
-import { avatar, avatarLarge, progressRing, radio } from './indicators'
+import { avatar, progressRing, radio } from './indicators'
 import { qrCode, qrViewer } from './qrCode'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
@@ -22,7 +22,6 @@ export const STORIES: readonly AnyStory[] = [
   stagedTile,
   radio,
   avatar,
-  avatarLarge,
   progressRing,
   textScale,
   albumFocus,
