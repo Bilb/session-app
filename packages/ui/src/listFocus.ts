@@ -54,11 +54,12 @@ function plain(event: KeyboardEvent): boolean {
 }
 
 /**
- * The keys that open a row's menu. Enter or Space as legacy Session Desktop had them, on the row
- * itself only: inside it they press the control that has focus. The Menu key and Shift+F10 are the
- * platform's, from anywhere in the row.
+ * The keys that open a row's menu, pressed rather than held. Enter or Space as legacy Session
+ * Desktop had them, on the row itself only: inside it they press the control that has focus. The
+ * Menu key and Shift+F10 are the platform's, from anywhere in the row.
  */
 function opensMenu(event: KeyboardEvent, row: HTMLElement): boolean {
+  if (event.repeat) return false
   if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) return true
   return plain(event) && (event.key === 'Enter' || event.key === ' ') && event.target === row
 }

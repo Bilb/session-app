@@ -49,6 +49,7 @@ type KeyHandler = NonNullable<ViewProps['onKeyDown']>
 /** The DOM's key event, which is what arrives on the web: react-native's type has no `key`. */
 interface DomKeyEvent {
   key: string
+  repeat: boolean
   preventDefault: () => void
   stopPropagation: () => void
 }
@@ -119,6 +120,9 @@ export function ContextMenuPanel({
     if (action === null) return
     event.preventDefault()
     event.stopPropagation()
+    // A held Enter or Space that opened the menu repeats onto its focused first row; only a fresh
+    // press chooses, as `pressOnKey` has it. Held arrows still walk the rows.
+    if (event.repeat && (action.kind === 'activate' || action.kind === 'openSubmenu')) return
     pointerMoved.current = false
     if (action.kind === 'move') onActiveChange(action.index)
     else onAction(action)

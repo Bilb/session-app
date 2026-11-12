@@ -108,6 +108,24 @@ describe('the keyboard shortcuts', () => {
     expect(titles).toEqual(['Keyboard Shortcuts'])
   })
 
+  it('close on the menu command when they were opened from Help, back to Help', async () => {
+    const command = withShortcuts()
+    renderScreen(
+      <>
+        <HelpPage />
+        <Command />
+      </>,
+      { store: store() },
+    )
+    act(() => {
+      presentHelp()
+    })
+    await userEvent.click(screen.getByTestId(ELEMENT.help.keyboardShortcuts))
+    expect(titles).toEqual(['Keyboard Shortcuts'])
+    command()
+    expect(titles).toEqual(['Help'])
+  })
+
   it('open on the menu command and close on the next', () => {
     const command = withShortcuts()
     renderScreen(<Command />)

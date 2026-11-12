@@ -13,6 +13,8 @@ import type { PanelWidth } from './modalPanelMetrics'
 
 /** One page inside a modal. A modal always has at least one. */
 export interface ModalScreen {
+  /** Names the screen, for a caller that has to know whether it is the one showing. */
+  id?: string | undefined
   /** Drawn in the modal's own header, so a screen does not draw a title of its own. */
   title: string
   render: () => ReactNode
