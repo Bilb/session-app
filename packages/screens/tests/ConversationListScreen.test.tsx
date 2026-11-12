@@ -72,6 +72,8 @@ it('draws only the row that changed', async () => {
 describe('a muted row whose mute lapses, with nothing about the row changing', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
+    // Noon on one day for every test: no test but the last turns the day, which draws a row again.
+    vi.setSystemTime(new Date(2026, 0, 1, 12))
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -126,14 +128,23 @@ describe('a muted row whose mute lapses, with nothing about the row changing', (
     expect(muted()).toBe(0)
   })
 
-  it('outlasts the longest wait a timer can be given', async () => {
-    const longestMs = 2 ** 31 - 1
-    const muted = await drawMutedFor(longestMs + 5_000)
-
-    advance(longestMs)
-    expect(muted()).toBe(1)
-    advance(5_000)
-    expect(muted()).toBe(0)
+  it('is drawn loud when the mute ends between its render and its effect', async () => {
+    const actual = await vi.importActual<typeof RowState>('#src/conversationRowState')
+    let moved = false
+    vi.mocked(conversationRowState).mockImplementation((row, nowMs) => {
+      const state = actual.conversationRowState(row, nowMs)
+      if (!moved && state.muted) {
+        moved = true
+        vi.setSystemTime(Date.now() + 20)
+      }
+      return state
+    })
+    try {
+      const muted = await drawMutedFor(10)
+      expect(muted()).toBe(0)
+    } finally {
+      vi.mocked(conversationRowState).mockImplementation(actual.conversationRowState)
+    }
   })
 
   it('is drawn loud on coming back to the front after a mute that ended while suspended', async () => {
@@ -157,6 +168,24 @@ describe('a muted row whose mute lapses, with nothing about the row changing', (
     act(() => {
       for (const handler of onFocus) handler(true)
     })
+    expect(muted()).toBe(0)
+  })
+
+  // Last: it leaves the shared today clock weeks on, and the next mount would draw its rows twice.
+  it('outlasts the longest wait a timer can be given, without asking for a longer one', async () => {
+    const longestMs = 2 ** 31 - 1
+    const muted = await drawMutedFor(longestMs + 5_000)
+
+    // A wait longer than the longest fires after a millisecond, and would be the next timer.
+    const startMs = Date.now()
+    act(() => {
+      vi.advanceTimersToNextTimer()
+    })
+    expect(Date.now() - startMs).toBeGreaterThan(1_000)
+
+    advance(longestMs - (Date.now() - startMs))
+    expect(muted()).toBe(1)
+    advance(5_000)
     expect(muted()).toBe(0)
   })
 })
