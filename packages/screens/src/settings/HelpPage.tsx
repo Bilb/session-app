@@ -14,7 +14,7 @@ import {
 
 import { useExportLogs } from '../useExportLogs'
 import { confirmLink } from './confirmLink'
-import { KeyboardShortcutsPage } from './KeyboardShortcutsPage'
+import { KEYBOARD_SHORTCUTS_SCREEN, KeyboardShortcutsPage } from './KeyboardShortcutsPage'
 
 /**
  * `feedback` goes to `URLS.survey`, not `URLS.feedback`, matching the shipping clients so support
@@ -107,6 +107,7 @@ export function HelpPage() {
             testID={ELEMENT.help.keyboardShortcuts}
             onPress={() => {
               modals.push({
+                id: KEYBOARD_SHORTCUTS_SCREEN,
                 title: tr('keyboardShortcuts'),
                 render: () => <KeyboardShortcutsPage names={shortcuts.keyNames} />,
               })

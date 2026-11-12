@@ -10,6 +10,9 @@ import {
 
 import { keyboardShortcuts } from '../keyboardShortcuts'
 
+/** The list's modal screen, wherever it was opened from: the menu command closes it. */
+export const KEYBOARD_SHORTCUTS_SCREEN = 'keyboard-shortcuts'
+
 /** The keys the app handles, named as this platform's keyboards print them. */
 export function KeyboardShortcutsPage({ names }: { names: KeyNames }) {
   return (

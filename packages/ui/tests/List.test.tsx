@@ -171,6 +171,8 @@ describe('List with roving focus', () => {
     // The control presses itself; the menu is not asked for.
     fireEvent.keyDown(byId(CONTROL), keys)
     expect(fireEvent.keyDown(byId(ROW(1)), { ...keys, ctrlKey: true })).toBe(true)
+    // Held, it opens the menu once, not again on each repeat.
+    fireEvent.keyDown(byId(ROW(1)), { ...keys, repeat: true })
     expect(onRowMenu.mock.calls).toEqual([['c', byId(ROW(1))]])
   })
 
