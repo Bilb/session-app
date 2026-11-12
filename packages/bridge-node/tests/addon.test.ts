@@ -690,14 +690,28 @@ describeEcho('the generated converters', () => {
       type: 'response' as const,
       response: { id: 900_020 + at, result: { type: 'networkStatus' as const, status } },
     })),
-    { type: 'event', event: { type: 'conversation-added', conversation: fullConversation } },
-    { type: 'event', event: { type: 'conversation-updated', conversation: bareConversation } },
-    { type: 'event', event: { type: 'conversation-removed', conversationId } },
+    // Both ends of a placement set, then the least of one: `after` absent and `from` none.
     {
       type: 'event',
-      event: { type: 'conversation-list-replaced', conversations: [fullConversation] },
+      event: {
+        type: 'conversation-added',
+        conversation: fullConversation,
+        placement: { from: 'requests', to: 'conversations', after: conversationId },
+      },
     },
-    { type: 'event', event: { type: 'request-list-replaced', conversations: [] } },
+    {
+      type: 'event',
+      event: {
+        type: 'conversation-updated',
+        conversation: bareConversation,
+        placement: { from: 'none', to: 'requests' },
+      },
+    },
+    // Every ConversationList value once, as with NetworkStatus above.
+    ...(['none', 'conversations', 'requests'] as const).map((list): Frame => ({
+      type: 'event',
+      event: { type: 'conversation-removed', conversationId, list },
+    })),
     { type: 'event', event: { type: 'messages-added', messages: [fullMessage] } },
     { type: 'event', event: { type: 'messages-updated', messages: [bareMessage] } },
     { type: 'event', event: { type: 'history-replaced', conversationId } },

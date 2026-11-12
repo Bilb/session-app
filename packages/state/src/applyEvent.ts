@@ -3,11 +3,12 @@ import type {
   AttachmentTransfer,
   Conversation,
   ConversationId,
+  ListPlacement,
   Message,
   SessionEvent,
 } from '@session/client'
 
-import type { AttachmentTransferState, MessageWindow, SessionState } from './types'
+import type { AttachmentTransferState, ListName, MessageWindow, SessionState } from './types'
 import { transferKey } from './types'
 
 /**
@@ -15,8 +16,12 @@ import { transferKey } from './types'
  *
  * Every event carries complete state, so this only ever replaces - it never merges a delta
  * or goes back to ask for the rest. That is what makes replaying the same event twice
- * harmless, and what lets the store be seeded and then have earlier events land on top of
- * it without contradicting themselves.
+ * harmless.
+ *
+ * A conversation's position is the one relative thing: a placement puts a row after another, so
+ * the lists stay right only when every event lands, in order, on top of lists read earlier on the
+ * same stream. When one cannot be applied, `listsOutOfStep` says so and the store reads that
+ * list again.
  *
  * The objects the bridge hands over are stored as they are: this rebuilds the containers on the
  * path to a change (a map, an id array) and nothing inside them.
@@ -25,16 +30,10 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
   switch (event.type) {
     case 'conversation-added':
     case 'conversation-updated':
-      return upsertConversation(state, event.conversation)
+      return placeConversation(state, event.conversation, event.placement)
 
     case 'conversation-removed':
       return removeConversation(state, event.conversationId)
-
-    case 'conversation-list-replaced':
-      return { ...state, conversations: event.conversations }
-
-    case 'request-list-replaced':
-      return { ...state, requests: event.conversations }
 
     case 'messages-added':
     case 'messages-updated':
@@ -180,8 +179,6 @@ export function withoutHistory(
   return kept
 }
 
-type ListKey = 'conversations' | 'requests'
-
 /**
  * The list without `id`, or the same array when it was not in it.
  *
@@ -194,28 +191,39 @@ function without(list: Conversation[], id: ConversationId): Conversation[] {
 }
 
 /**
- * Approval arrives as an update, not as a removal followed by an addition, so a row that
- * changed side has to be taken out of the list it used to be in. Missing this is what makes
- * a conversation appear in both lists at once.
+ * Takes the row out of whichever list holds it and puts it where the placement says.
+ *
+ * Both lists are searched rather than the placement's `from`, which is where libsession last
+ * *reported* the row: a row the app read with `getConversations` and has not heard about since
+ * is one libsession never reported, so its `from` is `none` while the app holds it.
+ *
+ * An `after` this store does not hold has no right answer, and appending would leave the row
+ * somewhere plausible and wrong with nothing to correct it. It is appended all the same, so it
+ * is not lost meanwhile, and the list is flagged for the store to read again.
  */
-function upsertConversation(state: SessionState, conversation: Conversation): SessionState {
-  const to: ListKey = conversation.request ? 'requests' : 'conversations'
-  const from: ListKey = conversation.request ? 'conversations' : 'requests'
+function placeConversation(
+  state: SessionState,
+  conversation: Conversation,
+  { to, after }: ListPlacement,
+): SessionState {
+  const conversations = without(state.conversations, conversation.id)
+  const requests = without(state.requests, conversation.id)
+  if (to === 'none') return { ...state, conversations, requests }
 
-  const at = state[to].findIndex((c) => c.id === conversation.id)
-  let target: Conversation[]
-  if (at === -1) {
-    // Appended, because where it belongs is not this file's decision: libsession orders the
-    // lists, and the only case that moves a conversation between them - approval - is followed
-    // by a replacement carrying the real order, so an appended row is corrected within the same
-    // batch rather than left where it was put.
-    target = [...state[to], conversation]
-  } else {
-    target = state[to].slice()
-    target[at] = conversation
+  const lists: Record<ListName, Conversation[]> = { conversations, requests }
+  const list = lists[to]
+  const at = after === undefined ? 0 : list.findIndex((c) => c.id === after) + 1
+  const found = at > 0 || after === undefined
+  const placed = found
+    ? [...list.slice(0, at), conversation, ...list.slice(at)]
+    : [...list, conversation]
+
+  return {
+    ...state,
+    ...lists,
+    [to]: placed,
+    listsOutOfStep: found ? state.listsOutOfStep : { ...state.listsOutOfStep, [to]: true },
   }
-
-  return { ...state, [from]: without(state[from], conversation.id), [to]: target }
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {

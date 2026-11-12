@@ -15,7 +15,7 @@ import {
   type MessagePage,
   type SessionClient,
 } from '@session/client'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createSessionStore, type SessionStore } from '#src/store'
 
@@ -460,5 +460,36 @@ describe("libsession's log lines", () => {
 
     expect(received).toEqual([['info', 'network', message]])
     expect(store.getState()).toBe(before)
+  })
+})
+
+describe('the conversation lists', () => {
+  it('are read again when a placement names a row the store does not hold', async () => {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const account = world.account('Alice')
+    const [bob] = await alice.getConversations()
+    if (!bob) throw new Error('expected a conversation with Bob')
+    account.upsertConversation(
+      { ...bob, id: `05${'c'.repeat(64)}`, lastActivity: bob.lastActivity - 1 },
+      { announce: false },
+    )
+    const store = createSessionStore(alice)
+    await store.actions.hydrate()
+    const order = store.getState().conversations.map((c) => c.id)
+    expect(order.length).toBe(2)
+
+    // Placed after a row nobody holds: appended meanwhile, which puts Bob last and wrong.
+    account.emit({
+      type: 'conversation-updated',
+      conversation: bob,
+      placement: { from: 'conversations', to: 'conversations', after: 'nobody' },
+    })
+
+    await vi.waitFor(() => {
+      expect(store.getState().listsOutOfStep.conversations).toBe(false)
+      expect(store.getState().conversations.map((c) => c.id)).toEqual(order)
+    })
   })
 })

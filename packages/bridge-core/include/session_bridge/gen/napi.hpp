@@ -815,18 +815,56 @@ struct Codec<::session_bridge::ResponseFrame> {
 };
 
 template <>
+struct Codec<::session_bridge::ConversationList> {
+    static constexpr std::string_view name = "ConversationList";
+    static Napi::Value to(Napi::Env env, ::session_bridge::ConversationList value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::ConversationList>::to_string(value);
+        return Napi::String::New(env, text.data(), text.size());
+    }
+    static ::session_bridge::ConversationList from(const Napi::Value& value, std::string_view where) {
+        std::string text = Codec<std::string>::from(value, where);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::ConversationList>::parse(text);
+        if (!parsed)
+            throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a ConversationList");
+        return *parsed;
+    }
+};
+
+template <>
+struct Codec<::session_bridge::ListPlacement> {
+    static constexpr std::string_view name = "ListPlacement";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::ListPlacement& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("from", Codec<::session_bridge::ConversationList>::to(env, value.from));
+        obj.Set("to", Codec<::session_bridge::ConversationList>::to(env, value.to));
+        if (value.after)
+            obj.Set("after", Codec<std::string>::to(env, *value.after));
+        return obj;
+    }
+    static ::session_bridge::ListPlacement from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::ListPlacement(
+                Codec<::session_bridge::ConversationList>::from(obj.Get("from"), "ListPlacement.from"),
+                Codec<::session_bridge::ConversationList>::from(obj.Get("to"), "ListPlacement.to"),
+                optional<std::string>(obj.Get("after"), "ListPlacement.after"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::ConversationAddedSessionEvent> {
     static constexpr std::string_view name = "ConversationAddedSessionEvent";
     static Napi::Value to(Napi::Env env, const ::session_bridge::ConversationAddedSessionEvent& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("type", Napi::String::New(env, ::session_bridge::ConversationAddedSessionEvent::type_tag.data(), ::session_bridge::ConversationAddedSessionEvent::type_tag.size()));
         obj.Set("conversation", Codec<::session_bridge::Conversation>::to(env, value.conversation));
+        obj.Set("placement", Codec<::session_bridge::ListPlacement>::to(env, value.placement));
         return obj;
     }
     static ::session_bridge::ConversationAddedSessionEvent from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::ConversationAddedSessionEvent(
-                Codec<::session_bridge::Conversation>::from(obj.Get("conversation"), "ConversationAddedSessionEvent.conversation"));
+                Codec<::session_bridge::Conversation>::from(obj.Get("conversation"), "ConversationAddedSessionEvent.conversation"),
+                Codec<::session_bridge::ListPlacement>::from(obj.Get("placement"), "ConversationAddedSessionEvent.placement"));
     }
 };
 
@@ -837,12 +875,14 @@ struct Codec<::session_bridge::ConversationUpdatedSessionEvent> {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("type", Napi::String::New(env, ::session_bridge::ConversationUpdatedSessionEvent::type_tag.data(), ::session_bridge::ConversationUpdatedSessionEvent::type_tag.size()));
         obj.Set("conversation", Codec<::session_bridge::Conversation>::to(env, value.conversation));
+        obj.Set("placement", Codec<::session_bridge::ListPlacement>::to(env, value.placement));
         return obj;
     }
     static ::session_bridge::ConversationUpdatedSessionEvent from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::ConversationUpdatedSessionEvent(
-                Codec<::session_bridge::Conversation>::from(obj.Get("conversation"), "ConversationUpdatedSessionEvent.conversation"));
+                Codec<::session_bridge::Conversation>::from(obj.Get("conversation"), "ConversationUpdatedSessionEvent.conversation"),
+                Codec<::session_bridge::ListPlacement>::from(obj.Get("placement"), "ConversationUpdatedSessionEvent.placement"));
     }
 };
 
@@ -853,44 +893,14 @@ struct Codec<::session_bridge::ConversationRemovedSessionEvent> {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("type", Napi::String::New(env, ::session_bridge::ConversationRemovedSessionEvent::type_tag.data(), ::session_bridge::ConversationRemovedSessionEvent::type_tag.size()));
         obj.Set("conversationId", Codec<std::string>::to(env, value.conversation_id));
+        obj.Set("list", Codec<::session_bridge::ConversationList>::to(env, value.list));
         return obj;
     }
     static ::session_bridge::ConversationRemovedSessionEvent from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::ConversationRemovedSessionEvent(
-                Codec<std::string>::from(obj.Get("conversationId"), "ConversationRemovedSessionEvent.conversationId"));
-    }
-};
-
-template <>
-struct Codec<::session_bridge::ConversationListReplacedSessionEvent> {
-    static constexpr std::string_view name = "ConversationListReplacedSessionEvent";
-    static Napi::Value to(Napi::Env env, const ::session_bridge::ConversationListReplacedSessionEvent& value) {
-        Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session_bridge::ConversationListReplacedSessionEvent::type_tag.data(), ::session_bridge::ConversationListReplacedSessionEvent::type_tag.size()));
-        obj.Set("conversations", Codec<std::vector<::session_bridge::Conversation>>::to(env, value.conversations));
-        return obj;
-    }
-    static ::session_bridge::ConversationListReplacedSessionEvent from(const Napi::Value& value, std::string_view where) {
-        Napi::Object obj = object(value, where);
-        return ::session_bridge::ConversationListReplacedSessionEvent(
-                Codec<std::vector<::session_bridge::Conversation>>::from(obj.Get("conversations"), "ConversationListReplacedSessionEvent.conversations"));
-    }
-};
-
-template <>
-struct Codec<::session_bridge::RequestListReplacedSessionEvent> {
-    static constexpr std::string_view name = "RequestListReplacedSessionEvent";
-    static Napi::Value to(Napi::Env env, const ::session_bridge::RequestListReplacedSessionEvent& value) {
-        Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session_bridge::RequestListReplacedSessionEvent::type_tag.data(), ::session_bridge::RequestListReplacedSessionEvent::type_tag.size()));
-        obj.Set("conversations", Codec<std::vector<::session_bridge::Conversation>>::to(env, value.conversations));
-        return obj;
-    }
-    static ::session_bridge::RequestListReplacedSessionEvent from(const Napi::Value& value, std::string_view where) {
-        Napi::Object obj = object(value, where);
-        return ::session_bridge::RequestListReplacedSessionEvent(
-                Codec<std::vector<::session_bridge::Conversation>>::from(obj.Get("conversations"), "RequestListReplacedSessionEvent.conversations"));
+                Codec<std::string>::from(obj.Get("conversationId"), "ConversationRemovedSessionEvent.conversationId"),
+                Codec<::session_bridge::ConversationList>::from(obj.Get("list"), "ConversationRemovedSessionEvent.list"));
     }
 };
 
@@ -1058,10 +1068,6 @@ struct Codec<::session_bridge::SessionEvent> {
             return Codec<::session_bridge::ConversationUpdatedSessionEvent>::from(value, where);
         if (tag == "conversation-removed")
             return Codec<::session_bridge::ConversationRemovedSessionEvent>::from(value, where);
-        if (tag == "conversation-list-replaced")
-            return Codec<::session_bridge::ConversationListReplacedSessionEvent>::from(value, where);
-        if (tag == "request-list-replaced")
-            return Codec<::session_bridge::RequestListReplacedSessionEvent>::from(value, where);
         if (tag == "messages-added")
             return Codec<::session_bridge::MessagesAddedSessionEvent>::from(value, where);
         if (tag == "messages-updated")

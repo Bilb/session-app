@@ -397,27 +397,23 @@ struct ClientBridge::Impl {
         // convenient.
         client::callbacks cbs{
                 .conversation_added =
-                        [impl](client::AnyConversation c) {
-                            impl->event(ConversationAddedSessionEvent{to_bridge(std::move(c))});
+                        [impl](client::AnyConversation&& c, client::ListPlacement&& p) {
+                            impl->event(ConversationAddedSessionEvent{
+                                    to_bridge(std::move(c)), to_bridge(std::move(p))});
                         },
                 .conversation_updated =
-                        [impl](client::AnyConversation c) {
-                            impl->event(ConversationUpdatedSessionEvent{to_bridge(std::move(c))});
+                        [impl](client::AnyConversation&& c, client::ListPlacement&& p) {
+                            impl->event(ConversationUpdatedSessionEvent{
+                                    to_bridge(std::move(c)), to_bridge(std::move(p))});
                         },
                 .conversation_removed =
-                        [impl](const client::ConversationId& id) {
-                            impl->event(ConversationRemovedSessionEvent{id.to_string()});
+                        [impl](client::ConversationId&& id, client::ConversationList list) {
+                            impl->event(ConversationRemovedSessionEvent{
+                                    id.to_string(), to_bridge(list)});
                         },
-                .conversation_list_replaced =
-                        [impl](std::vector<client::AnyConversation> convos) {
-                            impl->event(ConversationListReplacedSessionEvent{
-                                    Impl::conversations(std::move(convos))});
-                        },
-                .request_list_replaced =
-                        [impl](std::vector<client::AnyConversation> convos) {
-                            impl->event(RequestListReplacedSessionEvent{
-                                    Impl::conversations(std::move(convos))});
-                        },
+                // No whole-list handlers. The placements above are complete on their own, and an
+                // unset list handler is what spares libsession reading the whole list on every
+                // change.
                 // A batch, and it may span conversations: one file is one file, so fetching or
                 // evicting it changes every message showing it. Each Message carries its own
                 // conversation, which is why neither of these is told one.

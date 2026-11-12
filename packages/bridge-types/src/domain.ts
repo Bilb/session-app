@@ -435,6 +435,33 @@ export interface Conversation {
   blocked: boolean
 }
 
+/**
+ * Which of the two lists a conversation sits in.
+ *
+ * `none` is an answer rather than a missing one: a hidden conversation is in neither list, and so
+ * is one the app has not been shown.
+ */
+export type ConversationList = 'none' | 'conversations' | 'requests'
+
+/**
+ * Where a conversation was, and where it belongs now: enough to apply without consulting
+ * anything, because the order is libsession's and the two lists are not sorted alike.
+ *
+ * Each one places a row next to another, so they hold only when applied in the order given and
+ * none is skipped.
+ */
+export interface ListPlacement {
+  /**
+   * The list the app was last told this row is in, which is the one to take it out of. `none`
+   * when it was told of none: a row it has not been shown, or one that was hidden.
+   */
+  from: ConversationList
+  /** Where it belongs now. `none` means neither list, which is what hiding does. */
+  to: ConversationList
+  /** The row it now follows in `to`; unset means first. Always unset when `to` is `none`. */
+  after?: ConversationId
+}
+
 export interface AccountInfo {
   haveAccount: boolean
   sessionId?: string

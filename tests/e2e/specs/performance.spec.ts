@@ -68,7 +68,7 @@ for (const peers of SIZES) {
       await app.startProbe()
 
       // Cold: the list appearing at all. Everything from boot through hydration, the first
-      // conversation_list_replaced, the projection, and the first commit.
+      // answer to the list query, the projection, and the first commit.
       const toList = await app.timeUntilVisible(ELEMENT.conversationList.screen)
       await app.waitForVisible(ELEMENT.conversationList.row(0))
       // On the page's own clock, which is the one a long task's start is on.

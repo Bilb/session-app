@@ -44,8 +44,8 @@ crosses is a plain object of exactly the type a screen renders - the C++ builds 
 between. Two decisions are worth knowing before changing anything:
 
 **Responses ride the same stream as events.** libsession's contract is that a display can be
-built by asking once and then applying events. That only holds if a `conversation-list-replaced`
-produced _before_ the answer to `getConversations` is also applied before it. A promise
+built by asking once and then applying events. That only holds if a placement produced _before_
+the answer to `getConversations` is also applied before it. A promise
 resolving on one channel while events arrive on another gives no such guarantee across IPC or
 JSI, and the failure would be a stale row appearing on a race nobody can reproduce. One FIFO
 stream carries libsession's own ordering through to TypeScript; the facade still hands callers
@@ -54,7 +54,14 @@ is unsafe: an already-resolved C++ promise settles as a microtask ahead of event
 on the CallInvoker, and half of the shim's commands answer synchronously.
 
 **Every event carries whole state.** Never an id to go and fetch. That is what makes a display
-bindable, applying the same event twice harmless, and startup race-free.
+bindable and applying the same event twice harmless.
+
+A conversation's position is the exception. A changed row comes with libsession's placement: the
+list it belongs in and the row it now follows, since the two lists are not sorted alike and the
+app must not sort them. A placement is relative, so the lists are right only when every event is
+applied in stream order on top of lists read earlier on the same stream. The store therefore
+stores each list's answer the moment its own promise resolves, and reads a list again when a
+placement names a row it does not hold (`listsOutOfStep`).
 
 Numbers are `number` on both sides: every 64-bit value is a unix-millisecond timestamp, a sqlite
 rowid or a byte count, all far inside 2^53, and the C++ carries them as doubles.
