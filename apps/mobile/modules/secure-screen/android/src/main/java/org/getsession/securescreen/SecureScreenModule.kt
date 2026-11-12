@@ -33,6 +33,10 @@ class SecureScreenModule : Module() {
   // Whether a screen has asked for the secure flag (the recovery password), which the app-switcher
   // cover below must not clear when the app comes back.
   private var held = false
+  // Whether the activity is in the foreground. Read on the main thread, where the events below
+  // write it: the flag a screen releases late, after the app has gone to the background, has to
+  // stay on, as before Android 13 it is the only thing covering the app-switcher card.
+  private var foreground = true
 
   override fun definition() = ModuleDefinition {
     Name("SecureScreen")
@@ -44,7 +48,7 @@ class SecureScreenModule : Module() {
       held = secure
       val window = appContext.currentActivity?.window ?: return@AsyncFunction
       if (secure) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-      else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+      else if (foreground) window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
     }.runOnQueue(Queues.MAIN)
 
     // What is on screen stays out of the app switcher, always, as on iOS. Two parts, because each
@@ -64,6 +68,7 @@ class SecureScreenModule : Module() {
     OnActivityEntersForeground {
       val activity = appContext.currentActivity ?: return@OnActivityEntersForeground
       activity.runOnUiThread {
+        foreground = true
         coverRecents(activity)
         if (!held) activity.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
       }
@@ -71,7 +76,10 @@ class SecureScreenModule : Module() {
 
     OnActivityEntersBackground {
       val activity = appContext.currentActivity ?: return@OnActivityEntersBackground
-      activity.runOnUiThread { activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+      activity.runOnUiThread {
+        foreground = false
+        activity.window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+      }
     }
 
     // A copy the system preview (Android 13 and later) shows as dots rather than the text.
