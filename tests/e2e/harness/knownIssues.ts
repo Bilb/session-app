@@ -25,9 +25,6 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
       "a failed file's retry, the danger ink on a received bubble in a light theme: 4.0:1",
     'color-contrast message-attachment-name':
       "a failed file's name in the danger ink on the attachment sheet, classic-light: 4.3:1",
-    'color-contrast button.variants outlineAccent':
-      'the accent as ink on a light page: 1.4 to 2.3:1, worst in yellow',
-    'color-contrast button.variants ghostAccent': 'the same ink as outlineAccent: down to 2.0:1',
     'color-contrast button.variants simple': 'its label on the ocean-light page: 3.3:1',
     'color-contrast button.onAccent cell': "a cell's pressed label on the red accent's fill: 2.6:1",
     'color-contrast fileRow.onAccent fetching': 'the same as idle',

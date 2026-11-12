@@ -160,7 +160,7 @@ export function QrViewerBody({
             variant="outlineAccent"
             {...(action.testID === undefined ? {} : { testID: action.testID })}
             onPress={action.onPress}
-            icon={<Icon name={action.icon} size="md" color="$primaryColor" />}
+            icon={<Icon name={action.icon} size="md" color="$accentText" />}
           >
             {action.label}
           </Button>
