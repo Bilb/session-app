@@ -77,6 +77,10 @@ declare global {
       exportLogs(name: string, parts: readonly ExportPart[]): Promise<boolean>
       /** What main's `log:diagnostics` handler returns, typed alike on both sides. */
       diagnostics(): Promise<DiagnosticsSnapshot>
+      /** `process.platform`: `darwin`, `win32`, `linux`. */
+      readonly platform: string
+      /** The Help menu's Keyboard Shortcuts; returns the unsubscribe. */
+      onKeyboardShortcuts(listener: () => void): () => void
       /** Flag variables main read at launch, by full name; only those set. */
       readonly launchOverrides: Readonly<Record<string, string>>
     }

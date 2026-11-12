@@ -117,6 +117,9 @@ function installAppMenu(): void {
     platform: process.platform,
     dev: !app.isPackaged,
     onZoom: stepZoom,
+    onKeyboardShortcuts: (window) => {
+      if (window instanceof BrowserWindow) window.webContents.send('keyboard-shortcuts')
+    },
   })
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }

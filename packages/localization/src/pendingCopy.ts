@@ -121,4 +121,9 @@ export const PENDING_COPY = {
    */
   changeToLightMode: 'Change to Light Mode',
   changeToDarkMode: 'Change to Dark Mode',
+  /**
+   * Up and Down in a conversation, in the list of keyboard shortcuts. `conversationNavigate` is
+   * Navigate to Conversation, which is a different command.
+   */
+  messageNavigate: 'Move Between Messages',
 } as const

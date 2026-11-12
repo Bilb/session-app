@@ -99,7 +99,11 @@ export const MessageRow = memo(function MessageRow({
       // as a share of it that fits the row, and their caption wraps at them.
       maxWidth={attachmentsWidth === undefined ? '80%' : '100%'}
     >
-      <MessageFrame outgoing={message.outgoing} testID={ELEMENT.conversation.messageRow(index)}>
+      <MessageFrame
+        outgoing={message.outgoing}
+        focusable
+        testID={ELEMENT.conversation.messageRow(index)}
+      >
         {message.body.length === 0 ? null : (
           <Text
             size="$body"

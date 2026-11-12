@@ -46,3 +46,30 @@ export async function tabTo(app: DesktopApp, wanted: (stop: Stop) => boolean): P
   }
   throw new Error('Tab never reached it')
 }
+
+/** What `focusMessageHolding`'s page-side body reads. */
+interface HoldingGlobals {
+  document: {
+    querySelectorAll(selector: string): ArrayLike<{
+      closest(selector: string): { focus(): void } | null
+    }>
+  }
+}
+
+/**
+ * Focuses the message holding the `at`th element carrying `id`, as Up and Down would: only the
+ * focused message's own controls are tab stops in a transcript.
+ */
+export async function focusMessageHolding(app: DesktopApp, id: ElementId, at = 0): Promise<void> {
+  const found = await app.page.evaluate(
+    ([testID, index]) => {
+      const { document } = globalThis as unknown as HoldingGlobals
+      const element = document.querySelectorAll(`[data-testid=${JSON.stringify(testID)}]`)[index]
+      const message = element?.closest('[role="article"]') ?? null
+      message?.focus()
+      return message !== null
+    },
+    [id, at] as const,
+  )
+  if (!found) throw new Error(`no message holds ${id} ${String(at)}`)
+}

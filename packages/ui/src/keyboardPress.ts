@@ -33,7 +33,7 @@ function pressOnKey(onPress: () => void): KeyDownHandler {
 export interface FocusRingShape {
   onAccent: boolean
   offset: number
-  radius: number | '$sm' | '$full'
+  radius: number | '$sm' | '$lg' | '$full'
 }
 
 /**
@@ -63,9 +63,11 @@ export function focusRing({ onAccent, offset, radius }: FocusRingShape) {
 export function keyboardPress(
   onPress: (() => void) | undefined,
   ring: ReturnType<typeof focusRing>,
+  /** From `useListTabIndex`: out of the tab order inside a list row that is not the stop. */
+  tabIndex: 0 | -1 = 0,
 ) {
   if (!isWeb || onPress === undefined) return {}
-  return { tabIndex: 0, onKeyDown: pressOnKey(onPress), focusVisibleStyle: ring }
+  return { tabIndex, onKeyDown: pressOnKey(onPress), focusVisibleStyle: ring }
 }
 
 /**
@@ -74,10 +76,14 @@ export function keyboardPress(
  * `aria-disabled` in every state, since Android keeps a disabled state that is dropped rather than
  * cleared.
  */
-export function heldButton(name: string | undefined, ring: ReturnType<typeof focusRing>) {
+export function heldButton(
+  name: string | undefined,
+  ring: ReturnType<typeof focusRing>,
+  tabIndex: 0 | -1 = 0,
+) {
   return {
     role: 'button',
     ...(name === undefined ? {} : { 'aria-label': name }),
-    ...(isWeb ? { tabIndex: 0, focusVisibleStyle: ring } : {}),
+    ...(isWeb ? { tabIndex, focusVisibleStyle: ring } : {}),
   } as const
 }
