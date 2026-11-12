@@ -7,7 +7,6 @@ import {
   LABEL_MAX_SCALE,
   logical,
   PressArea,
-  RecoveryPasswordMark,
   Text,
   XStack,
   YStack,
@@ -137,7 +136,6 @@ export function AccountHeader({
           <ShareableQrCode
             value={sessionId}
             sizePx={ENLARGED_PX}
-            logo={RecoveryPasswordMark}
             accessibilityLabel={tr('qrCode')}
             testID={ELEMENT.settings.accountQr}
             fullScreenTestID={ELEMENT.settings.accountQrFullScreen}

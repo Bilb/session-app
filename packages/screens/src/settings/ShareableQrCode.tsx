@@ -1,4 +1,5 @@
 import { requirePorts } from '@session/app'
+import type { QrMark } from '@session/basic-types'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -7,6 +8,7 @@ import {
   PressArea,
   QrCode,
   QrViewer,
+  RecoveryPasswordMark,
   type MenuAnchor,
   type QrCodeProps,
 } from '@session/ui'
@@ -14,10 +16,17 @@ import { useState } from 'react'
 
 type ShareableQrCodeProps = Pick<
   QrCodeProps,
-  'value' | 'sizePx' | 'logo' | 'accessibilityLabel' | 'testID'
+  'value' | 'sizePx' | 'accessibilityLabel' | 'testID'
 > & {
+  /** Drawn in the code on the page, full screen, and in the PNG it is saved or shared as. */
+  mark?: QrMark | undefined
   fullScreenTestID: string
 }
+
+const MARK_GLYPHS = { recoveryPassword: RecoveryPasswordMark } as const satisfies Record<
+  QrMark,
+  QrCodeProps['logo']
+>
 
 /**
  * A QR code with what each platform can do with it. A press opens it full screen. On desktop a
@@ -31,11 +40,12 @@ type ShareableQrCodeProps = Pick<
 export function ShareableQrCode({
   value,
   sizePx,
-  logo,
+  mark,
   accessibilityLabel,
   testID,
   fullScreenTestID,
 }: ShareableQrCodeProps) {
+  const logo = mark === undefined ? undefined : MARK_GLYPHS[mark]
   const ports = requirePorts()
   const saveQrCode = ports.files.saveQrCode
   const shareQrCode = ports.share.shareQrCode
@@ -65,6 +75,7 @@ export function ShareableQrCode({
         </PressArea>
         <QrViewer
           value={fullScreen ? value : null}
+          logo={logo}
           onClose={() => {
             setFullScreen(false)
           }}
@@ -81,7 +92,7 @@ export function ShareableQrCode({
                 icon: 'download',
                 testID: ELEMENT.contextMenu.item('save'),
                 onSelect: () => {
-                  void saveQrCode(value)
+                  void saveQrCode(value, mark ?? null)
                 },
               },
             ],
@@ -109,6 +120,7 @@ export function ShareableQrCode({
       </ContextMenuTarget>
       <QrViewer
         value={fullScreen ? value : null}
+        logo={logo}
         onClose={() => {
           setFullScreen(false)
         }}
@@ -121,7 +133,7 @@ export function ShareableQrCode({
           icon: 'share2',
           testID: ELEMENT.qrViewer.share,
           onPress: () => {
-            void shareQrCode(value)
+            void shareQrCode(value, mark ?? null)
           },
         }}
       />
@@ -138,7 +150,7 @@ export function ShareableQrCode({
             icon: 'share2',
             testID: ELEMENT.contextMenu.item('share'),
             onSelect: () => {
-              void shareQrCode(value)
+              void shareQrCode(value, mark ?? null)
             },
           },
         ]}

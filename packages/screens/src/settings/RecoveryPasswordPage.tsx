@@ -257,7 +257,7 @@ export function RecoveryPasswordPage({
               <ShareableQrCode
                 value={secret.seedHex}
                 sizePx={qrSizePx}
-                logo={RecoveryPasswordMark}
+                mark="recoveryPassword"
                 accessibilityLabel={tr('qrCode')}
                 testID={ELEMENT.recoveryPassword.qr}
                 fullScreenTestID={ELEMENT.recoveryPassword.qrFullScreen}

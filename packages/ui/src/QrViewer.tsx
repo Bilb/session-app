@@ -11,7 +11,7 @@ import { ContextMenuTarget } from './ContextMenuTarget'
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { PressArea } from './PressArea'
-import { QrCode } from './QrCode'
+import { QrCode, type QrCodeProps } from './QrCode'
 import { SIZE_SCALE } from './scales'
 import { useScreenInsets } from './screenInsets'
 import { useWindowSize } from './useWindowSize'
@@ -48,6 +48,8 @@ export interface QrViewerAction {
 export interface QrViewerProps {
   /** What the code holds; null while closed. */
   value: string | null
+  /** The same mark as the code on the page, so the full-screen code reads as the same one. */
+  logo?: QrCodeProps['logo']
   onClose: () => void
   /** Names the code for a screen reader, and the press that closes it. */
   accessibilityLabel: string
@@ -62,6 +64,7 @@ export interface QrViewerProps {
 
 export interface QrViewerBodyProps {
   value: string
+  logo?: QrCodeProps['logo']
   width: number
   height: number
   /** What the hardware takes from the top and bottom of the window, so the controls clear it. */
@@ -86,6 +89,7 @@ export interface QrViewerBodyProps {
  */
 export function QrViewerBody({
   value,
+  logo,
   width,
   height,
   topInsetPx,
@@ -100,7 +104,9 @@ export function QrViewerBody({
 }: QrViewerBodyProps) {
   const controlsPadding = useTopBarControlsPadding()
   const sizePx = Math.floor(Math.min(width, height) * WINDOW_SHARE)
-  const code = <QrCode value={value} sizePx={sizePx} accessibilityLabel={accessibilityLabel} />
+  const code = (
+    <QrCode value={value} sizePx={sizePx} logo={logo} accessibilityLabel={accessibilityLabel} />
+  )
   return (
     <YStack width={width} height={height} position="relative" alignItems="center">
       <PressArea
@@ -166,12 +172,12 @@ export function QrViewerBody({
 
 /**
  * A QR code filling most of the window, for a camera held at a distance: the close button, a press
- * anywhere but the action, or Escape closes it. No logo, unlike the code on the page, so nothing
- * covers modules a distant or blurry camera may need. Escape is the platform modal's own
+ * anywhere but the action, or Escape closes it. Escape is the platform modal's own
  * `onRequestClose`, as for the host.
  */
 export function QrViewer({
   value,
+  logo,
   onClose,
   accessibilityLabel,
   closeLabel,
@@ -198,6 +204,7 @@ export function QrViewer({
       {drawn === null ? null : (
         <QrViewerBody
           value={drawn}
+          logo={logo}
           width={window.width}
           height={window.height}
           topInsetPx={insets.top}
