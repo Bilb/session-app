@@ -3,12 +3,13 @@ import { createFakeTransport, friends } from '@session/client/fake'
 import { createSessionClient } from '@session/client'
 import { createSessionStore } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { act, screen } from '@testing-library/react'
+import { act, renderHook, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { ConversationListScreen } from '#src/ConversationListScreen'
 import type * as RowState from '#src/conversationRowState'
 import { conversationRowState } from '#src/conversationRowState'
+import { useToday } from '#src/today'
 
 import { renderScreen } from './support/render'
 
@@ -72,8 +73,10 @@ it('draws only the row that changed', async () => {
 describe('a muted row whose mute lapses, with nothing about the row changing', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
-    // Noon on one day for every test: no test but the last turns the day, which draws a row again.
     vi.setSystemTime(new Date(2026, 0, 1, 12))
+    // The shared today clock keeps the day of whichever test last read it, and a row mounted on
+    // another day is drawn twice, which would hide a row left muted. Read once here, it is today's.
+    renderHook(() => useToday()).unmount()
   })
   afterEach(() => {
     vi.useRealTimers()
@@ -171,7 +174,6 @@ describe('a muted row whose mute lapses, with nothing about the row changing', (
     expect(muted()).toBe(0)
   })
 
-  // Last: it leaves the shared today clock weeks on, and the next mount would draw its rows twice.
   it('outlasts the longest wait a timer can be given, without asking for a longer one', async () => {
     const longestMs = 2 ** 31 - 1
     const muted = await drawMutedFor(longestMs + 5_000)
