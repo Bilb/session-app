@@ -1,8 +1,14 @@
-import type { Message, SessionEvent } from '@session/client'
-import { describe, expect, it } from 'vitest'
+import type { Conversation, Message, SessionEvent } from '@session/client'
+import { describe, expect, it, vi } from 'vitest'
 
 import { applyEvent } from '#src/applyEvent'
-import { selectAttachmentTransfer, selectMessage, selectMessageTransfers } from '#src/selectors'
+import {
+  conversationSelector,
+  selectAttachmentTransfer,
+  selectMessage,
+  selectMessageTransfers,
+  selectUnreadRequestCount,
+} from '#src/selectors'
 import { emptyState, type SessionState } from '#src/types'
 
 // The selectors behind the per-message hooks. A hook re-renders when its selector answers a new
@@ -88,5 +94,41 @@ describe('selectMessage', () => {
   it('answers undefined for a message no loaded window holds', () => {
     expect(selectMessage(loaded, '05alice', 3)).toBeUndefined()
     expect(selectMessage(loaded, '05bob', 1)).toBeUndefined()
+  })
+})
+
+describe('the conversation selectors', () => {
+  const row = (id: string, unreadCount = 0): Conversation =>
+    ({ id, unreadCount, request: false }) as Conversation
+
+  it('finds a conversation in either list, and follows a list that changed', () => {
+    const select = conversationSelector('b')
+    const a = row('a')
+    const b = row('b')
+    const state: SessionState = { ...emptyState, conversations: [a], requests: [b] }
+    expect(select(state)).toBe(b)
+
+    const approved = row('b')
+    expect(select({ ...state, conversations: [a, approved], requests: [] })).toBe(approved)
+    expect(select({ ...state, conversations: [a], requests: [] })).toBeUndefined()
+    expect(conversationSelector(undefined)(state)).toBeUndefined()
+  })
+
+  it('does not search again while both lists are the arrays it last searched', () => {
+    const select = conversationSelector('b')
+    const conversations = [row('a'), row('b')]
+    const find = vi.spyOn(conversations, 'find')
+    const state: SessionState = { ...emptyState, conversations }
+
+    select(state)
+    select({ ...state, networkStatus: 'connected' })
+    expect(find).toHaveBeenCalledTimes(1)
+  })
+
+  it('counts unread requests, and again when the list changes', () => {
+    const state: SessionState = { ...emptyState, requests: [row('a', 2), row('b'), row('c', 1)] }
+    expect(selectUnreadRequestCount(state)).toBe(2)
+    expect(selectUnreadRequestCount({ ...state, requests: [row('b')] })).toBe(0)
+    expect(selectUnreadRequestCount(state)).toBe(2)
   })
 })

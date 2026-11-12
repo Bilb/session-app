@@ -18,6 +18,7 @@ import {
   type AttachmentAvailability,
   type AttachmentTransfer,
   type Conversation,
+  type ListPlacement,
   type MediaSource,
   type Message,
   type MessagePage,
@@ -145,6 +146,16 @@ function messagesOf(
   type: 'messages-added' | 'messages-updated',
 ): Message[] {
   return events.flatMap((e) => (e.type === type ? e.messages : []))
+}
+
+/** Where each change to one conversation placed it, in the order they arrived. */
+function placementsOf(events: SessionEvent[], id: string): ListPlacement[] {
+  return events.flatMap((e) =>
+    (e.type === 'conversation-added' || e.type === 'conversation-updated') &&
+    e.conversation.id === id
+      ? [e.placement]
+      : [],
+  )
 }
 
 /** What a `messages-updated` event says about one attachment, if it mentions it. */
@@ -508,13 +519,54 @@ export function runSessionClientContract(
 
       await alice.sendMessage(bobId, { body: 'hello' })
       await settle()
+      // A barrier: the row is reported at the end of libsession's turn.
+      await alice.getConversations()
 
-      const updated = seen.events.find((e) => e.type === 'conversation-updated')
-      expect(updated).toBeDefined()
-      if (updated?.type !== 'conversation-updated') throw new Error('unreachable')
+      // Added or updated: whether the first message made the row is the implementation's business.
+      const changed = seen.events.find(
+        (e) => e.type === 'conversation-added' || e.type === 'conversation-updated',
+      )
+      expect(changed).toBeDefined()
+      if (changed?.type !== 'conversation-added' && changed?.type !== 'conversation-updated')
+        throw new Error('unreachable')
       // A display can bind straight to this: it is the new row, not a hint to go and fetch.
-      expect(updated.conversation.id).toBe(bobId)
-      expect(updated.conversation.displayName).toBeDefined()
+      expect(changed.conversation.id).toBe(bobId)
+      expect(changed.conversation.displayName).toBeDefined()
+      seen.stop()
+    })
+
+    it('places a conversation with a new message first in its list', async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      const seen = collect(alice)
+
+      await alice.sendMessage(bobId, { body: 'hello' })
+      await settle()
+      // Also a barrier: libsession reports a changed row at the end of its loop's turn, so the
+      // answer to a later query comes after the report on the stream.
+      const [top] = await alice.getConversations()
+
+      // The last word on the row, as a subscriber applying them in order ends up with it.
+      const placement = placementsOf(seen.events, bobId).at(-1)
+      expect(top?.id).toBe(bobId)
+      expect(placement?.to).toBe('conversations')
+      // Nothing sorts before the newest activity, which an unset `after` is what says.
+      expect(placement?.after).toBeUndefined()
+      seen.stop()
+    })
+
+    it('places a request in the request list', async () => {
+      const { alice, bob, bobId, settle } = await harness.strangers()
+      const aliceId = (await alice.getAccountInfo()).sessionId ?? ''
+      const seen = collect(alice)
+
+      await bob.sendMessage(aliceId, { body: 'still here' })
+      await settle()
+      const [top] = await alice.getMessageRequests()
+
+      const placement = placementsOf(seen.events, bobId).at(-1)
+      expect(top?.id).toBe(bobId)
+      expect(placement?.to).toBe('requests')
+      expect(placement?.after).toBeUndefined()
       seen.stop()
     })
 
@@ -529,16 +581,53 @@ export function runSessionClientContract(
       const seen = collect(alice)
       await alice.approveConversation(bobId)
 
-      // Approval arrives as an update, so both lists have to be re-sent for the row to
-      // move: a display that only watched one of them would show it twice or not at all.
-      expect(seen.events.some((e) => e.type === 'conversation-list-replaced')).toBe(true)
-      expect(seen.events.some((e) => e.type === 'request-list-replaced')).toBe(true)
-
       const after = await alice.getConversations()
       const requestsAfter = await alice.getMessageRequests()
+      // Approval arrives as an update whose placement crosses lists: out of the requests and into
+      // the conversations, in one event a display applies to both.
+      expect(placementsOf(seen.events, bobId).at(-1)?.to).toBe('conversations')
       expect(after.some((c: Conversation) => c.id === bobId)).toBe(true)
       expect(requestsAfter.some((c: Conversation) => c.id === bobId)).toBe(false)
       seen.stop()
+    })
+
+    it('moves a request it writes back to into the conversations', async () => {
+      const { alice, bobId, settle } = await harness.strangers()
+      const seen = collect(alice)
+
+      await alice.sendMessage(bobId, { body: 'come in' })
+      await settle()
+      const [top] = await alice.getConversations()
+      const requests = await alice.getMessageRequests()
+
+      const placement = placementsOf(seen.events, bobId).at(-1)
+      expect(placement?.to).toBe('conversations')
+      expect(placement?.after).toBeUndefined()
+      expect(top?.id).toBe(bobId)
+      expect(requests.some((c: Conversation) => c.id === bobId)).toBe(false)
+      seen.stop()
+    })
+
+    it('places a pin at the top and a hide in neither list', async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      await alice.sendMessage(bobId, { body: 'hello' })
+      await settle()
+
+      const pinned = collect(alice)
+      await alice.setPriority(bobId, 1)
+      await settle()
+      await alice.getConversations()
+      expect(placementsOf(pinned.events, bobId).at(-1)?.to).toBe('conversations')
+      expect(placementsOf(pinned.events, bobId).at(-1)?.after).toBeUndefined()
+      pinned.stop()
+
+      const hidden = collect(alice)
+      await alice.setPriority(bobId, -1)
+      await settle()
+      const conversations = await alice.getConversations()
+      expect(placementsOf(hidden.events, bobId).at(-1)?.to).toBe('none')
+      expect(conversations.some((c: Conversation) => c.id === bobId)).toBe(false)
+      hidden.stop()
     })
 
     it('pages history without duplicating a message at the seam', async () => {

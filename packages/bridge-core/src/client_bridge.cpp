@@ -25,7 +25,6 @@
 #endif
 
 #include <algorithm>
-#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -116,18 +115,6 @@ namespace {
     /// enough above zero that the polls do not overlap: nothing serialises them, so an interval
     /// below a round trip gets concurrent requests rather than faster ones.
     constexpr auto DEVNET_POLL_INTERVAL = std::chrono::milliseconds{500};
-
-    /// What to open for `db_path`: ":memory:" becomes one named memdb database, because
-    /// libsession's pool opens a connection per thread and each would get its own empty one.
-    /// Numbered so two in-memory bridges never share. Relies on SQLite built with SQLITE_USE_URI.
-    /// Delete once libsession pins session-sqlite >= 65e3c78, which shares :memory: itself.
-    std::filesystem::path shared_if_in_memory(const std::filesystem::path& db_path) {
-        if (db_path != ":memory:")
-            return db_path;
-        static std::atomic<uint64_t> next{0};
-        return "file:/session-bridge-mem-" +
-               std::to_string(next.fetch_add(1, std::memory_order_relaxed)) + "?vfs=memdb";
-    }
 
     /// Where the network's own cache lives, named once so the discard and the open agree.
     std::filesystem::path netcache_path(const std::filesystem::path& db_path) {
@@ -410,27 +397,23 @@ struct ClientBridge::Impl {
         // convenient.
         client::callbacks cbs{
                 .conversation_added =
-                        [impl](client::AnyConversation c) {
-                            impl->event(ConversationAddedSessionEvent{to_bridge(std::move(c))});
+                        [impl](client::AnyConversation&& c, client::ListPlacement&& p) {
+                            impl->event(ConversationAddedSessionEvent{
+                                    to_bridge(std::move(c)), to_bridge(std::move(p))});
                         },
                 .conversation_updated =
-                        [impl](client::AnyConversation c) {
-                            impl->event(ConversationUpdatedSessionEvent{to_bridge(std::move(c))});
+                        [impl](client::AnyConversation&& c, client::ListPlacement&& p) {
+                            impl->event(ConversationUpdatedSessionEvent{
+                                    to_bridge(std::move(c)), to_bridge(std::move(p))});
                         },
                 .conversation_removed =
-                        [impl](const client::ConversationId& id) {
-                            impl->event(ConversationRemovedSessionEvent{id.to_string()});
+                        [impl](client::ConversationId&& id, client::ConversationList list) {
+                            impl->event(ConversationRemovedSessionEvent{
+                                    id.to_string(), to_bridge(list)});
                         },
-                .conversation_list_replaced =
-                        [impl](std::vector<client::AnyConversation> convos) {
-                            impl->event(ConversationListReplacedSessionEvent{
-                                    Impl::conversations(std::move(convos))});
-                        },
-                .request_list_replaced =
-                        [impl](std::vector<client::AnyConversation> convos) {
-                            impl->event(RequestListReplacedSessionEvent{
-                                    Impl::conversations(std::move(convos))});
-                        },
+                // No whole-list handlers. The placements above are complete on their own, and an
+                // unset list handler is what spares libsession reading the whole list on every
+                // change.
                 // A batch, and it may span conversations: one file is one file, so fetching or
                 // evicting it changes every message showing it. Each Message carries its own
                 // conversation, which is why neither of these is told one.
@@ -465,10 +448,9 @@ struct ClientBridge::Impl {
         // The options are types rather than values, so which ones are used has to be a branch
         // rather than an argument. Only one of these ever runs, which is what makes moving the
         // callbacks in each of them safe.
-        auto path = shared_if_in_memory(options.db_path);
         auto make = [&](auto&&... opts) {
             return std::make_unique<client::Client>(
-                    path, std::move(cbs), std::forward<decltype(opts)>(opts)...);
+                    options.db_path, std::move(cbs), std::forward<decltype(opts)>(opts)...);
         };
         auto with_edge = [&](auto&&... opts) {
             if (options.thumbnail_edge_px)
@@ -1130,17 +1112,18 @@ struct ClientBridge::Impl {
     }
 
     void handle(double id, const GetMessagesCommand& cmd) {
-        std::optional<client::MessageCursor> before;
+        client::MessagePage page{
+                .limit = whole<int>(cmd.limit, "getMessages.limit"),
+                .include_deleted = cmd.include_deleted};
         if (cmd.before)
-            before = client::MessageCursor{
+            page.before = client::MessageCursor{
                     from_epoch_ms(whole<int64_t>(cmd.before->timestamp, "getMessages.before.timestamp")),
                     whole<int64_t>(cmd.before->id, "getMessages.before.id")};
         convo(cmd.conversation_id)
                 .messages(
-                        whole<int>(cmd.limit, "getMessages.limit"),
-                        before,
-                        cmd.include_deleted,
-                        on(id, [this, id](std::vector<client::Message> messages) {
+                        page,
+                        on(id, [this, id](client::MessagePageResult result) {
+                            auto& messages = result.messages;
                             std::vector<Message> out;
                             out.reserve(messages.size());
                             // libsession answers newest first, because that is the direction

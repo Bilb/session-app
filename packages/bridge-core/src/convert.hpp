@@ -1,6 +1,7 @@
 #pragma once
 
 #include <session/client/attachment.hpp>
+#include <session/client/callbacks.hpp>
 #include <session/client/conversation.hpp>
 #include <session/client/message.hpp>
 #include <session/image/sendable.hpp>
@@ -32,6 +33,8 @@ SendPlan to_bridge(::session::image::SendPlan from);
 
 /// By value: an enum. Every one of libsession's values is named, so one it adds fails to compile.
 NetworkStatus to_bridge(::session::network::ConnectionStatus from);
+ConversationList to_bridge(::session::client::ConversationList from);
+ListPlacement to_bridge(::session::client::ListPlacement&& from);
 
 /// Whether `fetch_thumbhash` can decode this attachment's ThumbHash: what `hasThumbhash` says.
 bool thumbhash_decodable(const ::session::client::Attachment& a);

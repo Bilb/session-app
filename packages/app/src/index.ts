@@ -23,6 +23,7 @@ export type {
   ClipboardPort,
   FilesPort,
   FlagsPort,
+  KeyboardShortcutsPort,
   LinkingPort,
   MediaPort,
   MediaProbePort,

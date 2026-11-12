@@ -99,6 +99,10 @@ setPorts(
           window.removeEventListener('blur', onBlur)
         }
       },
+      keyboardShortcuts: {
+        keyNames: window.sessionDesktop.platform === 'darwin' ? 'mac' : 'pc',
+        onOpenList: (handler) => window.sessionDesktop.onKeyboardShortcuts(handler),
+      },
     },
     linking: {
       /**

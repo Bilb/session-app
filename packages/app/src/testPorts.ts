@@ -101,6 +101,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
         focusHandlers.add(handler)
         return () => focusHandlers.delete(handler)
       },
+      keyboardShortcuts: null,
     },
     // No files and no way to export: a screen offering Export Logs reads `deliver` to decide.
     logs: {

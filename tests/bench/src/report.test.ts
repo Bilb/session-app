@@ -1,7 +1,7 @@
 import { applyEvent, emptyState, type SessionState } from '@session/state'
 import { afterAll, it } from 'vitest'
 
-import { conversationListFrame, makeCorpus, messageAddedFrame } from './fixtures'
+import { makeCorpus, messageAddedFrame } from './fixtures'
 import { ms, report, table, time } from './measure'
 import { deliverOne, loopback, type Loopback } from './pipeline'
 
@@ -20,50 +20,6 @@ import { deliverOne, loopback, type Loopback } from './pipeline'
 const pipe: Loopback = loopback()
 afterAll(() => {
   pipe.close()
-})
-
-it('conversation list: where the time goes', () => {
-  const rows: string[][] = []
-
-  for (const n of [100, 500, 1000, 5000]) {
-    const { conversations } = makeCorpus({ conversations: n, messages: 0 })
-    const frame = conversationListFrame(conversations)
-
-    // No parse stage: the frame arrives as the struct the shim built. What is left in `facade`
-    // is the routing to listeners, which used to be inseparable from the decode in front of it.
-    const facade = time('facade', () => {
-      pipe.push(frame)
-      pipe.drain()
-    })
-
-    const event = deliverOne(pipe, frame)
-    const project = time('project', () => {
-      applyEvent(emptyState, event)
-    })
-
-    // There is no select stage any more. useConversations() used to rebuild the visible array
-    // from an order array and an index on every store notification; the state holds the list
-    // libsession sent, so the hook returns it and there is nothing to measure.
-    const total = facade.median + project.median
-
-    rows.push([
-      String(n),
-      ms(facade.median),
-      ms(project.median),
-      ms(total),
-      ms(facade.p95 + project.p95),
-      total === 0 ? '-' : `${((facade.median / total) * 100).toFixed(0)}%`,
-    ])
-  }
-
-  report(
-    '\n\n== CONVERSATION LIST ==  one conversation-list-replaced, milliseconds, median\n\n' +
-      table(rows, ['rows', 'facade', 'project', 'TOTAL', 'p95', 'deliver%']) +
-      '\n' +
-      '  facade    routing one frame to its listeners; no decode is left in front of it\n' +
-      '  project   applyEvent - which for a whole list is now the assignment of it\n' +
-      '  deliver%  the share still spent getting the frame there rather than using it\n',
-  )
 })
 
 it('one new message arriving in a transcript that is already loaded', () => {

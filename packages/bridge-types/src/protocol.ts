@@ -6,7 +6,9 @@ import type {
   ConfigSize,
   Conversation,
   ConversationId,
+  ConversationList,
   Deletion,
+  ListPlacement,
   Message,
   MessageCursor,
   NetworkStatus,
@@ -50,7 +52,7 @@ interface TestAttachment {
  *
  * Responses ride the same stream as change events rather than resolving on a separate channel,
  * because their relative order is load-bearing. libsession's contract is that a display can be
- * built by asking once and then applying events; that only holds if a list_replaced produced
+ * built by asking once and then applying events; that only holds if a placement produced
  * before the answer to getConversations is also applied before it. Two channels - a promise and
  * a callback - give no such guarantee across an IPC or JSI boundary, and the failure would be a
  * stale row that reappears on a race nobody can reproduce. One FIFO stream carries libsession's
@@ -430,9 +432,11 @@ export interface Response {
  * Change notifications, one per libsession callback, and what `SessionClient.onEvent` delivers.
  *
  * Every one of these carries the whole new state rather than an id to go and fetch. That is what
- * makes a display bindable, applying the same event twice harmless, and startup race-free:
- * whatever arrives between construction and the first query lands on top of the answer without
- * contradicting it.
+ * makes a display bindable and applying the same event twice harmless.
+ *
+ * A conversation's place in its list is the exception: `placement` puts it after another row, so
+ * the lists are only right when every event is applied, in the order the stream gives, on top of
+ * an answer to `getConversations` and `getMessageRequests` read earlier on the same stream.
  *
  * The shim emits these and the app reads them, with nothing in between rewriting an arm - which
  * is why there is one type rather than a wire one and an app one.
@@ -441,11 +445,10 @@ export interface Response {
  * carry: libsession stores nothing about one in flight, and the report is the only record there is.
  */
 export type SessionEvent =
-  | { type: 'conversation-added'; conversation: Conversation }
-  | { type: 'conversation-updated'; conversation: Conversation }
-  | { type: 'conversation-removed'; conversationId: ConversationId }
-  | { type: 'conversation-list-replaced'; conversations: Conversation[] }
-  | { type: 'request-list-replaced'; conversations: Conversation[] }
+  | { type: 'conversation-added'; conversation: Conversation; placement: ListPlacement }
+  | { type: 'conversation-updated'; conversation: Conversation; placement: ListPlacement }
+  /** `list` is the one the app was last told it is in: `none` when it was never shown in one. */
+  | { type: 'conversation-removed'; conversationId: ConversationId; list: ConversationList }
   /**
    * Messages arrived or changed, oldest first.
    *
