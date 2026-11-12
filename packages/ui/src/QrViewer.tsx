@@ -183,6 +183,10 @@ export function QrViewer({
   const window = useWindowSize()
   const insets = useScreenInsets()
   const [anchor, setAnchor] = useState<MenuAnchor | null>(null)
+  // The last code shown, still drawn while the modal fades out. Without it the body goes the moment
+  // the viewer is closed and the modal's own background, which is white, fades out in its place.
+  const [drawn, setDrawn] = useState(value)
+  if (value !== null && value !== drawn) setDrawn(value)
 
   return (
     <NativeModal
@@ -191,9 +195,9 @@ export function QrViewer({
       animationType="fade"
       onRequestClose={onClose}
     >
-      {value === null ? null : (
+      {drawn === null ? null : (
         <QrViewerBody
-          value={value}
+          value={drawn}
           width={window.width}
           height={window.height}
           topInsetPx={insets.top}
