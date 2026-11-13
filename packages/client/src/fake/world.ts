@@ -7,7 +7,8 @@
  *
  *   - a send stores its row and reports it immediately, then moves through send states,
  *   - every change event carries the whole new state, never an id to go and fetch,
- *   - approving a request moves it between lists, and both lists are re-sent,
+ *   - every change to a row says where it now belongs: the list and the row it follows,
+ *   - approving a request moves it between lists in one placement,
  *   - a restart leaves anything still in flight `interrupted`.
  *
  * @session/client-contract runs the same scenarios against this and against the real bridge, so
@@ -32,7 +33,9 @@ import {
   type ConfigSize,
   type Conversation,
   type ConversationId,
+  type ConversationList,
   type Deletion,
+  type ListPlacement,
   type Message,
   type NetworkStatus,
   type OutgoingAttachment,
@@ -340,6 +343,8 @@ export class FakeAccount {
   provisional = false
 
   private readonly conversations = new Map<ConversationId, FakeConversationState>()
+  /** Which list each row was last reported in, which is the `from` its next placement gives. */
+  private readonly placed = new Map<ConversationId, ConversationList>()
   private readonly listeners = new Set<(event: SessionEvent) => void>()
   private readonly prefs = new Map<string, string>()
   private world: FakeWorld | undefined
@@ -458,6 +463,7 @@ export class FakeAccount {
     this.provisional = false
     this.profileArrivesAt = 0
     this.conversations.clear()
+    this.placed.clear()
     this.prefs.clear()
   }
 
@@ -470,10 +476,11 @@ export class FakeAccount {
     return this.ordered((c) => c.request)
   }
 
+  /** A hidden conversation, priority below zero, is in neither list. */
   private ordered(predicate: (c: Conversation) => boolean): Conversation[] {
     return [...this.conversations.values()]
       .map((state) => state.conversation)
-      .filter(predicate)
+      .filter((c) => c.priority >= 0 && predicate(c))
       .sort(
         (a, b) =>
           b.priority - a.priority || b.lastActivity - a.lastActivity || a.id.localeCompare(b.id),
@@ -497,35 +504,34 @@ export class FakeAccount {
   }
 
   /**
-   * The list a row moved in, when it moved rather than merely changed.
-   *
-   * A conversation's place is decided by `lastActivity` and `priority`, so a subscriber told only
-   * that the row changed would not know it had moved - and could not work it out without
-   * reimplementing a sort that is not even the same for both lists. But most of what changes a
-   * conversation leaves it exactly where it was: a read receipt, a nickname, an expiry. Announcing
-   * there is a list rebuild to say nothing.
-   *
-   * **One list, not both.** A conversation is in exactly one - libsession's two queries are strict
-   * complements, `priority >= 0 AND [NOT] IS_REQUEST` - so replacing both says one true thing and
-   * one false one, and pays for a full rebuild to do it. The exception is a row that crossed
-   * between them, which is the only case where both genuinely changed: one lost it, the other
-   * gained it.
+   * Where a row was last reported and where it belongs now, recording the latter: libsession's
+   * `_place`. A row the app read for itself and was never told about has no `from`, which is how
+   * libsession answers too.
    */
-  private announceIfMoved(before: Conversation | undefined, after: Conversation): void {
-    const crossed = before !== undefined && before.request !== after.request
-    const moved =
-      before === undefined ||
-      crossed ||
-      before.priority !== after.priority ||
-      before.lastActivity !== after.lastActivity
-    if (!moved) return
+  private place(conversation: Conversation): ListPlacement {
+    const from = this.placed.get(conversation.id) ?? 'none'
+    if (conversation.priority < 0) {
+      this.placed.delete(conversation.id)
+      return { from, to: 'none' }
+    }
+    const to = conversation.request ? 'requests' : 'conversations'
+    this.placed.set(conversation.id, to)
+    const list = to === 'requests' ? this.requests() : this.list()
+    const before = list[list.findIndex((c) => c.id === conversation.id) - 1]
+    return before === undefined ? { from, to } : { from, to, after: before.id }
+  }
 
-    if (crossed || !after.request) {
-      this.emit({ type: 'conversation-list-replaced', conversations: this.list() })
-    }
-    if (crossed || after.request) {
-      this.emit({ type: 'request-list-replaced', conversations: this.requests() })
-    }
+  /**
+   * A row's change with where it now belongs, as libsession reports every change to a list: a new
+   * message, a pin or a hide, an approval. The fake changes one row at a time, so the order a
+   * batch is sent in, which libsession has to choose, never arises here.
+   */
+  private announceRow(before: Conversation | undefined, after: Conversation): void {
+    this.emit({
+      type: before === undefined ? 'conversation-added' : 'conversation-updated',
+      conversation: after,
+      placement: this.place(after),
+    })
   }
 
   /** Adds a conversation and announces it, the way libsession would on first contact. */
@@ -538,13 +544,9 @@ export class FakeAccount {
 
     if (!announce) return conversation
 
-    this.emit({
-      type: existing ? 'conversation-updated' : 'conversation-added',
-      conversation,
-    })
     // Approval arrives as an update rather than a remove plus an add, so a display that
     // keeps two lists needs both of them re-sent to move the row across.
-    this.announceIfMoved(existing?.conversation, conversation)
+    this.announceRow(existing?.conversation, conversation)
     return conversation
   }
 
@@ -562,8 +564,7 @@ export class FakeAccount {
     const state = this.conversations.get(conversation.id)
     if (!state) return undefined
     this.conversations.set(conversation.id, { ...state, conversation })
-    this.emit({ type: 'conversation-updated', conversation })
-    this.announceIfMoved(state.conversation, conversation)
+    this.announceRow(state.conversation, conversation)
     return conversation
   }
 
@@ -587,15 +588,16 @@ export class FakeAccount {
       lastActivity: message.timestamp,
       snippet: message.body,
       unreadCount,
+      // Writing to someone is what approves them, as in libsession: a request written back to
+      // leaves the requests for the conversations.
+      ...(message.outgoing ? { request: false } : {}),
     }
     this.conversations.set(id, { ...state, conversation })
 
     // A batch of one: the fake delivers a message at a time, which is a batch the real
     // bridge could also produce. A handler that only works on larger ones is broken.
     this.announce('messages-added', [message])
-    this.emit({ type: 'conversation-updated', conversation })
-    // Always moves: the message it just stored is the newest activity in the conversation.
-    this.announceIfMoved(state.conversation, conversation)
+    this.announceRow(state.conversation, conversation)
     return message
   }
 
@@ -620,7 +622,7 @@ export class FakeAccount {
       markedUnread: false,
     }
     this.conversations.set(id, { ...state, conversation })
-    this.emit({ type: 'conversation-updated', conversation })
+    this.announceRow(state.conversation, conversation)
   }
 
   /**
@@ -655,8 +657,9 @@ export class FakeAccount {
   removeConversation(id: ConversationId): void {
     if (!this.conversations.delete(id)) return
     this.withdrawOrphanedTransfers()
-    this.emit({ type: 'conversation-removed', conversationId: id })
-    this.emit({ type: 'conversation-list-replaced', conversations: this.list() })
+    const list = this.placed.get(id) ?? 'none'
+    this.placed.delete(id)
+    this.emit({ type: 'conversation-removed', conversationId: id, list })
   }
 
   /**

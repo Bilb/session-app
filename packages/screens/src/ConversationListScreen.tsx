@@ -1,4 +1,4 @@
-import { routes, useNav } from '@session/app'
+import { requirePorts, routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
 import {
   useAccount,
@@ -26,10 +26,11 @@ import {
   XStack,
   YStack,
 } from '@session/ui'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
-import { conversationTitle } from './conversationTitle'
+import { conversationAvatarName, conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
 import { pathStatusTone } from './pathStatus'
 import { useBesideRail } from './shell/pane'
@@ -167,7 +168,38 @@ export function ConversationListScreen({
   const openSettings = useOpenSettings()
   const timeFormats = useTimeFormats()
   const besideRail = useBesideRail()
-  const layout = rowLayout(useFontScale())
+  const fontScale = useFontScale()
+  const layout = useMemo(() => rowLayout(fontScale), [fontScale])
+
+  const openConversation = useCallback(
+    (id: string) => {
+      // Beside the list, a conversation replaces the one already open rather than stacking on
+      // it, and the open one again changes nothing. Pushed every time, the history fills with
+      // every conversation looked at, and Android's back walks through all of them before it
+      // leaves.
+      if (id === openConversationId) return
+      const path = routes.conversation(id)
+      if (openConversationId === undefined) nav.push(path)
+      else nav.replace(path)
+    },
+    [nav, openConversationId],
+  )
+
+  // Every prop keeps its identity across a list change, so only the rows that changed, or
+  // changed index, are drawn again.
+  const renderRow = useCallback(
+    (conversation: Conversation, index: number) => (
+      <ConversationRow
+        conversation={conversation}
+        index={index}
+        layout={layout}
+        timeFormats={timeFormats}
+        open={conversation.id === openConversationId}
+        onOpen={openConversation}
+      />
+    ),
+    [layout, timeFormats, openConversationId, openConversation],
+  )
 
   return (
     <Screen testID={ELEMENT.conversationList.screen}>
@@ -226,26 +258,8 @@ export function ConversationListScreen({
       <List
         data={conversations}
         itemHeight={layout.heightPx}
-        keyExtractor={(conversation) => conversation.id}
-        renderItem={(conversation, index) => (
-          <ConversationRow
-            conversation={conversation}
-            index={index}
-            layout={layout}
-            timeFormats={timeFormats}
-            open={conversation.id === openConversationId}
-            onPress={() => {
-              // Beside the list, a conversation replaces the one already open rather than
-              // stacking on it, and the open one again changes nothing. Pushed every time, the
-              // history fills with every conversation looked at, and Android's back walks through
-              // all of them before it leaves.
-              if (conversation.id === openConversationId) return
-              const path = routes.conversation(conversation.id)
-              if (openConversationId === undefined) nav.push(path)
-              else nav.replace(path)
-            }}
-          />
-        )}
+        keyExtractor={conversationKey}
+        renderItem={renderRow}
         empty={
           <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
             <Text tone="secondary" testID={ELEMENT.conversationList.empty}>
@@ -319,20 +333,62 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
   )
 }
 
-function ConversationRow({
+function conversationKey(conversation: Conversation): string {
+  return conversation.id
+}
+
+/** setTimeout's longest delay; a longer one fires at once. */
+const LONGEST_TIMER_MS = 2 ** 31 - 1
+
+/**
+ * Draws the component again once the clock reaches `atMs`, which changes no prop of a row.
+ *
+ * Aimed again each time rather than trusted once: a timer can fire a little early, cannot wait
+ * longer than `LONGEST_TIMER_MS`, and does not run while the app is suspended, which coming back
+ * to the front makes up for.
+ */
+function useRedrawAt(atMs: number | undefined): void {
+  const [, redraw] = useState(0)
+  useEffect(() => {
+    if (atMs === undefined) return undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let reached = false
+    const aim = (): void => {
+      if (reached) return
+      clearTimeout(timer)
+      const waitMs = atMs - Date.now()
+      if (waitMs > 0) {
+        timer = setTimeout(aim, Math.min(waitMs, LONGEST_TIMER_MS))
+        return
+      }
+      reached = true
+      redraw((n) => n + 1)
+    }
+    aim()
+    const stopFocus = requirePorts().window.onFocusChange((focused) => {
+      if (focused) aim()
+    })
+    return () => {
+      clearTimeout(timer)
+      stopFocus()
+    }
+  }, [atMs])
+}
+
+const ConversationRow = memo(function ConversationRow({
   conversation,
   index,
   layout,
   timeFormats,
   open,
-  onPress,
+  onOpen,
 }: {
   conversation: Conversation
   index: number
   layout: { heightPx: number; avatarPx: number }
   timeFormats: ConversationTimeOptions
   open: boolean
-  onPress: () => void
+  onOpen: (id: string) => void
 }) {
   const title = conversationTitle(conversation)
   const selected = useHeldSelection(open)
@@ -340,6 +396,8 @@ function ConversationRow({
   useToday()
   const nowMs = Date.now()
   const row = conversationRowState(conversation, nowMs)
+  // The mute as this render judged it, not as the clock reads by the time the effect runs.
+  useRedrawAt(row.muted ? conversation.muteUntil : undefined)
   const time =
     conversation.lastActivity > 0
       ? formatConversationTime(conversation.lastActivity, nowMs, timeFormats)
@@ -360,7 +418,7 @@ function ConversationRow({
       $platform-web={{ cursor: 'pointer' }}
       onPress={() => {
         selected.hold()
-        onPress()
+        onOpen(conversation.id)
       }}
       aria-selected={open}
       testID={ELEMENT.conversationList.row(index)}
@@ -379,7 +437,11 @@ function ConversationRow({
 
       {/* TODO: draw a group as its first two members stacked, with Avatar's `members`, once the
           bridge carries a group's member list. */}
-      <Avatar id={conversation.id} name={title} size={layout.avatarPx} />
+      <Avatar
+        id={conversation.id}
+        name={conversationAvatarName(conversation)}
+        size={layout.avatarPx}
+      />
 
       <YStack flex={1} gap="$2xs">
         <XStack minHeight={LINE_HEIGHT} alignItems="center" gap="$2xs">
@@ -479,4 +541,4 @@ function ConversationRow({
       </YStack>
     </XStack>
   )
-}
+})

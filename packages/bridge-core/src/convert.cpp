@@ -251,4 +251,21 @@ NetworkStatus to_bridge(::session::network::ConnectionStatus from) {
     return NetworkStatus::unknown;
 }
 
+ConversationList to_bridge(::session::client::ConversationList from) {
+    using ::session::client::ConversationList;
+    switch (from) {
+        case ConversationList::none: return session_bridge::ConversationList::none;
+        case ConversationList::conversations: return session_bridge::ConversationList::conversations;
+        case ConversationList::requests: return session_bridge::ConversationList::requests;
+    }
+    return session_bridge::ConversationList::none;
+}
+
+ListPlacement to_bridge(::session::client::ListPlacement&& from) {
+    std::optional<std::string> after;
+    if (from.after)
+        after = from.after->to_string();
+    return ListPlacement{to_bridge(from.from), to_bridge(from.to), std::move(after)};
+}
+
 }  // namespace session_bridge

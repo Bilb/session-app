@@ -17,6 +17,8 @@ const STILL: NavPort = { push: () => {}, replace: () => {}, back: () => {} }
 interface HeaderRow {
   pane: 'beside the list' | 'alone'
   title: string
+  /** Whose initials the avatar shows, when not the title's. */
+  avatarName?: string
 }
 
 /** A standard account ID, so the avatar's colour is one a real conversation would have. */
@@ -46,13 +48,15 @@ export const HEADER_SCENARIOS: readonly AnyStory[] = [
       'beside the list, long name': { pane: 'beside the list', title: LONG_NAME },
       alone: { pane: 'alone', title: 'Alice' },
       'alone, long name': { pane: 'alone', title: LONG_NAME },
+      'Note to Self': { pane: 'alone', title: 'Note to Self', avatarName: 'Alice' },
     },
-    render: ({ pane, title }) => (
+    render: ({ pane, title, avatarName }) => (
       <NavProvider nav={STILL}>
         <PaneProvider value={pane === 'alone' ? SOLE_PANE : DETAIL_PANE}>
           <ConversationHeader
             id={ACCOUNT_ID}
             title={title}
+            avatarName={avatarName ?? title}
             back={<BackButton testID={ELEMENT.conversation.back} />}
           />
         </PaneProvider>

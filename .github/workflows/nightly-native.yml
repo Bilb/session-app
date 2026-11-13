@@ -34,10 +34,10 @@ jobs:
 
       # A hosted runner now and then fails to resolve the Ubuntu mirrors for a minute. The loop
       # wraps both commands because apt-get update exits 0 when its index fetches fail.
-      - name: Install ccache and ninja
+      - name: Install ccache, ninja and nasm
         run: |
           for attempt in 1 2 3 4 5; do
-            sudo apt-get update && sudo apt-get install -y --no-install-recommends ccache ninja-build && exit 0
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends ccache ninja-build nasm && exit 0
             sleep $((attempt * 15))
           done
           exit 1

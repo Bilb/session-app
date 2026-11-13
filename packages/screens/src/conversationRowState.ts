@@ -51,8 +51,7 @@ type RowFields = Pick<
 >
 
 /**
- * `nowMs` decides whether a mute is still in force; the row is not redrawn the moment one lapses,
- * only the next time the list is.
+ * `nowMs` decides whether a mute is still in force, so the caller draws again when one lapses.
  */
 export function conversationRowState(conversation: RowFields, nowMs: number): ConversationRowState {
   const muted = conversation.muteUntil !== undefined && conversation.muteUntil > nowMs

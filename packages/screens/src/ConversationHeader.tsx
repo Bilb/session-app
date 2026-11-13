@@ -19,10 +19,13 @@ const HEADER_AVATAR = '2xl'
 export function ConversationHeader({
   id,
   title,
+  avatarName,
   back,
 }: {
   id: string
   title: string
+  /** Whose initials the avatar shows, which for Note to Self is not the title. */
+  avatarName: string
   /** The screen's own back button, so the screen still shows it has a way out. */
   back: ReactNode
 }) {
@@ -39,7 +42,7 @@ export function ConversationHeader({
       trailing={
         <Avatar
           id={id}
-          name={title}
+          name={avatarName}
           size={HEADER_AVATAR}
           testID={ELEMENT.conversation.headerAvatar}
         />
