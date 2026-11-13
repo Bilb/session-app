@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Animated, Easing, type LayoutChangeEvent } from 'react-native'
 
+import { useReducedMotion } from './useReducedMotion'
+
 /** About as long as legacy Android's own swap of the same two views. */
 const DURATION_MS = 300
 
@@ -13,7 +15,8 @@ export interface SwapProps {
   children: ReactNode
   /**
    * Swap at once rather than animating. For automated tests, which otherwise photograph whatever
-   * is still moving; see the `disableAnimations` flag.
+   * is still moving; see the `disableAnimations` flag. The system's reduce-motion setting does the
+   * same on its own.
    */
   instant?: boolean | undefined
 }
@@ -38,7 +41,8 @@ export interface SwapProps {
  * **Once it has finished, the content lays out normally** and the box takes whatever height it asks
  * for, so a block that re-wraps later is not clipped to the height it had when it arrived.
  */
-export function Swap({ swapKey, children, instant = false }: SwapProps) {
+export function Swap({ swapKey, children, instant: instantProp = false }: SwapProps) {
+  const instant = useReducedMotion() || instantProp
   const [shownKey, setShownKey] = useState(swapKey)
   const [heights, setHeights] = useState<{ from: number; to: number | null } | null>(null)
   const settledHeight = useRef(0)
