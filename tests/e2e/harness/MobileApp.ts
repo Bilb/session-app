@@ -45,6 +45,8 @@ const FIRST_SCREEN_MS = 180_000
 const POLL_MS = 250
 /** Swipes `reveal` makes each way before giving up on an element. */
 const REVEAL_SWIPES = 8
+/** Swipes `scrollToStart` makes before giving up: far more than a seeded conversation is tall. */
+const START_SWIPES = 30
 
 /** An accessibility element as `idb ui describe-all` lists it. */
 interface IdbElement {
@@ -386,6 +388,11 @@ export class MobileApp implements ISessionApp {
         if (!(await this.scroll(within, direction, 0.4))) break
       }
     if (!(await revealed())) throw new Error(`${id} at ${String(at)} is nowhere in ${within}`)
+  }
+
+  async scrollToStart(within: ElementId): Promise<void> {
+    for (let swipe = 0; swipe < START_SWIPES; swipe++) if (!(await this.scroll(within, -1))) return
+    throw new Error(`${within} was still scrolling after ${String(START_SWIPES)} swipes`)
   }
 
   /**
