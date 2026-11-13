@@ -5,12 +5,15 @@ import type { ElementId } from '@session/test-ids'
 import { Button } from './Button'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
-import { QuoteLines } from './MessageQuote'
+import { QuoteLines, STRIPE_OVERHANG_PX } from './MessageQuote'
 import { isQuotable, quotePreview, type QuoteLabels, type QuotedMessage } from './quotePreview'
 import { QuoteThumb } from './QuoteThumb'
 
 /** Smaller than the quote's square: the bar holds one line of summary, not two. */
 const COMPOSER_REPLY_THUMB_SIDE_PX = 36
+
+/** From the bar's edge to its text; no box, so its content starts at the composer's edge. */
+const BAR_TEXT_INSET_BLOCK_PX = 10
 
 /** Takes the X's 32 px to the 48 a finger needs; a pointer needs no slop. */
 const CLOSE_HIT_SLOP_PX = 8
@@ -55,10 +58,7 @@ export function ComposerReply({
     <XStack
       alignItems="center"
       gap="$xs"
-      paddingVertical="$xs"
-      paddingHorizontal="$sm"
-      borderRadius="$md"
-      backgroundColor="$backgroundTertiary"
+      paddingVertical={BAR_TEXT_INSET_BLOCK_PX - STRIPE_OVERHANG_PX}
       testID={testID}
     >
       <XStack flex={1} minWidth={0} alignSelf="stretch" gap="$xs">

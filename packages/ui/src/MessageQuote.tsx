@@ -28,7 +28,11 @@ import type { WithTestID } from './with'
 const QUOTE_THUMB_SIDE_PX = 44
 /** Legacy iOS's accent line: square-ended, so it reads as a rule rather than a pill. */
 const STRIPE_WIDTH_PX = 4
+/** How far a text quote's stripe runs past the author and summary, above and below. */
+export const STRIPE_OVERHANG_PX = 2
 const QUOTE_INSET_PX = 6
+/** From the tint's edge to the text: the stripe's overhang comes out of it. */
+const QUOTE_TEXT_INSET_BLOCK_PX = 8
 
 /** The author's line: a text quote's busy spinner is held to it, so the quote keeps its height. */
 const HEADING_LINE_PX = FONT_SIZE.label * LINE_HEIGHT_RATIO
@@ -77,7 +81,13 @@ export function QuoteLines({
     <>
       {preview.visual === null ? <YStack width={STRIPE_WIDTH_PX} backgroundColor={stripe} /> : null}
       {thumb}
-      <YStack flex={1} minWidth={0} justifyContent="center" gap="$2xs">
+      <YStack
+        flex={1}
+        minWidth={0}
+        justifyContent="center"
+        gap="$2xs"
+        paddingVertical={STRIPE_OVERHANG_PX}
+      >
         {busy ? (
           <XStack minWidth={0} alignItems="center" gap="$2xs">
             {author}
@@ -163,7 +173,8 @@ function QuoteBody({
       {...(pressable ? { group: 'quote' as const, ...PRESS_PASSTHROUGH } : {})}
       position="relative"
       minHeight={QUOTE_THUMB_SIDE_PX}
-      padding={QUOTE_INSET_PX}
+      paddingHorizontal={QUOTE_INSET_PX}
+      paddingVertical={QUOTE_TEXT_INSET_BLOCK_PX - STRIPE_OVERHANG_PX}
       gap="$xs"
       borderRadius="$sm"
       overflow="hidden"
