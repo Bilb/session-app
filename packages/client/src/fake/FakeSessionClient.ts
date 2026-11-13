@@ -64,18 +64,18 @@ function networkRefusal(config: NetworkAttachment): string | undefined {
 const FAKE_PROFILE_DELAY_MS = 2500
 
 /**
+ * Where the bridge keeps the hidden flag: a globals key beside the app's preferences, so a device
+ * that hid it as a preference is still hidden. Kept in the same place here, and wiped with them.
+ */
+const RECOVERY_PASSWORD_HIDDEN_KEY = 'recoveryPassword.hidden'
+
+/**
  * The fake behind the same interface the real bridge implements.
  *
  * Everything here is synchronous underneath; the promises exist because the interface has
  * them. Delivery and send-state transitions only happen when the world's clock is advanced,
  * so a test decides when time passes.
  */
-/**
- * Where the bridge keeps the hidden flag: a globals key beside the app's preferences, so a device
- * that hid it as a preference is still hidden. Kept in the same place here, and wiped with them.
- */
-const RECOVERY_PASSWORD_HIDDEN_KEY = 'recoveryPassword.hidden'
-
 export class FakeSessionClient implements SessionClient {
   private closed = false
   private readonly unsubscribes: Array<() => void> = []
