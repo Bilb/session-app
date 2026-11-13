@@ -81,6 +81,7 @@ export { type Haptics, HapticsProvider } from './haptics'
 export { replyAction } from './replyAction'
 export { SwipeToReply, type SwipeToReplyProps } from './SwipeToReply'
 export { ScrollToLatest, type ScrollToLatestProps } from './ScrollToLatest'
+export { useReducedMotion } from './useReducedMotion'
 export { MessageQuote, type MessageQuoteProps } from './MessageQuote'
 export {
   quotePreview,
@@ -102,7 +103,7 @@ export {
 export type { Modals, ModalPresentation, ModalScreen } from './ModalsProvider'
 export { ModalStackHost } from './ModalStackHost'
 export { ModalStackRoot } from './ModalStackRoot'
-export type { ListProps } from './List'
+export type { ListHandle, ListProps } from './List'
 export type { InputProps } from './Input.types'
 export { Progress } from './Progress'
 export { RailButton, type RailButtonProps } from './RailButton'
