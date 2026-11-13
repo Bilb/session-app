@@ -158,6 +158,21 @@ export const ELEMENT = {
     /** One of a row's key combinations, in the order drawn. */
     combo: (name: string, index: number) => `keyboard-shortcut-${name}-${String(index)}` as const,
   },
+  recoveryPassword: {
+    words: 'recovery-password-words',
+    copy: 'recovery-password-copy',
+    viewQr: 'recovery-password-view-qr',
+    viewWords: 'recovery-password-view-words',
+    qr: 'recovery-password-qr',
+    qrFullScreen: 'recovery-password-qr-full-screen',
+    hideRow: 'recovery-password-hide-row',
+    hide: 'recovery-password-hide',
+    hideConfirm: 'recovery-password-hide-confirm',
+    hideContinue: 'recovery-password-hide-continue',
+    hideYes: 'recovery-password-hide-yes',
+    hideCancel: 'recovery-password-hide-cancel',
+    loadError: 'recovery-password-load-error',
+  },
   toast: {
     item: 'toast',
     close: 'toast-close',

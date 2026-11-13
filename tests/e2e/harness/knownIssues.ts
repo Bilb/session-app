@@ -52,6 +52,8 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'color-contrast catalog-settings-row-arabic': 'its trailing value on a pressed row: the same',
     'color-contrast catalog-settings-row-destructive':
       'the danger ink on a light page, at label size: 4.3:1',
+    'color-contrast recovery-password-hide':
+      "the danger ink on the settings card's surface, classic-light, as the settings row: 4.3:1",
     'color-contrast context-menu-item-delete':
       "the danger ink on the menu's card surface, classic-light, as the settings row: 4.3:1",
     'color-contrast avatar.sizes xl': 'white initials on a light avatar colour: 1.4 to 2.3:1',

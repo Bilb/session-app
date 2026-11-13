@@ -341,6 +341,8 @@ export interface ButtonProps {
   circular?: boolean
   /** Takes an equal share of the row it is in. What a dialog's actions do. */
   fill?: boolean
+  /** See `PressAreaProps.focusOnMount`. */
+  focusOnMount?: boolean | undefined
   /**
    * Overrides the size variant's horizontal padding.
    *
@@ -424,6 +426,7 @@ export function Button({
   circular = false,
   destructive = false,
   fill = false,
+  focusOnMount = false,
   paddingHorizontal,
   borderRadius,
   hitSlop,
@@ -474,6 +477,7 @@ export function Button({
   return (
     <PressArea
       fill={fill}
+      focusOnMount={focusOnMount}
       ring={ring}
       {...(inert || onPress === undefined ? {} : { onPress })}
       disabled={inert}

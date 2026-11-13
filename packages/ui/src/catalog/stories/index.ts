@@ -6,6 +6,7 @@ import { contextMenuPlacement } from './contextMenuPlacement'
 import { fileRow, fileRowOnAccent, fileRowReceived } from './fileRow'
 import { keyCombo } from './keyCombo'
 import { avatar, progressRing, radio } from './indicators'
+import { qrCode } from './qrCode'
 import { messageFrameFocus } from './messageFrame'
 import { settingsRow } from './settingsRow'
 import { composerNotice, dropOverlay, stagedTile, stagedTray } from './staging'
@@ -36,6 +37,7 @@ export const STORIES: readonly AnyStory[] = [
   mediaViewer,
   contextMenu,
   contextMenuPlacement,
+  qrCode,
   messageFrameFocus,
   keyCombo,
 ]
