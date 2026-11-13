@@ -72,7 +72,7 @@ export async function prepare(session: SessionStore): Promise<Scenario> {
   if (conversation === undefined) throw new Error('the showcase has no conversation')
   const conversationId = conversation.id
   await session.actions.loadHistory(conversationId)
-  while (session.getState().histories[conversationId]?.exhausted !== true)
+  while (session.getState().histories[conversationId]?.hasOlder === true)
     await session.actions.loadOlder(conversationId)
 
   const messages = session.getState().histories[conversationId]?.messages ?? []
