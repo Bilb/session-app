@@ -3,7 +3,7 @@ import type {
   AutoDownload,
   ConfigSize,
   ConversationId,
-  Message,
+  MessagePage,
   OutgoingMessage,
   SendPlan,
   SessionClient,
@@ -15,6 +15,7 @@ import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEv
 import { classifyStartupFailure, type StartupFailureKind } from './startupFailure'
 import {
   emptyState,
+  emptyWindow,
   type ListName,
   type MessageWindow,
   type SessionState,
@@ -80,7 +81,9 @@ export interface SessionActions {
    * what loses a change that lands in the gap.
    */
   hydrate: () => Promise<void>
+  /** Reads the newest page into a window that has none. */
   loadHistory: (id: ConversationId) => Promise<void>
+  /** The page before the window's oldest message, joined to it; nothing while one is out. */
   loadOlder: (id: ConversationId) => Promise<void>
   /** Rejects, storing nothing, when libsession refuses it: a file that cannot be read, say. */
   send: (id: ConversationId, message: OutgoingMessage) => Promise<void>
@@ -309,29 +312,35 @@ export function createSessionStore(
   const generationOf = (id: ConversationId): number => forgotten.get(id) ?? 0
 
   function patchWindow(id: ConversationId, patch: Partial<MessageWindow>): void {
-    store.setState((state) => {
-      const current: MessageWindow = state.histories[id] ?? {
-        ready: false,
-        messages: [],
-        exhausted: false,
-        fetching: false,
-      }
-      return { histories: { ...state.histories, [id]: { ...current, ...patch } } }
-    })
+    store.setState((state) => ({
+      histories: {
+        ...state.histories,
+        [id]: { ...(state.histories[id] ?? emptyWindow), ...patch },
+      },
+    }))
   }
 
-  function windowFrom(messages: Message[], previous: Message[] = []): Partial<MessageWindow> {
-    const all = mergePages(messages, previous)
-    const oldest = all[0]
-    return {
-      ready: true,
-      fetching: false,
-      messages: all,
-      exhausted: messages.length < PAGE,
-      ...(oldest === undefined
-        ? {}
-        : { oldestCursor: { timestamp: oldest.timestamp, id: oldest.id } }),
-    }
+  /** The window as a page read it, in place of whatever was held. */
+  function replaceWindow(id: ConversationId, page: MessagePage): void {
+    store.setState((state) => {
+      const previous = state.histories[id] ?? emptyWindow
+      const kept = new Set(page.messages.map((m) => m.id))
+      const window: MessageWindow = {
+        ready: true,
+        messages: page.messages,
+        hasOlder: page.hasOlder,
+        hasNewer: page.hasNewer,
+        fetching: false,
+        fetchingOlder: false,
+      }
+      return {
+        histories: { ...state.histories, [id]: window },
+        transfers: withoutHistory(
+          state.transfers,
+          previous.messages.filter((m) => !kept.has(m.id)),
+        ),
+      }
+    })
   }
 
   /**
@@ -487,18 +496,29 @@ export function createSessionStore(
       const generation = generationOf(id)
       const page = await client.getMessages(id, { limit: PAGE })
       if (generationOf(id) !== generation) return
-      patchWindow(id, windowFrom(page.messages))
+      replaceWindow(id, page)
     },
 
     async loadOlder(id): Promise<void> {
       const window = store.getState().histories[id]
-      if (!window || window.fetching || window.exhausted || !window.oldestCursor) return
+      const oldest = window?.messages[0]
+      if (!window?.ready || window.fetchingOlder || !window.hasOlder || oldest === undefined) return
 
-      patchWindow(id, { fetching: true })
+      patchWindow(id, { fetchingOlder: true })
       const generation = generationOf(id)
-      const page = await client.getMessages(id, { limit: PAGE, before: window.oldestCursor })
+      const page = await client
+        .getMessages(id, { limit: PAGE, before: { timestamp: oldest.timestamp, id: oldest.id } })
+        .catch((error: unknown) => {
+          // Free to ask again: a flag left set would end paging for as long as the window lives.
+          if (generationOf(id) === generation) patchWindow(id, { fetchingOlder: false })
+          throw error
+        })
       if (generationOf(id) !== generation) return
-      patchWindow(id, windowFrom(page.messages, store.getState().histories[id]?.messages ?? []))
+      patchWindow(id, {
+        fetchingOlder: false,
+        hasOlder: page.hasOlder,
+        messages: mergePages(page.messages, store.getState().histories[id]?.messages ?? []),
+      })
     },
 
     forgetHistory(id): void {

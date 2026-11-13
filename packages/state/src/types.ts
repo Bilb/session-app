@@ -5,7 +5,6 @@ import type {
   ConversationId,
   ConversationList,
   Message,
-  MessageCursor,
   NetworkStatus,
   TransferProgress,
 } from '@session/client'
@@ -16,19 +15,36 @@ import type { StartupFailureKind } from './startupFailure'
 export type ListName = Exclude<ConversationList, 'none'>
 
 /**
- * One conversation's loaded history.
+ * One conversation's loaded history: a run of consecutive messages, which need not reach either
+ * end of the conversation.
  *
  * `ready` is what tells an empty conversation apart from one nobody has asked for yet -
  * without it a transcript cannot know whether to render "no messages" or a spinner.
  */
 export interface MessageWindow {
   ready: boolean
-  /** In the order a transcript renders, which is the order libsession read them out. */
+  /** Oldest first, ordered by (timestamp, id) as libsession orders history. */
   messages: Message[]
-  oldestCursor?: MessageCursor
-  exhausted: boolean
-  /** Guards against firing a second page request while the first is still out. */
+  /** Whether history goes on past the oldest message held, as libsession last said. */
+  hasOlder: boolean
+  /**
+   * Whether history goes on past the newest message held. While it does, a message announced
+   * beyond that end is not this window's to hold.
+   */
+  hasNewer: boolean
+  /** The first page is being read. */
   fetching: boolean
+  /** Guard against asking for a page twice while the first request is still out. */
+  fetchingOlder: boolean
+}
+
+export const emptyWindow: MessageWindow = {
+  ready: false,
+  messages: [],
+  hasOlder: false,
+  hasNewer: false,
+  fetching: false,
+  fetchingOlder: false,
 }
 
 /**

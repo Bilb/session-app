@@ -9,7 +9,7 @@ import type {
 } from '@session/client'
 
 import type { AttachmentTransferState, ListName, MessageWindow, SessionState } from './types'
-import { transferKey } from './types'
+import { emptyWindow, transferKey } from './types'
 
 /**
  * The whole projection, as one pure function.
@@ -53,12 +53,7 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
         ...state,
         histories: {
           ...state.histories,
-          [event.conversationId]: {
-            ready: false,
-            messages: [],
-            exhausted: false,
-            fetching: false,
-          },
+          [event.conversationId]: emptyWindow,
         },
         transfers: withoutHistory(state.transfers, window?.messages ?? []),
       }
@@ -261,11 +256,32 @@ function removeConversation(state: SessionState, id: ConversationId): SessionSta
   }
 }
 
+/** History's order: by timestamp, then id, so messages sharing a timestamp keep one order. */
+export function compareMessages(a: Message, b: Message): number {
+  return a.timestamp - b.timestamp || a.id - b.id
+}
+
+/**
+ * Whether a message the window does not hold belongs in it: between its ends, or past an end
+ * that is also the conversation's. Past an end history goes on beyond, paging reads it.
+ */
+function belongsIn(window: MessageWindow, message: Message): boolean {
+  const oldest = window.messages[0]
+  const newest = window.messages[window.messages.length - 1]
+  if (oldest === undefined || newest === undefined) return !window.hasOlder && !window.hasNewer
+  if (compareMessages(message, newest) > 0) return !window.hasNewer
+  if (compareMessages(message, oldest) < 0) return !window.hasOlder
+  return true
+}
+
 /**
  * Adds or replaces a message, but only in a window that has already been loaded.
  *
  * Starting a window from a single event would leave a transcript that looks complete and is
  * not; the screen asks for the history it wants and events keep it current from there.
+ *
+ * Merged by id and placed by (timestamp, id): history is ordered by a message's own time, not by
+ * arrival, and one stored just before a page was read is both in the page and announced after it.
  */
 function upsertMessage(
   state: SessionState,
@@ -282,10 +298,11 @@ function upsertMessage(
     messages = current.slice()
     messages[existing] = message
   } else {
-    // On the end, without checking where it belongs. The event reports a message that has just
-    // happened, and libsession decides the order a transcript reads in - the shim already turns
-    // its newest-first page around. A comparator here would be this package deciding it again.
-    messages = [...current, message]
+    // A page leaves deleted messages out, so one the window does not hold stays out.
+    if (message.deleted !== undefined || !belongsIn(window, message)) return state
+    const after = current.findIndex((m) => compareMessages(m, message) > 0)
+    const at = after === -1 ? current.length : after
+    messages = [...current.slice(0, at), message, ...current.slice(at)]
   }
 
   const updated: MessageWindow = { ...window, messages }
@@ -325,14 +342,14 @@ function withoutSettledTransfers(
 }
 
 /**
- * An older page in front of what is already loaded.
+ * Two runs of history that meet, the older in front.
  *
- * A concatenation and nothing else: the page was asked for from before the oldest message the
- * window holds, and both come from libsession in the order it reads them out, so joining them
- * is the whole operation.
+ * A concatenation and nothing else: a page is asked for from past one end of the window, a
+ * message announced past an end history goes on beyond is not taken into the window, and both
+ * come from libsession in the order it reads them out, so joining them is the whole operation.
  */
-export function mergePages(older: Message[], previous: Message[]): Message[] {
-  if (previous.length === 0) return older
-  if (older.length === 0) return previous
-  return [...older, ...previous]
+export function mergePages(older: Message[], newer: Message[]): Message[] {
+  if (newer.length === 0) return older
+  if (older.length === 0) return newer
+  return [...older, ...newer]
 }

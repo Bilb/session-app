@@ -9,7 +9,7 @@ import {
   selectMessageTransfers,
   selectUnreadRequestCount,
 } from '#src/selectors'
-import { emptyState, type SessionState } from '#src/types'
+import { emptyState, emptyWindow, type SessionState } from '#src/types'
 
 // The selectors behind the per-message hooks. A hook re-renders when its selector answers a new
 // object, so identity is what these assert.
@@ -44,10 +44,9 @@ const loaded: SessionState = {
   ...emptyState,
   histories: {
     '05alice': {
+      ...emptyWindow,
       ready: true,
       messages: [message(1), message(2)],
-      exhausted: true,
-      fetching: false,
     },
   },
 }

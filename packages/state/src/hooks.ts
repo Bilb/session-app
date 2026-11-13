@@ -27,12 +27,8 @@ import {
 } from './selectors'
 import type { StartupFailureKind } from './startupFailure'
 import type { SessionActions, SessionStore } from './store'
-import type {
-  AttachmentTransferState,
-  MessageTransfers,
-  MessageWindow,
-  StoredAppearance,
-} from './types'
+import type { AttachmentTransferState, MessageTransfers, StoredAppearance } from './types'
+import { emptyWindow } from './types'
 
 const StoreContext = createContext<SessionStore | null>(null)
 
@@ -125,11 +121,14 @@ export function useConversation(id: ConversationId | undefined): Conversation | 
   )
 }
 
-const EMPTY_WINDOW: MessageWindow = {
-  ready: false,
-  messages: [],
-  exhausted: false,
-  fetching: false,
+/** A conversation's loaded window and the read that grows it. */
+export interface Transcript {
+  messages: Message[]
+  ready: boolean
+  /** Whether history goes on past the window's oldest and newest messages. */
+  hasOlder: boolean
+  hasNewer: boolean
+  loadOlder: () => void
 }
 
 /**
@@ -138,15 +137,10 @@ const EMPTY_WINDOW: MessageWindow = {
  * `ready` is separate from an empty list on purpose: a conversation nobody has said
  * anything in and one that has not been read off disk yet look identical otherwise.
  */
-export function useMessages(id: ConversationId | undefined): {
-  messages: Message[]
-  ready: boolean
-  exhausted: boolean
-  loadOlder: () => void
-} {
+export function useMessages(id: ConversationId | undefined): Transcript {
   const store = useSessionStore()
   const window = useStore(store, (state) =>
-    id === undefined ? EMPTY_WINDOW : (state.histories[id] ?? EMPTY_WINDOW),
+    id === undefined ? emptyWindow : (state.histories[id] ?? emptyWindow),
   )
 
   useEffect(() => {
@@ -175,7 +169,8 @@ export function useMessages(id: ConversationId | undefined): {
     () => ({
       messages: window.messages,
       ready: window.ready,
-      exhausted: window.exhausted,
+      hasOlder: window.hasOlder,
+      hasNewer: window.hasNewer,
       loadOlder,
     }),
     [window, loadOlder],
