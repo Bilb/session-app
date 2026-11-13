@@ -43,6 +43,7 @@ export type {
   NetworkStatus,
   OutgoingAttachment,
   PixelSize,
+  QuotedMessage,
   Reply,
   SendPlan,
   SendState,

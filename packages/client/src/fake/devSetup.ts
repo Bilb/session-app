@@ -4,6 +4,7 @@ import type { FakeSessionClient } from './FakeSessionClient'
 import { dateStates } from './dates'
 import { crowd, newcomer, type FakeSetup } from './fixtures'
 import { photoFileNames, thumbnailFileNames } from './media'
+import { replies } from './replies'
 import { rowShowcase } from './rows'
 import { showcase } from './showcase'
 import { keyMissing, keyUnavailable, type DatabaseKeyError } from '../databaseKey'
@@ -28,6 +29,7 @@ export const FAKE_FIXTURES = [
   'rows',
   'dates',
   'transcripts',
+  'replies',
 ] as const
 
 export type FakeFixture = (typeof FAKE_FIXTURES)[number]
@@ -145,6 +147,8 @@ export function pickFakeFixture(env: FakeDevEnv): FakeSetup & { fixture: FakeFix
       return { fixture, ...dateStates() }
     case 'transcripts':
       return { fixture, ...transcripts() }
+    case 'replies':
+      return { fixture, ...replies() }
     case 'friends':
       return { fixture, ...friendsWithAttachments(['Alice', 'Bob'], { history: 4 }) }
   }

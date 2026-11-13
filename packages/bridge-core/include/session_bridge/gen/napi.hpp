@@ -418,29 +418,6 @@ struct Codec<::session_bridge::Attachment> {
 };
 
 template <>
-struct Codec<::session_bridge::Reply> {
-    static constexpr std::string_view name = "Reply";
-    static Napi::Value to(Napi::Env env, const ::session_bridge::Reply& value) {
-        Napi::Object obj = Napi::Object::New(env);
-        obj.Set("author", Codec<std::string>::to(env, value.author));
-        obj.Set("timestamp", Codec<double>::to(env, value.timestamp));
-        if (value.message_id)
-            obj.Set("messageId", Codec<double>::to(env, *value.message_id));
-        if (value.body)
-            obj.Set("body", Codec<std::string>::to(env, *value.body));
-        return obj;
-    }
-    static ::session_bridge::Reply from(const Napi::Value& value, std::string_view where) {
-        Napi::Object obj = object(value, where);
-        return ::session_bridge::Reply(
-                Codec<std::string>::from(obj.Get("author"), "Reply.author"),
-                Codec<double>::from(obj.Get("timestamp"), "Reply.timestamp"),
-                optional<double>(obj.Get("messageId"), "Reply.messageId"),
-                optional<std::string>(obj.Get("body"), "Reply.body"));
-    }
-};
-
-template <>
 struct Codec<::session_bridge::Deletion> {
     static constexpr std::string_view name = "Deletion";
     static Napi::Value to(Napi::Env env, ::session_bridge::Deletion value) {
@@ -453,6 +430,53 @@ struct Codec<::session_bridge::Deletion> {
         if (!parsed)
             throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a Deletion");
         return *parsed;
+    }
+};
+
+template <>
+struct Codec<::session_bridge::QuotedMessage> {
+    static constexpr std::string_view name = "QuotedMessage";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::QuotedMessage& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("id", Codec<double>::to(env, value.id));
+        obj.Set("outgoing", Codec<bool>::to(env, value.outgoing));
+        obj.Set("body", Codec<std::string>::to(env, value.body));
+        obj.Set("attachments", Codec<std::vector<::session_bridge::Attachment>>::to(env, value.attachments));
+        if (value.deleted)
+            obj.Set("deleted", Codec<::session_bridge::Deletion>::to(env, *value.deleted));
+        return obj;
+    }
+    static ::session_bridge::QuotedMessage from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::QuotedMessage(
+                Codec<double>::from(obj.Get("id"), "QuotedMessage.id"),
+                Codec<bool>::from(obj.Get("outgoing"), "QuotedMessage.outgoing"),
+                Codec<std::string>::from(obj.Get("body"), "QuotedMessage.body"),
+                Codec<std::vector<::session_bridge::Attachment>>::from(obj.Get("attachments"), "QuotedMessage.attachments"),
+                optional<::session_bridge::Deletion>(obj.Get("deleted"), "QuotedMessage.deleted"));
+    }
+};
+
+template <>
+struct Codec<::session_bridge::Reply> {
+    static constexpr std::string_view name = "Reply";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::Reply& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("author", Codec<std::string>::to(env, value.author));
+        obj.Set("timestamp", Codec<double>::to(env, value.timestamp));
+        if (value.message_id)
+            obj.Set("messageId", Codec<double>::to(env, *value.message_id));
+        if (value.message)
+            obj.Set("message", Codec<::session_bridge::QuotedMessage>::to(env, *value.message));
+        return obj;
+    }
+    static ::session_bridge::Reply from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::Reply(
+                Codec<std::string>::from(obj.Get("author"), "Reply.author"),
+                Codec<double>::from(obj.Get("timestamp"), "Reply.timestamp"),
+                optional<double>(obj.Get("messageId"), "Reply.messageId"),
+                optional<::session_bridge::QuotedMessage>(obj.Get("message"), "Reply.message"));
     }
 };
 
@@ -499,18 +523,22 @@ struct Codec<::session_bridge::Message> {
 };
 
 template <>
-struct Codec<::session_bridge::MessageListResult> {
-    static constexpr std::string_view name = "MessageListResult";
-    static Napi::Value to(Napi::Env env, const ::session_bridge::MessageListResult& value) {
+struct Codec<::session_bridge::MessagePageResult> {
+    static constexpr std::string_view name = "MessagePageResult";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::MessagePageResult& value) {
         Napi::Object obj = Napi::Object::New(env);
-        obj.Set("type", Napi::String::New(env, ::session_bridge::MessageListResult::type_tag.data(), ::session_bridge::MessageListResult::type_tag.size()));
+        obj.Set("type", Napi::String::New(env, ::session_bridge::MessagePageResult::type_tag.data(), ::session_bridge::MessagePageResult::type_tag.size()));
         obj.Set("messages", Codec<std::vector<::session_bridge::Message>>::to(env, value.messages));
+        obj.Set("hasNewer", Codec<bool>::to(env, value.has_newer));
+        obj.Set("hasOlder", Codec<bool>::to(env, value.has_older));
         return obj;
     }
-    static ::session_bridge::MessageListResult from(const Napi::Value& value, std::string_view where) {
+    static ::session_bridge::MessagePageResult from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
-        return ::session_bridge::MessageListResult(
-                Codec<std::vector<::session_bridge::Message>>::from(obj.Get("messages"), "MessageListResult.messages"));
+        return ::session_bridge::MessagePageResult(
+                Codec<std::vector<::session_bridge::Message>>::from(obj.Get("messages"), "MessagePageResult.messages"),
+                Codec<bool>::from(obj.Get("hasNewer"), "MessagePageResult.hasNewer"),
+                Codec<bool>::from(obj.Get("hasOlder"), "MessagePageResult.hasOlder"));
     }
 };
 
@@ -748,8 +776,8 @@ struct Codec<::session_bridge::Result> {
             return Codec<::session_bridge::ConversationListResult>::from(value, where);
         if (tag == "conversation")
             return Codec<::session_bridge::ConversationResult>::from(value, where);
-        if (tag == "messageList")
-            return Codec<::session_bridge::MessageListResult>::from(value, where);
+        if (tag == "messagePage")
+            return Codec<::session_bridge::MessagePageResult>::from(value, where);
         if (tag == "messageId")
             return Codec<::session_bridge::MessageIdResult>::from(value, where);
         if (tag == "hex")
@@ -1659,6 +1687,10 @@ struct Codec<::session_bridge::GetMessagesCommand> {
         obj.Set("limit", Codec<double>::to(env, value.limit));
         if (value.before)
             obj.Set("before", Codec<::session_bridge::MessageCursor>::to(env, *value.before));
+        if (value.after)
+            obj.Set("after", Codec<::session_bridge::MessageCursor>::to(env, *value.after));
+        if (value.around)
+            obj.Set("around", Codec<double>::to(env, *value.around));
         obj.Set("includeDeleted", Codec<bool>::to(env, value.include_deleted));
         return obj;
     }
@@ -1668,6 +1700,8 @@ struct Codec<::session_bridge::GetMessagesCommand> {
                 Codec<std::string>::from(obj.Get("conversationId"), "GetMessagesCommand.conversationId"),
                 Codec<double>::from(obj.Get("limit"), "GetMessagesCommand.limit"),
                 optional<::session_bridge::MessageCursor>(obj.Get("before"), "GetMessagesCommand.before"),
+                optional<::session_bridge::MessageCursor>(obj.Get("after"), "GetMessagesCommand.after"),
+                optional<double>(obj.Get("around"), "GetMessagesCommand.around"),
                 Codec<bool>::from(obj.Get("includeDeleted"), "GetMessagesCommand.includeDeleted"));
     }
 };
@@ -2031,6 +2065,23 @@ struct Codec<::session_bridge::TestAttachment> {
 };
 
 template <>
+struct Codec<::session_bridge::TestQuote> {
+    static constexpr std::string_view name = "TestQuote";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::TestQuote& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("author", Codec<std::string>::to(env, value.author));
+        obj.Set("timestamp", Codec<double>::to(env, value.timestamp));
+        return obj;
+    }
+    static ::session_bridge::TestQuote from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::TestQuote(
+                Codec<std::string>::from(obj.Get("author"), "TestQuote.author"),
+                Codec<double>::from(obj.Get("timestamp"), "TestQuote.timestamp"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::DeliverTestMessageCommand> {
     static constexpr std::string_view name = "DeliverTestMessageCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::DeliverTestMessageCommand& value) {
@@ -2041,6 +2092,8 @@ struct Codec<::session_bridge::DeliverTestMessageCommand> {
         obj.Set("timestamp", Codec<double>::to(env, value.timestamp));
         if (value.attachments)
             obj.Set("attachments", Codec<std::vector<::session_bridge::TestAttachment>>::to(env, *value.attachments));
+        if (value.reply_to)
+            obj.Set("replyTo", Codec<::session_bridge::TestQuote>::to(env, *value.reply_to));
         return obj;
     }
     static ::session_bridge::DeliverTestMessageCommand from(const Napi::Value& value, std::string_view where) {
@@ -2049,7 +2102,8 @@ struct Codec<::session_bridge::DeliverTestMessageCommand> {
                 Codec<std::string>::from(obj.Get("senderSeedHex"), "DeliverTestMessageCommand.senderSeedHex"),
                 Codec<std::string>::from(obj.Get("body"), "DeliverTestMessageCommand.body"),
                 Codec<double>::from(obj.Get("timestamp"), "DeliverTestMessageCommand.timestamp"),
-                optional<std::vector<::session_bridge::TestAttachment>>(obj.Get("attachments"), "DeliverTestMessageCommand.attachments"));
+                optional<std::vector<::session_bridge::TestAttachment>>(obj.Get("attachments"), "DeliverTestMessageCommand.attachments"),
+                optional<::session_bridge::TestQuote>(obj.Get("replyTo"), "DeliverTestMessageCommand.replyTo"));
     }
 };
 

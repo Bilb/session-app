@@ -39,6 +39,8 @@ import {
   type Message,
   type NetworkStatus,
   type OutgoingAttachment,
+  type QuotedMessage,
+  type Reply,
   type SendPlan,
   type SendState,
   type SessionEvent,
@@ -239,6 +241,13 @@ function wantedBy(mode: AutoDownload | undefined, attachment: Attachment): boole
   return false
 }
 
+/** A message as the wire names it, which is all a quote carries: who sent it and when. */
+export type FakeQuote = Pick<Reply, 'author' | 'timestamp'>
+
+function answers(reply: FakeQuote | undefined, original: Message): boolean {
+  return reply?.author === original.author && reply.timestamp === original.timestamp
+}
+
 function keyOf({ messageId, index }: AttachmentRef): string {
   return `${messageId}:${index}`
 }
@@ -302,6 +311,7 @@ export interface LocatedAttachment {
 
 interface FakeConversationState {
   conversation: Conversation
+  /** As stored: a reply holds only its `FakeQuote`, which `withAvailability` resolves. */
   messages: Message[]
   /**
    * Which incoming messages are still unread. Held beside the messages rather than on them
@@ -585,7 +595,8 @@ export class FakeAccount {
     const unreadCount = state.messages.filter((m) => state.unread.has(m.id) && !m.outgoing).length
     const conversation: Conversation = {
       ...state.conversation,
-      lastActivity: message.timestamp,
+      // Only ever forwards, as libsession moves it: a message can arrive dated before the last.
+      lastActivity: Math.max(state.conversation.lastActivity, message.timestamp),
       snippet: message.body,
       unreadCount,
       // Writing to someone is what approves them, as in libsession: a request written back to
@@ -713,6 +724,7 @@ export class FakeAccount {
     body: string,
     timestamp: number,
     attachments: Attachment[] = [],
+    replyTo?: FakeQuote,
   ): Message {
     const conversationId = sender.sessionId
     if (!this.conversations.has(conversationId)) {
@@ -743,6 +755,9 @@ export class FakeAccount {
       attachments,
       galleryViewable: galleryViewable(attachments),
       gallery: galleryViewable(attachments),
+      ...(replyTo === undefined
+        ? {}
+        : { replyTo: { author: replyTo.author, timestamp: replyTo.timestamp } }),
     })
 
     // Whatever the conversation said to fetch unasked, fetched now. Unset means nobody has been
@@ -786,7 +801,8 @@ export class FakeAccount {
    * Stores a message of ours and starts sending it. With attachments it is `uploading` first,
    * one file a step in order, as libsession uploads them; the send proper follows the last.
    *
-   * Throws, storing nothing, when a file is not a readable, non-empty one, as libsession does.
+   * Throws, storing nothing, when a file is not a readable, non-empty one, or `replyTo` is not a
+   * message of this conversation, as libsession does. A deleted message can still be answered.
    */
   send(
     id: ConversationId,
@@ -815,6 +831,14 @@ export class FakeAccount {
           : undefined,
       }
     })
+    const answered =
+      replyTo === undefined
+        ? undefined
+        : this.conversations.get(id)?.messages.find((m) => m.id === replyTo)
+    if (replyTo !== undefined && answered === undefined)
+      throw new SessionClientError(
+        `send_message: reply_to message ${String(replyTo)} does not exist in this conversation`,
+      )
     const now = this.world?.now() ?? Date.now()
     const uploading = outgoing.length > 0
     const attachments = outgoing.map((file, index): Attachment => {
@@ -855,9 +879,9 @@ export class FakeAccount {
       // A second send, to our own swarm, so our other devices see it. Left unset on an incoming
       // message, which is why `deliverFrom` does not set one.
       syncState: uploading ? 'uploading' : 'pending',
-      ...(replyTo === undefined
+      ...(answered === undefined
         ? {}
-        : { replyTo: { author: this.sessionId, timestamp: now, messageId: replyTo } }),
+        : { replyTo: { author: answered.author, timestamp: answered.timestamp } }),
     }
     // libsession copies a file it was not handed at once, where it takes a handed one; either
     // way the message reads only its own from here, and the caller's may go.
@@ -1169,7 +1193,22 @@ export class FakeAccount {
    * built with - which for a file already in the cache is a lie in the direction that matters.
    */
   private announce(type: 'messages-added' | 'messages-updated', messages: Message[]): void {
-    this.emit({ type, messages: this.withAvailability(messages) })
+    const repliers = messages.flatMap((message) => this.repliers(message))
+    if (type === 'messages-added') {
+      this.emit({ type, messages: this.withAvailability(messages) })
+      if (repliers.length > 0)
+        this.emit({ type: 'messages-updated', messages: this.withAvailability(repliers) })
+      return
+    }
+    // One report for the lot, as libsession makes: what a quote shows changed with its original.
+    const all = [...new Map([...repliers, ...messages].map((m) => [m.id, m])).values()]
+    this.emit({ type, messages: this.withAvailability(all) })
+  }
+
+  /** The stored replies to `original`, which libsession announces again whenever it changes. */
+  private repliers(original: Message): Message[] {
+    const stored = this.conversations.get(original.conversationId)?.messages ?? []
+    return stored.filter((m) => m.id !== original.id && answers(m.replyTo, original))
   }
 
   /**
@@ -1190,43 +1229,65 @@ export class FakeAccount {
   }
 
   /**
-   * The same messages, with what each attachment's bytes are doing written onto it.
+   * The same messages as libsession reads them out: what each attachment's bytes are doing written
+   * onto it, and a reply resolved against the original this account holds.
    *
    * The real bridge does this inside libsession, which owns the cache and the transfers; the fake
    * owns both here, so it stamps them on the way out. Everything a display needs arrives with the
    * message rather than beside it.
    */
   withAvailability(messages: Message[]): Message[] {
-    return messages.map((message) => ({
-      ...message,
-      attachments: message.attachments.map((attachment) => {
-        const key = keyOf({ messageId: message.id, index: attachment.index })
-        const running = this.transfers.get(key)?.progress
-        const availability: AttachmentAvailability = running
-          ? 'fetching'
-          : this.cached.has(key) || this.takenServed(key, message.sendState)
-            ? 'cached'
-            : (this.verdicts.get(key) ?? 'absent')
-        const thumbnail = thumbnailed(this.holdsPicture(key), attachment)
-        // As the shim does: set exactly when there is a hash to draw.
-        const { thumbhashAspect = FAKE_THUMBHASH_ASPECT, ...rest } = attachment
-        return {
-          ...rest,
-          ...(attachment.hasThumbhash ? { thumbhashAspect } : {}),
-          availability,
-          hasThumbnail: thumbnail,
-          thumbnailWidthPx: thumbnail ? FAKE_THUMBNAIL_WIDTH_PX : 0,
-          thumbnailHeightPx: thumbnail ? FAKE_THUMBNAIL_EDGE_PX : 0,
-          hasRendition: this.rendered(
-            { messageId: message.id, index: attachment.index },
-            attachment,
-          ),
-          renditionRefused: refusesRendition(this.cached.has(key), attachment),
-          fetchDoneBytes: running?.doneBytes ?? 0,
-          fetchTotalBytes: running?.totalBytes ?? 0,
-        }
-      }),
-    }))
+    return messages.map((message) => {
+      const { replyTo, ...rest } = message
+      return {
+        ...rest,
+        attachments: this.stamped(message),
+        ...(replyTo === undefined ? {} : { replyTo: this.resolved(message, replyTo) }),
+      }
+    })
+  }
+
+  /** A reply with its original, where this account has one by that author at that time. */
+  private resolved(message: Message, quote: FakeQuote): Reply {
+    const stored = this.conversations.get(message.conversationId)?.messages ?? []
+    const original = stored.find((m) => m.id !== message.id && answers(quote, m))
+    const reference = { author: quote.author, timestamp: quote.timestamp }
+    if (original === undefined) return reference
+    const quoted: QuotedMessage = {
+      id: original.id,
+      outgoing: original.outgoing,
+      body: original.body,
+      attachments: this.stamped(original),
+      ...(original.deleted === undefined ? {} : { deleted: original.deleted }),
+    }
+    return { ...reference, messageId: original.id, message: quoted }
+  }
+
+  private stamped(message: Message): Attachment[] {
+    return message.attachments.map((attachment) => {
+      const key = keyOf({ messageId: message.id, index: attachment.index })
+      const running = this.transfers.get(key)?.progress
+      const availability: AttachmentAvailability = running
+        ? 'fetching'
+        : this.cached.has(key) || this.takenServed(key, message.sendState)
+          ? 'cached'
+          : (this.verdicts.get(key) ?? 'absent')
+      const thumbnail = thumbnailed(this.holdsPicture(key), attachment)
+      // As the shim does: set exactly when there is a hash to draw.
+      const { thumbhashAspect = FAKE_THUMBHASH_ASPECT, ...rest } = attachment
+      return {
+        ...rest,
+        ...(attachment.hasThumbhash ? { thumbhashAspect } : {}),
+        availability,
+        hasThumbnail: thumbnail,
+        thumbnailWidthPx: thumbnail ? FAKE_THUMBNAIL_WIDTH_PX : 0,
+        thumbnailHeightPx: thumbnail ? FAKE_THUMBNAIL_EDGE_PX : 0,
+        hasRendition: this.rendered({ messageId: message.id, index: attachment.index }, attachment),
+        renditionRefused: refusesRendition(this.cached.has(key), attachment),
+        fetchDoneBytes: running?.doneBytes ?? 0,
+        fetchTotalBytes: running?.totalBytes ?? 0,
+      }
+    })
   }
 
   attachmentCacheLimit(): number | undefined {
@@ -1529,8 +1590,16 @@ export class FakeWorld {
       run: () => {
         sender.setSendState(conversationId, message.id, 'sent')
         const recipient = this.find(conversationId)
-        if (recipient)
-          recipient.deliverFrom(sender, message.body, this.clock, received(message.attachments))
+        // A note to self is one stored message, not a send and a delivery of it.
+        if (recipient !== undefined && recipient !== sender)
+          recipient.deliverFrom(
+            sender,
+            message.body,
+            // The sender's own timestamp, which is what a reply names the message by.
+            message.timestamp,
+            received(message.attachments),
+            message.replyTo,
+          )
       },
     })
 

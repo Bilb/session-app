@@ -44,7 +44,23 @@ export interface NetworkAttachment {
   router?: RouterKind
 }
 
-export type MessagePage = { messages: Message[] }
+/**
+ * A page of history, oldest first, and whether history goes on past it either way, as of the read.
+ * See the protocol's `messagePage` for what the flags count.
+ */
+export type MessagePage = { messages: Message[]; hasNewer: boolean; hasOlder: boolean }
+
+/** Which page `getMessages` reads: the newest, or the one that one of the three positions names. */
+export type MessagePageOptions = {
+  limit?: number | undefined
+  /** The page older than this cursor, which is not repeated. */
+  before?: MessageCursor | undefined
+  /** The page immediately newer than this cursor, which is not repeated. */
+  after?: MessageCursor | undefined
+  /** A window with this message, by id, as near its middle as the history allows. */
+  around?: number | undefined
+  includeDeleted?: boolean | undefined
+}
 
 export interface OutgoingMessage {
   body: string
@@ -130,11 +146,12 @@ export interface SessionClient {
    * What each attachment's bytes are doing rides on the attachment - `availability`,
    * `fetchDoneBytes`, `fetchTotalBytes` - so a window built from this page is already correct
    * rather than drawing every attachment as untouched and then taking it back.
+   *
+   * True as of the read: a message stored later arrives as `messages-added`, and one stored just
+   * before can be in the page and announced after it, so a window merges by id and places by
+   * (timestamp, id). Rejects with `MESSAGE_NOT_FOUND` for an `around` this conversation lacks.
    */
-  getMessages(
-    id: ConversationId,
-    options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
-  ): Promise<MessagePage>
+  getMessages(id: ConversationId, options?: MessagePageOptions): Promise<MessagePage>
   /**
    * Resolves as soon as libsession has stored the row, which is before it is sent. The states
    * that follow arrive as message-updated, and each file's upload as attachment-progress of
