@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { conversationTitle } from '#src/conversationTitle'
+import { conversationAvatarName, conversationTitle } from '#src/conversationTitle'
 
 const id = '057fb21c2cd7e0b1a2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f6805d30'
 
@@ -29,6 +29,15 @@ describe('conversationTitle', () => {
     expect(conversationTitle({ id, displayName: '' })).toBe('(057f...5d30)')
     expect(conversationTitle({ id, nickname: '   ', displayName: '' })).toBe('(057f...5d30)')
     expect(conversationTitle({ id })).toBe('(057f...5d30)')
+  })
+
+  it('calls your own conversation Note to Self, whatever your name is', () => {
+    expect(conversationTitle({ id, displayName: 'Ada', noteToSelf: true })).toBe('Note to Self')
+    expect(conversationTitle({ id, displayName: '', noteToSelf: true })).toBe('Note to Self')
+  })
+
+  it('gives Note to Self your own name for its avatar, not the title', () => {
+    expect(conversationAvatarName({ id, displayName: 'Ada', noteToSelf: true })).toBe('Ada')
   })
 
   it('leaves an id too short to shorten alone', () => {

@@ -146,7 +146,8 @@ export function rowShowcase(): FakeSetup {
     const conversation: Conversation = {
       id: c.noteToSelf ? self.sessionId : idFor(index, kind),
       kind,
-      displayName: c.name,
+      // As libsession reports it: your own conversation carries your own name.
+      displayName: c.noteToSelf ? self.displayName : c.name,
       lastActivity: now - c.agoMs,
       priority: c.pinned ? 1 : 0,
       unreadCount: c.unread ?? 0,
