@@ -35,7 +35,8 @@
     "react-native-safe-area-context": "catalog:",
     "react-native-screens": "catalog:",
     "react-native-worklets": "catalog:",
-    "tamagui": "catalog:"
+    "tamagui": "catalog:",
+    "uqr": "catalog:"
   },
   "peerDependencies": {
     "react": "catalog:",
