@@ -1,7 +1,33 @@
+import { REPLY_ACTION } from './replyAction'
+
 export interface FileRowAction {
   name: 'activate' | 'lead' | 'control'
   label: string
   run: () => void
+}
+
+/** Reply to the message the row belongs to, already worded: listed after the row's own verbs. */
+export interface FileRowReply {
+  label: string
+  run: () => void
+}
+
+interface NamedAction {
+  name: string
+  label: string
+  run: () => void
+}
+
+/**
+ * Every action a native row answers to, by name: its own, then its message's Reply. All of them,
+ * the activation included, since TalkBack performs `activate` by name even where it is not listed.
+ */
+export function fileRowAnswers(actions: FileRowAction[], reply: FileRowReply | undefined) {
+  const all: NamedAction[] = [
+    ...actions,
+    ...(reply === undefined ? [] : [{ name: REPLY_ACTION, ...reply }]),
+  ]
+  return all
 }
 
 interface FileRowVerbs {

@@ -1,5 +1,6 @@
 import { RADII, SPACING } from '@session/theme-tokens'
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { AccessibilityInfo, findNodeHandle } from 'react-native'
 import { isWeb, YStack } from 'tamagui'
 
 import { useForcedFocus } from './interactionOverride'
@@ -53,9 +54,19 @@ export function MessageFrame({
   const forcedFocus = useForcedFocus()
   const web = isWeb && focusable
 
+  // A highlight is invisible to VoiceOver and TalkBack, so a landing moves their focus here. The
+  // desktop's keyboard focus is the list's to move, to this row's stop.
+  const frame = useRef<null>(null)
+  useEffect(() => {
+    if (isWeb || highlightSerial === undefined) return
+    const node = findNodeHandle(frame.current)
+    if (typeof node === 'number') AccessibilityInfo.setAccessibilityFocus(node)
+  }, [highlightSerial])
+
   return (
     <YStack
       {...(web && stop !== null ? { ref: stop.ref } : {})}
+      {...(isWeb ? {} : { ref: frame as never })}
       {...(alignSelf === undefined ? {} : { alignSelf })}
       {...(maxWidth === undefined ? {} : { maxWidth })}
       position="relative"

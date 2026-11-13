@@ -1,7 +1,7 @@
 import { isWeb } from 'tamagui'
 
 /** The name a screen reader's action for replying is given, on a message row. */
-const REPLY_ACTION = 'reply'
+export const REPLY_ACTION = 'reply'
 
 /**
  * Reply as an accessibility action, for the accessible element of a message row: a swipe is out of

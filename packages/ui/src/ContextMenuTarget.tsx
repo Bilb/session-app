@@ -14,6 +14,18 @@ function selectsTextIn(element: Element): boolean {
   return element.contains(selection.anchorNode) || element.contains(selection.focusNode)
 }
 
+/** Whether the reader has any text selected, which a double-click must not replace or act over. */
+function selectsText(): boolean {
+  const selection = globalThis.getSelection?.()
+  return selection !== null && selection !== undefined && !selection.isCollapsed
+}
+
+/** A press on a control inside the target is that control's, not the message's. */
+function onControl(event: MouseEvent): boolean {
+  const control = (event.target as Element).closest('button, a, input, textarea, [role="button"]')
+  return control !== null && event.currentTarget.contains(control)
+}
+
 /**
  * The web half: a right-click opens the menu at the pointer.
  *
@@ -24,6 +36,7 @@ export function ContextMenuTarget({
   onOpen,
   alignSelf,
   maxWidth,
+  onDoublePress,
   children,
 }: ContextMenuTargetProps) {
   return (
@@ -39,6 +52,19 @@ export function ContextMenuTarget({
           const zoom = currentPageZoom()
           onOpen({ kind: 'point', x: event.clientX / zoom, y: event.clientY / zoom })
         }}
+        {...(onDoublePress === undefined
+          ? {}
+          : {
+              // The second press of a double-click selects the word under it, before the
+              // double-click is reported: stopped here, so the double-click finds none selected.
+              onMouseDown: (event: MouseEvent) => {
+                if (event.detail === 2 && !selectsText() && !onControl(event))
+                  event.preventDefault()
+              },
+              onDoubleClick: (event: MouseEvent) => {
+                if (!selectsText() && !onControl(event)) onDoublePress()
+              },
+            })}
       >
         {children}
       </YStack>

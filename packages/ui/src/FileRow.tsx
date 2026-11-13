@@ -18,8 +18,10 @@ import { fileFormat, fileGlyph, nameDirection } from './attachmentFile'
 import {
   fileRowAccessibleName,
   fileRowActions,
+  fileRowAnswers,
   listedFileRowActions,
   type FileRowAction,
+  type FileRowReply,
 } from './fileRowAccessibility'
 import {
   FILE_GLYPH_SIDE,
@@ -112,6 +114,11 @@ export type FileRowProps = WithFilename &
      * in the footer. Absent means the control is drawn.
      */
     hasControl?: boolean | undefined
+    /**
+     * Reply to the row's message, for a screen reader on native, where the row is one element and
+     * its actions are all a reader can reach: listed after the row's own, never in place of them.
+     */
+    reply?: FileRowReply | undefined
   }
 
 /**
@@ -128,12 +135,14 @@ const CAPTION_BIDI = isWeb ? ({ unicodeBidi: 'plaintext' } as const) : undefined
 function nativeRowElement({
   name,
   actions,
+  reply,
   pressable,
   held,
   progress,
 }: {
   name: string
   actions: FileRowAction[]
+  reply: FileRowReply | undefined
   pressable: boolean
   held: boolean
   progress: number | undefined
@@ -156,11 +165,14 @@ function nativeRowElement({
     // iOS's double-tap calls this alone; without it VoiceOver taps the row's middle, which has no
     // press when the verb is the control's.
     ...(activate === undefined ? {} : { onAccessibilityTap: activate.run }),
-    accessibilityActions: listedFileRowActions(actions, Platform.OS).map(
+    accessibilityActions: fileRowAnswers(listedFileRowActions(actions, Platform.OS), reply).map(
       ({ name: action, label }) => ({ name: action, label }),
     ),
     onAccessibilityAction: (event: { nativeEvent: { actionName: string } }) => {
-      actions.find((action) => action.name === event.nativeEvent.actionName)?.run()
+      const { actionName } = event.nativeEvent
+      fileRowAnswers(actions, reply)
+        .find((action) => action.name === actionName)
+        ?.run()
     },
   } as const
 }
@@ -294,6 +306,7 @@ export function FileRow({
   testIDs,
   onAccent = false,
   hasControl = true,
+  reply,
 }: FileRowProps) {
   const format = fileFormat(filename)
   // On the name and the caption together, so the two share an edge.
@@ -356,6 +369,7 @@ export function FileRow({
       {...nativeRowElement({
         name: fileRowAccessibleName(filename, format, caption),
         actions,
+        reply,
         pressable: onPress !== undefined,
         held,
         progress,

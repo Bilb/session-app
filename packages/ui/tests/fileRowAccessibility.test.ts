@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   fileRowAccessibleName,
   fileRowActions,
+  fileRowAnswers,
   listedFileRowActions,
 } from '#src/fileRowAccessibility'
 
@@ -82,5 +83,43 @@ describe('the actions a file row lists as custom ones', () => {
   it('lists nothing on iOS for a failed send, whose Retry is the double-tap', () => {
     const retry = fileRowActions({ onAction: noop, actionLabel: 'Retry' })
     expect(listedFileRowActions(retry, 'ios')).toEqual([])
+  })
+})
+
+describe('Reply among a file row’s actions', () => {
+  const verbs = () =>
+    fileRowActions({
+      onPress: noop,
+      pressLabel: 'Open',
+      onAction: noop,
+      actionLabel: 'Export',
+    })
+
+  it('is listed after the row’s own verbs, which all stay', () => {
+    let replied = 0
+    const reply = { label: 'Reply', run: () => (replied += 1) }
+    const answers = fileRowAnswers(verbs(), reply)
+    expect(answers.map(({ name, label }) => [name, label])).toEqual([
+      ['activate', 'Open'],
+      ['control', 'Export'],
+      ['reply', 'Reply'],
+    ])
+    answers.find(({ name }) => name === 'reply')?.run()
+    expect(replied).toBe(1)
+  })
+
+  it('is listed on iOS too, where the activation is not', () => {
+    const listed = fileRowAnswers(listedFileRowActions(verbs(), 'ios'), {
+      label: 'Reply',
+      run: noop,
+    })
+    expect(listed.map(({ name }) => name)).toEqual(['control', 'reply'])
+  })
+
+  it('is absent for a message that cannot be answered', () => {
+    expect(fileRowAnswers(verbs(), undefined).map(({ name }) => name)).toEqual([
+      'activate',
+      'control',
+    ])
   })
 })

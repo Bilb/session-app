@@ -16,5 +16,10 @@ export interface ContextMenuTargetProps {
    */
   alignSelf?: 'flex-start' | 'flex-end' | undefined
   maxWidth?: number | `${number}%` | undefined
+  /**
+   * A double-click on it with no text selected, which then selects none. The desktop's pointer
+   * only: a finger's double tap is not offered.
+   */
+  onDoublePress?: (() => void) | undefined
   children: ReactNode
 }
