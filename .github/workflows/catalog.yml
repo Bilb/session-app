@@ -81,6 +81,9 @@ jobs:
         env:
           ARGOS_API_BASE_URL: ${{ vars.ARGOS_API_BASE_URL }}
           ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}
+          # A stacked pull request compares with the build of the one below it, which Argos
+          # otherwise passes over until it is approved.
+          ARGOS_REFERENCE_COMMIT: ${{ github.event_name == 'pull_request' && github.base_ref != github.event.repository.default_branch && github.event.pull_request.base.sha || '' }}
           # Node gives each address family 250ms to connect; a burst of uploads to a server
           # 250ms away times out on every one, so allow longer.
           NODE_OPTIONS: --network-family-autoselection-attempt-timeout=2000
