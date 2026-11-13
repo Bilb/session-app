@@ -15,6 +15,8 @@ import {
 } from '@session/ui'
 import { useState } from 'react'
 
+import { ToastLayer } from '../ToastLayer'
+
 type ShareableQrCodeProps = Pick<
   QrCodeProps,
   'value' | 'sizePx' | 'accessibilityLabel' | 'testID'
@@ -76,6 +78,7 @@ export function ShareableQrCode({
           {() => qr}
         </PressArea>
         <QrViewer
+          toasts={<ToastLayer />}
           value={fullScreen ? value : null}
           logo={logo}
           onClose={() => {
@@ -123,6 +126,7 @@ export function ShareableQrCode({
         </PressArea>
       </ContextMenuTarget>
       <QrViewer
+        toasts={<ToastLayer />}
         value={fullScreen ? value : null}
         logo={logo}
         onClose={() => {

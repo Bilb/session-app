@@ -76,15 +76,23 @@ export function FullScreenBar({
 export function FullScreenModal({
   open,
   onClose,
+  toasts,
   children,
 }: {
   open: boolean
   onClose: () => void
+  /**
+   * The toast layer, drawn inside on Android only. There the modal is a window of its own over the
+   * app's, and toasts drawn in the app's would be hidden behind it until it closed. iOS lifts the
+   * app's toasts above every window, and the desktop draws them above its modals.
+   */
+  toasts?: ReactNode | undefined
   children: ReactNode
 }) {
   return (
     <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={onClose}>
       {children}
+      {Platform.OS === 'android' ? toasts : null}
     </NativeModal>
   )
 }

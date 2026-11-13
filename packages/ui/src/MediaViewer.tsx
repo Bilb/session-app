@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import type { ElementId } from '@session/test-ids'
@@ -46,9 +46,11 @@ export interface MediaViewerProps {
   imageTestID: ElementId
   /** On the line saying an item is being prepared. */
   preparingTestID?: ElementId | undefined
+  /** See `FullScreenModal`'s: so an export failure is seen while the picture is still up. */
+  toasts?: ReactNode | undefined
 }
 
-export type MediaViewerBodyProps = Omit<MediaViewerProps, 'open'>
+export type MediaViewerBodyProps = Omit<MediaViewerProps, 'open' | 'toasts'>
 
 /**
  * Grows a chevron drawn at `$xl` to Android's 48 target, which clears Apple's 44. Touch only, and
@@ -263,7 +265,7 @@ export function MediaViewerBody({
  * Each opening draws a fresh body, so a picture that failed is tried again. The body stays mounted
  * once closed, which is what `FullScreenModal` asks of its content.
  */
-export function MediaViewer({ open, onClose, ...body }: MediaViewerProps) {
+export function MediaViewer({ open, onClose, toasts, ...body }: MediaViewerProps) {
   const [opening, setOpening] = useState(0)
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
@@ -271,7 +273,7 @@ export function MediaViewer({ open, onClose, ...body }: MediaViewerProps) {
     if (open) setOpening((count) => count + 1)
   }
   return (
-    <FullScreenModal open={open} onClose={onClose}>
+    <FullScreenModal open={open} onClose={onClose} toasts={toasts}>
       <MediaViewerBody key={opening} {...body} onClose={onClose} />
     </FullScreenModal>
   )

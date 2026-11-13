@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { YStack } from 'tamagui'
 
 import { Button } from './Button'
@@ -46,6 +46,8 @@ export interface QrViewerProps {
   /** Opened on the code with a right-click or a long press; omitted where it offers nothing. */
   menu?: QrViewerMenu | undefined
   action?: QrViewerAction | undefined
+  /** See `FullScreenModal`'s: so a Save or Share failure is seen while the code is still up. */
+  toasts?: ReactNode | undefined
   testID?: string | undefined
 }
 
@@ -151,6 +153,7 @@ export function QrViewer({
   closeTestID,
   menu,
   action,
+  toasts,
   testID,
 }: QrViewerProps) {
   const window = useWindowSize()
@@ -161,7 +164,7 @@ export function QrViewer({
   if (value !== null && value !== drawn) setDrawn(value)
 
   return (
-    <FullScreenModal open={value !== null} onClose={onClose}>
+    <FullScreenModal open={value !== null} onClose={onClose} toasts={toasts}>
       {drawn === null ? null : (
         <QrViewerBody
           value={drawn}
