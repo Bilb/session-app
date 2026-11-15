@@ -14,6 +14,7 @@ import {
 function path(over: Partial<NetworkPath> & { remoteHex: string }): NetworkPath {
   return {
     destination: 'storageNode',
+    standby: false,
     hops: [
       { pubkeyHex: 'e1', country: 'DE' },
       { pubkeyHex: 'r1', country: 'US' },
@@ -123,6 +124,47 @@ describe('trackSnapshot', () => {
       1_000,
     )
     expect(inUse(tracker, IN_USE_MS * 10).map((p) => p.key)).toEqual(['s', 'f'])
+  })
+})
+
+describe('standby paths', () => {
+  const spare = (over: Partial<NetworkPath> & { remoteHex: string }) =>
+    path({ standby: true, hops: [{ pubkeyHex: 'e7', country: 'SG' }], ...over })
+
+  it("take their session's kind and are drawn while it is in use", () => {
+    const { tracker } = seen(
+      snap(
+        path({ remoteHex: 's', destination: 'ownSwarm' }),
+        spare({ remoteHex: 's', destination: 'ownSwarm' }),
+        path({ remoteHex: 'c', requestsSent: 1, proxiedRequestsSent: 1 }),
+        spare({ remoteHex: 'c' }),
+        path({ remoteHex: 'idle' }),
+        spare({ remoteHex: 'idle' }),
+      ),
+    )
+    expect(inUse(tracker, 0).map((p) => [p.key, p.kind, p.standby])).toEqual([
+      ['s', 'swarm', false],
+      ['s~1', 'swarm', true],
+      ['c', 'community', false],
+      ['c~1', 'community', true],
+    ])
+  })
+
+  it('counts a build when a route is new to its remote, not when the spare takes over', () => {
+    const current = path({ remoteHex: 'a' })
+    const standby = spare({ remoteHex: 'a' })
+    const first = trackSnapshot(EMPTY_TRACKER, snap(current, standby), 0, 1_000)
+    // The spare becomes current, and a new spare is built: one build, not two.
+    const swapped = trackSnapshot(
+      first.tracker,
+      snap(
+        { ...current, hops: standby.hops },
+        spare({ remoteHex: 'a', hops: [{ pubkeyHex: 'e8', country: 'JP' }] }),
+      ),
+      1_000,
+      1_000,
+    )
+    expect(swapped.tracker.rebuilt).toBe(1)
   })
 })
 

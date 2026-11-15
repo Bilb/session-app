@@ -26,7 +26,12 @@ export const BUSY_REQUESTS = 4
 export type PathKind = 'swarm' | 'node' | 'community' | 'file'
 
 export interface TrackedPath {
+  /** The remote for its current path; the remote and a number for a standby one. */
   key: string
+  /** The remote, which its current and standby paths share. */
+  sessionKey: string
+  /** Held ready to switch to, carrying nothing but pings. */
+  standby: boolean
   kind: PathKind
   /** A country per column after "you": entry, relay, relay, destination (`FS` the file server). */
   countries: (string | null)[]
@@ -109,15 +114,41 @@ export function trackSnapshot(
   let rebuilt = tracker.rebuilt
   let seq = tracker.seq
 
-  const ordered = [...snapshot.paths].sort(
-    (a, b) => KIND_ORDER[kindOf(a)] - KIND_ORDER[kindOf(b)] || (a.remoteHex < b.remoteHex ? -1 : 1),
+  // A standby path is the same kind as its session's current one, which alone carries requests.
+  const sessionKinds = new Map(
+    snapshot.paths.filter((p) => !p.standby).map((p) => [p.remoteHex, kindOf(p)]),
   )
+  const kindFor = (path: NetworkPath) =>
+    sessionKinds.get(path.remoteHex) ?? (path.standby ? 'node' : kindOf(path))
+  const ordered = [...snapshot.paths].sort(
+    (a, b) =>
+      KIND_ORDER[kindFor(a)] - KIND_ORDER[kindFor(b)] ||
+      (a.remoteHex < b.remoteHex ? -1 : a.remoteHex > b.remoteHex ? 1 : 0) ||
+      Number(a.standby) - Number(b.standby),
+  )
+  // Every route each remote had last time, so a path that moves from standby to current is not
+  // taken for a new one; a route the remote has not had before is a build.
+  const routesBefore = new Map<string, Set<string>>()
+  for (const p of tracker.paths) {
+    const sig = tracker.hopSignatures.get(p.key)
+    if (sig === undefined) continue
+    const set = routesBefore.get(p.sessionKey) ?? new Set<string>()
+    set.add(sig)
+    routesBefore.set(p.sessionKey, set)
+  }
+  const standbyCount = new Map<string, number>()
   const paths = ordered.map((path): TrackedPath => {
-    const key = path.remoteHex
+    let key = path.remoteHex
+    if (path.standby) {
+      const n = (standbyCount.get(path.remoteHex) ?? 0) + 1
+      standbyCount.set(path.remoteHex, n)
+      key = `${path.remoteHex}~${n}`
+    }
     const signature = path.hops.map((hop) => hop.pubkeyHex).join(',')
     const before = tracker.hopSignatures.get(key)
     const replaced = before !== undefined && before !== signature
-    if (replaced) rebuilt += 1
+    const routes = routesBefore.get(path.remoteHex)
+    if (!first && routes !== undefined && !routes.has(signature)) rebuilt += 1
     hopSignatures.set(key, signature)
 
     totals.set(key, path.requestsSent)
@@ -146,7 +177,9 @@ export function trackSnapshot(
 
     return {
       key,
-      kind: kindOf(path),
+      sessionKey: path.remoteHex,
+      standby: path.standby,
+      kind: kindFor(path),
       countries: countriesOf(path),
       entryHex: path.hops[0]?.pubkeyHex ?? null,
       latencyMs: path.latencyMs,
@@ -184,15 +217,18 @@ export function trackSnapshot(
 }
 
 /**
- * The paths in use: any that carried a request in the last minute, and always the paths to your
- * own swarm and to the file server, which the client keeps for as long as it holds them open.
+ * The paths in use: those of any session that carried a request in the last minute, standby ones
+ * included, and always the paths to your own swarm and to the file server, which the client keeps
+ * for as long as it holds them open.
  */
 export function inUse(tracker: PathTracker, nowMs: number): TrackedPath[] {
+  const busy = new Set(
+    tracker.paths
+      .filter((p) => p.lastRequestAtMs !== null && nowMs - p.lastRequestAtMs < IN_USE_MS)
+      .map((p) => p.sessionKey),
+  )
   return tracker.paths.filter(
-    (p) =>
-      p.kind === 'swarm' ||
-      p.kind === 'file' ||
-      (p.lastRequestAtMs !== null && nowMs - p.lastRequestAtMs < IN_USE_MS),
+    (p) => p.kind === 'swarm' || p.kind === 'file' || busy.has(p.sessionKey),
   )
 }
 

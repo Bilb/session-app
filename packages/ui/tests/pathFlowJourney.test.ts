@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { journeyAt, journeyOf, NODE_HOLD_MS, ringsAt } from '#src/pathFlowJourney'
+import { FLOW_SIDE, layoutPathFlow, pointAlong } from '#src/pathFlowLayout'
 
 const HOP = 300
 
@@ -34,5 +35,18 @@ describe('journeyOf', () => {
     const j = journeyOf(HOP, 4, false)
     expect(j.totalMs).toBe(8 * HOP)
     expect(j.rings).toEqual([])
+  })
+})
+
+describe('pointAlong', () => {
+  it('stops a request in the middle of each bar, and runs the line between their edges', () => {
+    const layout = layoutPathFlow([{ key: 'p', countries: ['DE', 'US', 'FI', 'DE'] }], 380, 190, 72)
+    const pts = layout.points.get('p') ?? []
+    for (let h = 0; h <= 4; h += 1) {
+      const [x] = pointAlong(pts, h, layout.barWidth)
+      expect(x).toBeCloseTo((layout.columnX[h] ?? 0) + layout.barWidth / 2)
+    }
+    // The destination's title ends at the right margin, and its bar sits under the title's start.
+    expect(layout.columnX[4]).toBe(380 - FLOW_SIDE - 72)
   })
 })

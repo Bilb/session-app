@@ -190,7 +190,10 @@ describe('screen copy', () => {
       'onionRoutingPathRelay',
       'onionRoutingPathHighlightLatest',
       'onionRoutingPathHighlightBusy',
-      'onionRoutingPathWaiting',
+      'onionRoutingPathBuilding',
+      'onionRoutingPathFileServer',
+      'onionRoutingPathYourMessages',
+      'onionRoutingPathContactsGroups',
     ])
   })
 })

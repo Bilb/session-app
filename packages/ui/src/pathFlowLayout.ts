@@ -35,12 +35,16 @@ export interface FlowLayout {
 
 export const FLOW_COLUMNS = 5
 const BAR_WIDTH = 5
-const SIDE = 14
+/** The drawing's margin at both sides: your bar starts it, the destination's title ends it. */
+export const FLOW_SIDE = 14
 /** Below the column titles. */
 const TOP = 40
 const BOTTOM = 14
-/** Room kept to the right of the last column for its labels. */
-const RIGHT_LABELS = 66
+/**
+ * The least room kept from the destination's bar to the right edge, for its labels. Its title ends
+ * at the edge, so a wider title moves the bar left to sit under the title's start.
+ */
+const MIN_LAST_ROOM = 66
 /**
  * The most height one path is given in a bar, so a few paths sit together in the middle of the
  * drawing rather than each taking a third of the column.
@@ -76,13 +80,19 @@ export function pathFlowHeight(width: number, pathCount: number): number {
   return Math.round(width * (pathCount <= 6 ? 0.5 : 0.95))
 }
 
+/**
+ * `lastTitleWidth` is how wide the destination's title is drawn: the columns between are spread
+ * evenly from your bar to the destination's, so each relay's bar can sit under its title's middle.
+ */
 export function layoutPathFlow(
   paths: readonly FlowPathInput[],
   width: number,
   height: number,
+  lastTitleWidth = 0,
 ): FlowLayout {
-  const step = Math.max(0, width - 2 * SIDE - BAR_WIDTH - RIGHT_LABELS) / (FLOW_COLUMNS - 1)
-  const columnX = Array.from({ length: FLOW_COLUMNS }, (_, k) => SIDE + k * step)
+  const lastX = width - FLOW_SIDE - Math.max(lastTitleWidth, MIN_LAST_ROOM)
+  const step = Math.max(0, lastX - FLOW_SIDE) / (FLOW_COLUMNS - 1)
+  const columnX = Array.from({ length: FLOW_COLUMNS }, (_, k) => FLOW_SIDE + k * step)
   const avail = Math.max(1, height - TOP - BOTTOM)
   const points = new Map<string, Array<readonly [number, number]>>()
   for (const p of paths) points.set(p.key, [])
@@ -130,7 +140,10 @@ export function layoutPathFlow(
   return { width, columnX, barWidth: BAR_WIDTH, bars, points }
 }
 
-/** The cubic between two columns' points, which every line and packet follows. */
+/**
+ * The cubic between two columns' points, from the right edge of one bar to the left edge of the
+ * next, which every line follows.
+ */
 export function flowSegment(
   a: readonly [number, number],
   b: readonly [number, number],
@@ -141,7 +154,23 @@ export function flowSegment(
   return [ax, a[1], mx, a[1], mx, b[1], b[0], b[1]]
 }
 
-/** A point on a path's line, `h` hops along it (0 at you, 4 at the destination). */
+function cubicAt([x0, y0, x1, y1, x2, y2, x3, y3]: readonly number[], t: number): [number, number] {
+  const u = 1 - t
+  const a = u * u * u
+  const b = 3 * u * u * t
+  const c = 3 * u * t * t
+  const d = t * t * t
+  return [
+    a * (x0 ?? 0) + b * (x1 ?? 0) + c * (x2 ?? 0) + d * (x3 ?? 0),
+    a * (y0 ?? 0) + b * (y1 ?? 0) + c * (y2 ?? 0) + d * (y3 ?? 0),
+  ]
+}
+
+/**
+ * A point on a path, `h` hops along it (0 at you, 4 at the destination). A whole `h` is the middle
+ * of that column's bar, where a request stops: it crosses half the bar, follows the line, then
+ * crosses half the next.
+ */
 export function pointAlong(
   pts: readonly (readonly [number, number])[],
   h: number,
@@ -153,11 +182,11 @@ export function pointAlong(
   const t = clamped - i
   const a = pts[i]
   const b = pts[i + 1]
-  if (!a || !b) return [pts[0]?.[0] ?? 0, pts[0]?.[1] ?? 0]
-  const [x0, y0, x1, y1, x2, y2, x3, y3] = flowSegment(a, b, barWidth)
-  const u = 1 - t
-  return [
-    u * u * u * x0 + 3 * u * u * t * x1 + 3 * u * t * t * x2 + t * t * t * x3,
-    u * u * u * y0 + 3 * u * u * t * y1 + 3 * u * t * t * y2 + t * t * t * y3,
-  ]
+  if (!a || !b) return [(pts[0]?.[0] ?? 0) + barWidth / 2, pts[0]?.[1] ?? 0]
+  const half = barWidth / 2
+  const span = Math.max(1, b[0] - a[0])
+  const d = t * span
+  if (d <= half) return [a[0] + half + d, a[1]]
+  if (d >= span - half) return [b[0] + d - (span - half), b[1]]
+  return cubicAt(flowSegment(a, b, barWidth), (d - half) / Math.max(1, span - barWidth))
 }

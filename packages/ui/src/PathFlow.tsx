@@ -10,21 +10,23 @@ import Svg, {
   Stop,
   Text as SvgText,
 } from 'react-native-svg'
-import { YStack } from 'tamagui'
+import { XStack, YStack } from 'tamagui'
 
 import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 
 import { BODY_FACE } from './bodyFace'
 import { BODY_FONT_FAMILY } from './config'
 import { FACE_WEIGHTS } from './faceWeights'
-import { journeyAt, journeyOf, ringsAt, type Journey } from './pathFlowJourney'
+import { journeyAt, journeyOf, RING_MS, ringsAt, type Journey } from './pathFlowJourney'
 import {
+  FLOW_SIDE,
   flowSegment,
   layoutPathFlow,
   pathFlowHeight,
   pointAlong,
   type FlowLayout,
 } from './pathFlowLayout'
+import { Text } from './Text'
 import { useReducedMotion } from './useReducedMotion'
 import { useTokenColor } from './useTokenColor'
 
@@ -38,6 +40,8 @@ export interface PathFlowPath {
   countries: readonly (string | null)[]
   /** Drawn bright: a request is moving along it, or it carried the latest one. */
   lit: boolean
+  /** A spare held ready for the same destination, carrying only pings: drawn dashed. */
+  standby?: boolean | undefined
 }
 
 /**
@@ -65,6 +69,10 @@ export interface PathFlowProps {
    * not fit before the next column, the bar is labelled with the code instead.
    */
   labelFor: (country: string) => string
+  /** What each colour means, under the drawing; a kind with no path drawn is left out. */
+  kindLabels: Readonly<Record<PathFlowKind, string>>
+  /** Shown while there is no path yet, over a drawing of one being built. */
+  buildingLabel: string
   testID?: string | undefined
 }
 
@@ -116,11 +124,29 @@ function textWidth(text: string): number {
   return text.length * 5.8
 }
 
+/** The same for a column title, in capitals, which run wider. */
+function titleWidth(text: string): number {
+  return text.length * 6.6
+}
+
+/** Where a title is drawn: your column's from the left margin, the destination's to the right. */
+function titlePlace(
+  layout: FlowLayout,
+  column: number,
+): { x: number; textAnchor: 'start' | 'middle' | 'end' } {
+  const x = layout.columnX[column] ?? 0
+  if (column === 0) return { x, textAnchor: 'start' }
+  if (column === layout.columnX.length - 1)
+    return { x: layout.width - FLOW_SIDE, textAnchor: 'end' }
+  return { x: x + layout.barWidth / 2, textAnchor: 'middle' }
+}
+
 function linePath(pts: readonly (readonly [number, number])[], barWidth: number): string {
   const first = pts[0]
   const last = pts[pts.length - 1]
   if (!first || !last) return ''
-  let d = `M${first[0]},${first[1]}`
+  // From the right edge of your bar to the left edge of the destination's: neither is crossed.
+  let d = `M${first[0] + barWidth},${first[1]}`
   for (let i = 0; i + 1 < pts.length; i += 1) {
     const a = pts[i]
     const b = pts[i + 1]
@@ -128,8 +154,7 @@ function linePath(pts: readonly (readonly [number, number])[], barWidth: number)
     const [x0, y0, x1, y1, x2, y2, x3, y3] = flowSegment(a, b, barWidth)
     d += ` L${x0},${y0} C${x1},${y1} ${x2},${y2} ${x3},${y3}`
   }
-  // Across the destination's bar, so the line meets its far side as it left your near one.
-  return `${d} L${last[0] + barWidth},${last[1]}`
+  return d
 }
 
 interface StaticLayerProps {
@@ -155,11 +180,41 @@ function barLabel(
   const xLast = layout.columnX[layout.columnX.length - 1] ?? 0
   const room =
     column === layout.columnX.length - 1
-      ? layout.width - xLast - layout.barWidth - 12
+      ? layout.width - FLOW_SIDE - xLast - layout.barWidth - 5
       : x1 - x0 - layout.barWidth - 12
   const suffix = count > 1 ? ` ${count}` : ''
   const full = `${labelFor(country)}${suffix}`
   return textWidth(full) <= room ? full : `${country}${suffix}`
+}
+
+function Titles({
+  layout,
+  columnTitles,
+  color,
+}: {
+  layout: FlowLayout
+  columnTitles: PathFlowProps['columnTitles']
+  color: string
+}) {
+  return (
+    <G>
+      {columnTitles.map((title, k) => {
+        const place = titlePlace(layout, k)
+        return (
+          <SvgText
+            key={title + k}
+            x={place.x}
+            textAnchor={place.textAnchor}
+            y={TITLE_Y}
+            fill={color}
+            {...SVG_FONT}
+          >
+            {title.toUpperCase()}
+          </SvgText>
+        )
+      })}
+    </G>
+  )
 }
 
 /** Bars, labels and lines: redrawn only when the paths change, never per frame. */
@@ -178,17 +233,7 @@ const StaticLayer = memo(function StaticLayer({
   const ordered = [...paths].sort((a, b) => Number(a.lit) - Number(b.lit))
   return (
     <G>
-      {columnTitles.map((title, k) => (
-        <SvgText
-          key={title + k}
-          x={layout.columnX[k] ?? 0}
-          y={TITLE_Y}
-          fill={titleColor}
-          {...SVG_FONT}
-        >
-          {title.toUpperCase()}
-        </SvgText>
-      ))}
+      <Titles layout={layout} columnTitles={columnTitles} color={titleColor} />
       {ordered.map((p) => {
         const pts = layout.points.get(p.key)
         if (!pts) return null
@@ -200,6 +245,7 @@ const StaticLayer = memo(function StaticLayer({
             strokeOpacity={p.lit ? 0.95 : many ? 0.22 : 0.4}
             strokeWidth={p.lit ? 2.2 : many ? 1 : 1.5}
             strokeLinecap="round"
+            {...(p.standby === true && !p.lit ? { strokeDasharray: '3 4' } : {})}
             fill="none"
           />
         )
@@ -278,7 +324,8 @@ function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }:
     }
     return list
   }, [paths, packets, onionLayers])
-  const live = flights.some((f) => now < f.packet.startMs + f.journey.totalMs)
+  // Until the last ring has faded too: stopping with the request leaves the ring drawn.
+  const live = flights.some((f) => now < f.packet.startMs + f.journey.totalMs + RING_MS)
   useEffect(() => {
     if (!live) return
     let frame = 0
@@ -369,6 +416,118 @@ function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }:
   )
 }
 
+/** One pass of the building drawing: the line reaching the destination, then a pause. */
+const BUILD_CYCLE_MS = 2_800
+/** The share of a pass spent drawing the line; the rest it stays drawn. */
+const BUILD_DRAW_SHARE = 0.75
+const BUILD_STEP = 0.05
+/** The single path the building drawing is laid out as, so it sits where one path would. */
+const BUILDING_PATH = [{ key: 'building', countries: [null, null, null, null] }]
+
+interface BuildingLayerProps {
+  layout: FlowLayout
+  columnTitles: PathFlowProps['columnTitles']
+  label: string
+  barColor: string
+  titleColor: string
+  glowId: string
+  still: boolean
+}
+
+/**
+ * No path yet: a line being drawn from you to the destination, a column at a time, over and over,
+ * with what is happening said beneath it. Still, the line is drawn whole and faint.
+ */
+function BuildingLayer({
+  layout,
+  columnTitles,
+  label,
+  barColor,
+  titleColor,
+  glowId,
+  still,
+}: BuildingLayerProps) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (still) return
+    let frame = 0
+    const tick = () => {
+      setNow(Date.now())
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [still])
+  const pts = layout.points.get('building')
+  if (!pts) return null
+  const last = pts.length - 1
+  const progress = (now % BUILD_CYCLE_MS) / BUILD_CYCLE_MS
+  const reach = still ? last : Math.min(1, progress / BUILD_DRAW_SHARE) * last
+  const drawn: [number, number][] = []
+  for (let h = 0; h < reach; h += BUILD_STEP) drawn.push(pointAlong(pts, h, layout.barWidth))
+  drawn.push(pointAlong(pts, reach, layout.barWidth))
+  const [hx, hy] = pointAlong(pts, reach, layout.barWidth)
+  const y = pts[0]?.[1] ?? 0
+  return (
+    <G>
+      <Titles layout={layout} columnTitles={columnTitles} color={titleColor} />
+      <Path
+        d={drawn.map(([x, py], i) => `${i === 0 ? 'M' : 'L'}${x},${py}`).join(' ')}
+        stroke={KIND_COLOR.swarm}
+        strokeOpacity={still ? 0.4 : 0.7}
+        strokeWidth={1.5}
+        strokeDasharray="3 4"
+        fill="none"
+      />
+      {pts.map(([x], k) => (
+        <Rect
+          key={k}
+          x={x}
+          y={y - layout.barWidth - 1}
+          width={layout.barWidth}
+          height={layout.barWidth * 2 + 2}
+          rx={2.5}
+          fill={barColor}
+          fillOpacity={reach >= k ? 0.75 : 0.2}
+        />
+      ))}
+      {still ? null : <Circle cx={hx} cy={hy} r={8} fill={`url(#${glowId})`} />}
+      <SvgText x={layout.width / 2} y={y + 34} textAnchor="middle" fill={titleColor} {...SVG_FONT}>
+        {label}
+      </SvgText>
+    </G>
+  )
+}
+
+/** A dot of each colour drawn, and what it means. */
+function Legend({
+  paths,
+  kindLabels,
+}: {
+  paths: readonly PathFlowPath[]
+  kindLabels: PathFlowProps['kindLabels']
+}) {
+  const shown = KINDS.filter((kind) => paths.some((p) => p.kind === kind))
+  if (shown.length === 0) return null
+  return (
+    <XStack flexWrap="wrap" columnGap="$sm" rowGap="$2xs" paddingHorizontal="$2xs">
+      {shown.map((kind) => (
+        <XStack key={kind} alignItems="center" gap="$2xs">
+          <YStack
+            width="$xxs"
+            height="$xxs"
+            borderRadius="$full"
+            backgroundColor={KIND_COLOR[kind]}
+          />
+          <Text size="$label" tone="secondary">
+            {kindLabels[kind]}
+          </Text>
+        </XStack>
+      ))}
+    </XStack>
+  )
+}
+
 /**
  * The country flow: every drawn path as a line from you through the country of each relay to the
  * destination, with each request travelling its path and back, on a card of its own.
@@ -382,6 +541,8 @@ export function PathFlow({
   onionLayers,
   columnTitles,
   labelFor,
+  kindLabels,
+  buildingLabel,
   testID,
 }: PathFlowProps) {
   const still = useReducedMotion()
@@ -392,61 +553,81 @@ export function PathFlow({
   const plateColor = useTokenColor('$backgroundSecondary')
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
-  const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, paths.length) : 0
+  const building = paths.length === 0
+  // Building takes the room one path would, so the page does not move when the first arrives.
+  const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(1, paths.length)) : 0
+  const lastTitleWidth = titleWidth(columnTitles[4])
   const layout = useMemo(
     () =>
       layoutPathFlow(
-        paths.map((p) => ({ key: p.key, countries: p.countries })),
+        building ? BUILDING_PATH : paths.map((p) => ({ key: p.key, countries: p.countries })),
         widthPx,
         heightPx,
+        lastTitleWidth,
       ),
-    [paths, widthPx, heightPx],
+    [building, paths, widthPx, heightPx, lastTitleWidth],
   )
   const glowId = (kind: PathFlowKind) => `pathflow${idBase}${kind}`
   return (
-    <YStack
-      alignSelf="stretch"
-      minHeight={heightPx}
-      borderRadius="$lg"
-      overflow="hidden"
-      backgroundColor="$backgroundSecondary"
-      onLayout={(event: LayoutChangeEvent) => setWidthPx(event.nativeEvent.layout.width)}
-      testID={testID}
-    >
-      {widthPx > 0 ? (
-        <Svg width={widthPx} height={heightPx}>
-          <Defs>
-            {KINDS.map((kind) => (
-              // A request's glow: white at its heart, its path's colour, then nothing.
-              <RadialGradient key={kind} id={glowId(kind)} cx="50%" cy="50%" r="50%">
-                <Stop offset="0" stopColor={COLORS.WHITE} stopOpacity={1} />
-                <Stop offset="0.18" stopColor={KIND_COLOR[kind]} stopOpacity={1} />
-                <Stop offset="1" stopColor={KIND_COLOR[kind]} stopOpacity={0} />
-              </RadialGradient>
-            ))}
-          </Defs>
-          <StaticLayer
-            layout={layout}
-            paths={paths}
-            columnTitles={columnTitles}
-            labelFor={labelFor}
-            barColor={barColor}
-            labelColor={labelColor}
-            titleColor={titleColor}
-            plateColor={plateColor}
-          />
-          {still ? null : (
-            <PacketLayer
-              layout={layout}
-              paths={paths}
-              packets={packets}
-              onionLayers={onionLayers}
-              ringColor={labelColor}
-              glowId={glowId}
-            />
-          )}
-        </Svg>
-      ) : null}
+    <YStack alignSelf="stretch" gap="$xs">
+      <YStack
+        alignSelf="stretch"
+        minHeight={heightPx}
+        borderRadius="$lg"
+        overflow="hidden"
+        backgroundColor="$backgroundSecondary"
+        onLayout={(event: LayoutChangeEvent) => setWidthPx(event.nativeEvent.layout.width)}
+        testID={testID}
+      >
+        {widthPx > 0 ? (
+          <Svg width={widthPx} height={heightPx}>
+            <Defs>
+              {KINDS.map((kind) => (
+                // A request's glow: white at its heart, its path's colour, then nothing.
+                <RadialGradient key={kind} id={glowId(kind)} cx="50%" cy="50%" r="50%">
+                  <Stop offset="0" stopColor={COLORS.WHITE} stopOpacity={1} />
+                  <Stop offset="0.18" stopColor={KIND_COLOR[kind]} stopOpacity={1} />
+                  <Stop offset="1" stopColor={KIND_COLOR[kind]} stopOpacity={0} />
+                </RadialGradient>
+              ))}
+            </Defs>
+            {building ? (
+              <BuildingLayer
+                layout={layout}
+                columnTitles={columnTitles}
+                label={buildingLabel}
+                barColor={barColor}
+                titleColor={titleColor}
+                glowId={glowId('swarm')}
+                still={still}
+              />
+            ) : null}
+            {building ? null : (
+              <StaticLayer
+                layout={layout}
+                paths={paths}
+                columnTitles={columnTitles}
+                labelFor={labelFor}
+                barColor={barColor}
+                labelColor={labelColor}
+                titleColor={titleColor}
+                plateColor={plateColor}
+              />
+            )}
+            {still || building ? null : (
+              <PacketLayer
+                layout={layout}
+                paths={paths}
+                packets={packets}
+                onionLayers={onionLayers}
+                ringColor={labelColor}
+                glowId={glowId}
+              />
+            )}
+          </Svg>
+        ) : null}
+      </YStack>
+      <Legend paths={paths} kindLabels={kindLabels} />
     </YStack>
   )
 }

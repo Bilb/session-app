@@ -177,6 +177,15 @@ export const PENDING_COPY = {
   /** Which paths are drawn bright: the latest request's, or every path a request is moving on. */
   onionRoutingPathHighlightLatest: 'Latest request',
   onionRoutingPathHighlightBusy: 'Every busy path',
-  /** Shown before any path has carried a request since the screen opened. */
-  onionRoutingPathWaiting: 'Waiting for traffic',
+  /** Over the drawing of a path being built, before the client has any. */
+  onionRoutingPathBuilding: 'Building paths',
+  /** The flow's last column for a path to the file server, which lies past its last relay. */
+  onionRoutingPathFileServer: 'File server',
+  /**
+   * The flow's legend: what each colour of path is for. Your swarm's paths carry your own
+   * messages; other storage nodes' carry what goes to contacts and groups. Communities use the
+   * catalogue's `conversationsCommunities`.
+   */
+  onionRoutingPathYourMessages: 'Your messages',
+  onionRoutingPathContactsGroups: 'Contacts and groups',
 } as const

@@ -1,4 +1,4 @@
-import { PathFlow, type PathFlowPath } from '../../PathFlow'
+import { PathFlow, type PathFlowKind, type PathFlowPath } from '../../PathFlow'
 import { defineStory } from '../story'
 
 const TITLES = ['You', 'Entry', 'Relay', 'Relay', 'Destination'] as const
@@ -15,9 +15,21 @@ const NAMES: Record<string, string> = {
 
 const labelFor = (country: string) => NAMES[country] ?? country
 
-/** Shapes measured on mainnet: mostly Germany, the United States and Finland, a few elsewhere. */
-const ONE: PathFlowPath[] = [
+const KIND_LABELS: Record<PathFlowKind, string> = {
+  swarm: 'Your messages',
+  node: 'Contacts and groups',
+  community: 'Communities',
+  file: 'File server',
+}
+
+/**
+ * Shapes measured on mainnet: mostly Germany, the United States and Finland, a few elsewhere. Your
+ * swarm's current path, its standby, and the file server's.
+ */
+const QUIET: PathFlowPath[] = [
   { key: 'swarm', kind: 'swarm', countries: ['DE', 'US', 'FI', 'DE'], lit: true },
+  { key: 'swarm~1', kind: 'swarm', countries: ['FI', 'DE', 'US', 'DE'], lit: false, standby: true },
+  { key: 'f1', kind: 'file', countries: ['US', 'FI', 'DE', 'FS'], lit: false },
 ]
 
 const BUSY: PathFlowPath[] = [
@@ -39,7 +51,8 @@ const UNKNOWN: PathFlowPath[] = [
 
 /**
  * The country flow, still: the requests that travel it are motion, which a capture cannot hold.
- * Lit lines against faint ones, every kind's colour, and a bar for an unknown country.
+ * Lit lines against faint ones, a dashed standby, every kind's colour with its legend, a bar for an
+ * unknown country, and the drawing before any path is built.
  */
 export const pathFlow = defineStory<{ paths: PathFlowPath[] }>({
   component: 'pathFlow',
@@ -47,11 +60,20 @@ export const pathFlow = defineStory<{ paths: PathFlowPath[] }>({
   width: 390,
   sensitive: { theme: true },
   variants: {
-    one: { paths: ONE },
+    building: { paths: [] },
+    quiet: { paths: QUIET },
     busy: { paths: BUSY },
     unknown: { paths: UNKNOWN },
   },
   render: ({ paths }) => (
-    <PathFlow paths={paths} packets={[]} onionLayers columnTitles={TITLES} labelFor={labelFor} />
+    <PathFlow
+      paths={paths}
+      packets={[]}
+      onionLayers
+      columnTitles={TITLES}
+      labelFor={labelFor}
+      kindLabels={KIND_LABELS}
+      buildingLabel="Building paths"
+    />
   ),
 })

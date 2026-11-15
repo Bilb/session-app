@@ -23,6 +23,7 @@ import {
   inUse,
   pathStats,
   trackSnapshot,
+  type PathKind,
   type PathStats,
   type PathTracker,
 } from './pathActivity'
@@ -42,6 +43,16 @@ const PACKET_LIFE_MS = 30_000
 
 type Highlight = 'latest' | 'busy'
 
+/** What each colour of path is for, worded on each render so a language change reaches it. */
+function kindLabels(): Record<PathKind, string> {
+  return {
+    swarm: PENDING_COPY.onionRoutingPathYourMessages,
+    node: PENDING_COPY.onionRoutingPathContactsGroups,
+    community: tr('conversationsCommunities'),
+    file: PENDING_COPY.onionRoutingPathFileServer,
+  }
+}
+
 /** A country's name in the app's language where the platform knows it, else its code. */
 function makeLabeller(): (country: string) => string {
   let names: Intl.DisplayNames | null = null
@@ -52,7 +63,7 @@ function makeLabeller(): (country: string) => string {
   }
   return (country) => {
     if (country === '?') return tr('onionRoutingPathUnknownCountry')
-    if (country === 'FS') return 'File server'
+    if (country === 'FS') return PENDING_COPY.onionRoutingPathFileServer
     return names?.of(country) ?? country
   }
 }
@@ -229,6 +240,7 @@ export function PathPage() {
     key: p.key,
     kind: p.kind,
     countries: p.countries,
+    standby: p.standby,
     lit: highlight === 'busy' ? busy.has(p.key) || p.key === latestKey : p.key === latestKey,
   }))
   const stats = pathStats(tracker, nowMs)
@@ -238,29 +250,25 @@ export function PathPage() {
       <Text size="$body" tone="secondary">
         {PENDING_COPY.onionRoutingPathIntro}
       </Text>
-      {flowPaths.length === 0 ? (
-        <Text size="$body" tone="secondary">
-          {PENDING_COPY.onionRoutingPathWaiting}
-        </Text>
-      ) : (
-        <YStack gap="$xs">
-          <PathFlow
-            paths={flowPaths}
-            packets={packets.filter((p) => kinds.has(p.pathKey))}
-            onionLayers
-            columnTitles={[
-              tr('you'),
-              PENDING_COPY.onionRoutingPathEntry,
-              PENDING_COPY.onionRoutingPathRelay,
-              PENDING_COPY.onionRoutingPathRelay,
-              tr('onionRoutingPathDestination'),
-            ]}
-            labelFor={labelFor}
-            testID={ELEMENT.settings.pathFlow}
-          />
-          <StatsCard stats={stats} />
-        </YStack>
-      )}
+      <YStack gap="$xs">
+        <PathFlow
+          paths={flowPaths}
+          packets={packets.filter((p) => kinds.has(p.pathKey))}
+          onionLayers
+          columnTitles={[
+            tr('you'),
+            PENDING_COPY.onionRoutingPathEntry,
+            PENDING_COPY.onionRoutingPathRelay,
+            PENDING_COPY.onionRoutingPathRelay,
+            tr('onionRoutingPathDestination'),
+          ]}
+          labelFor={labelFor}
+          kindLabels={kindLabels()}
+          buildingLabel={PENDING_COPY.onionRoutingPathBuilding}
+          testID={ELEMENT.settings.pathFlow}
+        />
+        <StatsCard stats={stats} />
+      </YStack>
       <SettingsGroup>
         <SettingsRow
           label={tr('learnMore')}
