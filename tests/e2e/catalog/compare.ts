@@ -200,6 +200,9 @@ async function buildAndCapture(
       '--project',
       'catalog',
       '--reporter=line',
+      // A comparison needs the captures alone, not the pull request's check of the nightly layout.
+      '--grep-invert',
+      '@catalog-layout',
       `--global-timeout=${String(CAPTURE_LIMIT_MS[record.tier])}`,
     ],
     {
