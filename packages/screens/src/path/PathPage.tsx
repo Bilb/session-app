@@ -5,6 +5,7 @@ import { ELEMENT } from '@session/test-ids'
 import {
   Icon,
   PathFlow,
+  pathFlowTripMs,
   SettingsGroup,
   SettingsRow,
   Text,
@@ -36,6 +37,9 @@ const LEARN_MORE_URL = `${URLS.faq}/#onion-routing`
 /** How often the screen asks for a fresh snapshot while it is showing. */
 const POLL_MS = 1_000
 
+/** Anything that set off this long ago is home, however slow its path. */
+const PACKET_LIFE_MS = 30_000
+
 type Highlight = 'latest' | 'busy'
 
 /** A country's name in the app's language where the platform knows it, else its code. */
@@ -53,77 +57,111 @@ function makeLabeller(): (country: string) => string {
   }
 }
 
-function ms(value: number | null): string {
-  return value === null
-    ? '-'
-    : PENDING_COPY.onionRoutingPathMilliseconds.replace('{ms}', String(Math.round(value)))
+function ms(value: number | null, copy: string): string {
+  return value === null ? '-' : copy.replace('{ms}', String(Math.round(value)))
 }
 
-function Stat({ label, value, name }: { label: string; value: string; name: string }) {
+/** A figure over what it counts, a quarter of the card wide. */
+function Stat({
+  label,
+  value,
+  name,
+  timing,
+}: {
+  label: string
+  value: string
+  name: string
+  timing: boolean
+}) {
   return (
-    <YStack flexBasis="45%" flexGrow={1} gap="$3xs" testID={ELEMENT.settings.pathStat(name)}>
-      <Text size="$label" tone="secondary">
+    <YStack flex={1} flexBasis={0} minWidth={0} testID={ELEMENT.settings.pathStat(name)}>
+      {timing ? (
+        <Text size="$body" weight="semibold" fontFamily="$mono" numberOfLines={1}>
+          {value}
+        </Text>
+      ) : (
+        <Text size="$title" weight="bold" numberOfLines={1}>
+          {value}
+        </Text>
+      )}
+      <Text size="$caption" tone="secondary">
         {label}
       </Text>
-      <Text size="$heading">{value}</Text>
     </YStack>
   )
 }
 
+/** Two rows of four: what is in use, then how quickly it answers, under a rule. */
 function StatsCard({ stats }: { stats: PathStats }) {
   return (
-    <XStack
-      flexWrap="wrap"
-      rowGap="$md"
-      columnGap="$md"
-      padding="$md"
+    <YStack
+      gap="$xs"
+      paddingVertical="$xs"
+      paddingHorizontal="$sm"
       borderRadius="$md"
       backgroundColor="$backgroundSecondary"
     >
-      <Stat
-        name="in-use"
-        label={PENDING_COPY.onionRoutingPathsInUse}
-        value={String(stats.pathsInUse)}
-      />
-      <Stat
-        name="countries"
-        label={PENDING_COPY.onionRoutingPathCountries}
-        value={String(stats.countriesCrossed)}
-      />
-      <Stat
-        name="entry"
-        label={PENDING_COPY.onionRoutingPathEntryNodes}
-        value={String(stats.entryNodes)}
-      />
-      <Stat
-        name="rebuilt"
-        label={PENDING_COPY.onionRoutingPathRebuilt}
-        value={String(stats.rebuilt)}
-      />
-      <Stat
-        name="average"
-        label={PENDING_COPY.onionRoutingPathAverage}
-        value={ms(stats.averageMs)}
-      />
-      <Stat
-        name="fastest"
-        label={PENDING_COPY.onionRoutingPathFastest}
-        value={ms(stats.fastestMs)}
-      />
-      <Stat
-        name="slowest"
-        label={PENDING_COPY.onionRoutingPathSlowest}
-        value={ms(stats.slowestMs)}
-      />
-      <Stat name="jitter" label={PENDING_COPY.onionRoutingPathJitter} value={ms(stats.jitterMs)} />
-    </XStack>
+      <XStack gap="$2xs">
+        <Stat
+          name="in-use"
+          label={PENDING_COPY.onionRoutingPathsInUse}
+          value={String(stats.pathsInUse)}
+          timing={false}
+        />
+        <Stat
+          name="countries"
+          label={PENDING_COPY.onionRoutingPathCountries}
+          value={String(stats.countriesCrossed)}
+          timing={false}
+        />
+        <Stat
+          name="entry"
+          label={PENDING_COPY.onionRoutingPathEntryNodes}
+          value={String(stats.entryNodes)}
+          timing={false}
+        />
+        <Stat
+          name="rebuilt"
+          label={PENDING_COPY.onionRoutingPathRebuilt}
+          value={String(stats.rebuilt)}
+          timing={false}
+        />
+      </XStack>
+      <XStack gap="$2xs" borderTopWidth={1} borderColor="$separatorColor" paddingTop="$xs">
+        <Stat
+          name="average"
+          label={PENDING_COPY.onionRoutingPathAverage}
+          value={ms(stats.averageMs, PENDING_COPY.onionRoutingPathMilliseconds)}
+          timing
+        />
+        <Stat
+          name="fastest"
+          label={PENDING_COPY.onionRoutingPathFastest}
+          value={ms(stats.fastestMs, PENDING_COPY.onionRoutingPathMilliseconds)}
+          timing
+        />
+        <Stat
+          name="slowest"
+          label={PENDING_COPY.onionRoutingPathSlowest}
+          value={ms(stats.slowestMs, PENDING_COPY.onionRoutingPathMilliseconds)}
+          timing
+        />
+        <Stat
+          name="jitter"
+          label={PENDING_COPY.onionRoutingPathJitter}
+          value={ms(stats.jitterMs, PENDING_COPY.onionRoutingPathJitterMilliseconds)}
+          timing
+        />
+      </XStack>
+    </YStack>
   )
 }
 
 /**
  * Every path the client is using, drawn as a country flow: from you through the country of each
  * relay to the destination, with each request travelling its path and back at a speed taken from
- * that path's measured round trip. A child screen; the settings modal supplies the chrome.
+ * that path's measured round trip, and the router's pings as fainter traffic between them. A child
+ * screen; the settings modal supplies the chrome.
  *
  * Polls libsession once a second while open, and not at all otherwise.
  */
@@ -148,17 +186,18 @@ export function PathPage() {
       trackerRef.current = next
       setTracker(next)
       setNowMs(now)
+      const latest = requests.filter((r) => r.kind === 'request').at(-1)
+      if (latest) setLatestKey(latest.pathKey)
       if (requests.length > 0) {
         const latency = new Map(next.paths.map((p) => [p.key, p.latencyMs]))
-        setLatestKey(requests[requests.length - 1]?.pathKey ?? null)
         setPackets((was) => [
-          // Anything that set off over half a minute ago is home by now.
-          ...was.filter((p) => now - p.startMs < 30_000),
+          ...was.filter((p) => now - p.startMs < PACKET_LIFE_MS),
           ...requests.map((r) => ({
             id: r.id,
             pathKey: r.pathKey,
             startMs: r.atMs,
             hopMs: hopMsFor(latency.get(r.pathKey) ?? 0),
+            quiet: r.kind === 'ping',
           })),
         ])
       }
@@ -172,8 +211,19 @@ export function PathPage() {
   }, [actions])
 
   const used = inUse(tracker, nowMs)
+  const kinds = new Map(used.map((p) => [p.key, p.kind]))
+  // A ping says only that a path is alive, so it never lights one.
   const busy = new Set(
-    packets.filter((p) => nowMs - p.startMs < 8 * p.hopMs + 500).map((p) => p.pathKey),
+    packets
+      .filter((p) => {
+        const kind = kinds.get(p.pathKey)
+        return (
+          p.quiet !== true &&
+          kind !== undefined &&
+          nowMs - p.startMs < pathFlowTripMs(p.hopMs, kind, true)
+        )
+      })
+      .map((p) => p.pathKey),
   )
   const flowPaths: PathFlowPath[] = used.map((p) => ({
     key: p.key,
@@ -186,33 +236,36 @@ export function PathPage() {
   return (
     <YStack padding="$md" gap="$lg" testID={ELEMENT.settings.pathScreen}>
       <Text size="$body" tone="secondary">
-        {tr('onionRoutingPathDescription')}
+        {PENDING_COPY.onionRoutingPathIntro}
       </Text>
       {flowPaths.length === 0 ? (
         <Text size="$body" tone="secondary">
           {PENDING_COPY.onionRoutingPathWaiting}
         </Text>
       ) : (
-        <PathFlow
-          paths={flowPaths}
-          packets={packets.filter((p) => used.some((u) => u.key === p.pathKey))}
-          onionLayers
-          columnTitles={[
-            tr('you'),
-            PENDING_COPY.onionRoutingPathEntry,
-            PENDING_COPY.onionRoutingPathRelay,
-            PENDING_COPY.onionRoutingPathRelay,
-            tr('onionRoutingPathDestination'),
-          ]}
-          labelFor={labelFor}
-          testID={ELEMENT.settings.pathFlow}
-        />
+        <YStack gap="$xs">
+          <PathFlow
+            paths={flowPaths}
+            packets={packets.filter((p) => kinds.has(p.pathKey))}
+            onionLayers
+            columnTitles={[
+              tr('you'),
+              PENDING_COPY.onionRoutingPathEntry,
+              PENDING_COPY.onionRoutingPathRelay,
+              PENDING_COPY.onionRoutingPathRelay,
+              tr('onionRoutingPathDestination'),
+            ]}
+            labelFor={labelFor}
+            testID={ELEMENT.settings.pathFlow}
+          />
+          <StatsCard stats={stats} />
+        </YStack>
       )}
-      <StatsCard stats={stats} />
       <SettingsGroup>
         <SettingsRow
           label={tr('learnMore')}
-          icon="externalLink"
+          // As the help screen's links: the accent on dark, body text on light.
+          trailing={<Icon name="externalLink" size="md" color="$accentText" />}
           onPress={() => confirmLink(modals, LEARN_MORE_URL)}
           testID={ELEMENT.settings.pathLearnMore}
         />

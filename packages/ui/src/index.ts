@@ -55,8 +55,8 @@ export { useTokenColor } from './useTokenColor'
 export { useWindowSize } from './useWindowSize'
 export {
   PathFlow,
-  packetState,
   pathFlowColor,
+  pathFlowTripMs,
   type PathFlowKind,
   type PathFlowPacket,
   type PathFlowPath,

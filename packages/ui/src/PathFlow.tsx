@@ -1,11 +1,30 @@
-import { memo, useEffect, useMemo, useState } from 'react'
-import type { LayoutChangeEvent } from 'react-native'
-import Svg, { Circle, G, Path, Rect, Text as SvgText } from 'react-native-svg'
+import { memo, useEffect, useId, useMemo, useState } from 'react'
+import { Platform, type LayoutChangeEvent } from 'react-native'
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  Path,
+  RadialGradient,
+  Rect,
+  Stop,
+  Text as SvgText,
+} from 'react-native-svg'
 import { YStack } from 'tamagui'
 
-import { PRIMARY_COLOR_HEX } from '@session/theme-tokens'
+import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 
-import { flowSegment, layoutPathFlow, pointAlong, type FlowLayout } from './pathFlowLayout'
+import { BODY_FACE } from './bodyFace'
+import { BODY_FONT_FAMILY } from './config'
+import { FACE_WEIGHTS } from './faceWeights'
+import { journeyAt, journeyOf, ringsAt, type Journey } from './pathFlowJourney'
+import {
+  flowSegment,
+  layoutPathFlow,
+  pathFlowHeight,
+  pointAlong,
+  type FlowLayout,
+} from './pathFlowLayout'
 import { useReducedMotion } from './useReducedMotion'
 import { useTokenColor } from './useTokenColor'
 
@@ -22,15 +41,16 @@ export interface PathFlowPath {
 }
 
 /**
- * A request travelling a path and back: out across the four links, a pause at the far end, then
- * back the same way. `hopMs` is how long one link takes, which the caller derives from the path's
- * measured round trip so a slow path visibly crawls beside a fast one.
+ * A request travelling a path and back. `hopMs` is how long one link takes, which the caller
+ * derives from the path's measured round trip so a slow path visibly crawls beside a fast one.
+ * A `quiet` one is a ping: smaller and fainter, and it does not stop at the nodes.
  */
 export interface PathFlowPacket {
   id: string
   pathKey: string
   startMs: number
   hopMs: number
+  quiet?: boolean | undefined
 }
 
 export interface PathFlowProps {
@@ -45,7 +65,6 @@ export interface PathFlowProps {
    * not fit before the next column, the bar is labelled with the code instead.
    */
   labelFor: (country: string) => string
-  heightPx?: number | undefined
   testID?: string | undefined
 }
 
@@ -55,35 +74,38 @@ const KIND_COLOR: Record<PathFlowKind, string> = {
   community: PRIMARY_COLOR_HEX.orange,
   file: PRIMARY_COLOR_HEX.blue,
 }
+const KINDS = Object.keys(KIND_COLOR) as PathFlowKind[]
 
-const LINKS = 4
 /** SVG units inside the drawing, sized to its bars rather than to the page's type scale. */
-const TITLE_PX = 11
-const LABEL_PX = 10
-/** The far end reading the request and wrapping its answer, before the answer sets off back. */
-const HOLD_MS = 220
-
-/** Where a request is, `h` hops out, and how many layers it carries; null once it is home. */
-export function packetState(
-  packet: PathFlowPacket,
-  nowMs: number,
-): { h: number; layers: number } | null {
-  const t = nowMs - packet.startMs
-  const out = LINKS * packet.hopMs
-  if (t < 0) return null
-  if (t < out) {
-    const h = t / packet.hopMs
-    return { h, layers: LINKS - Math.floor(h) }
-  }
-  if (t < out + HOLD_MS) return { h: LINKS, layers: t < out + HOLD_MS / 2 ? 0 : 1 }
-  const back = t - out - HOLD_MS
-  if (back >= out) return null
-  const h = LINKS - back / packet.hopMs
-  return { h, layers: LINKS + 1 - Math.ceil(Math.max(h, 0.0001)) }
+const TEXT_PX = 10
+const TITLE_Y = 22
+/** No font token reaches SVG text: the web needs the family named, native draws the system's. */
+const SVG_FONT = {
+  ...(Platform.OS === 'web' ? { fontFamily: BODY_FONT_FAMILY } : {}),
+  fontSize: TEXT_PX,
+  fontWeight: FACE_WEIGHTS[BODY_FACE].semibold,
 }
+/** A bar shorter than this carries no label: there is no room for one beside it. */
+const LABEL_MIN_BAR = 6
+
+/** The trail behind a moving request: this many fading copies, this far apart in hops. */
+const TRAIL = 4
+const TRAIL_STEP = 0.05
+/** A ping beside a request: smaller and fainter, yet seen against a line of its own colour. */
+const QUIET_OPACITY = 0.7
 
 export function pathFlowColor(kind: PathFlowKind): string {
   return KIND_COLOR[kind]
+}
+
+/** The layers a request to this kind of path leaves with: the file server lies past its last. */
+function linksOf(kind: PathFlowKind): number {
+  return kind === 'file' ? 3 : 4
+}
+
+/** How long a request to this kind of path takes, there and back, pauses included. */
+export function pathFlowTripMs(hopMs: number, kind: PathFlowKind, onionLayers: boolean): number {
+  return journeyOf(hopMs, linksOf(kind), onionLayers).totalMs
 }
 
 /**
@@ -91,12 +113,13 @@ export function pathFlowColor(kind: PathFlowKind): string {
  * estimate on the generous side only means a code where a name would just have fitted.
  */
 function textWidth(text: string): number {
-  return text.length * 6.2
+  return text.length * 5.8
 }
 
-function segmentsPath(pts: readonly (readonly [number, number])[], barWidth: number): string {
+function linePath(pts: readonly (readonly [number, number])[], barWidth: number): string {
   const first = pts[0]
-  if (!first) return ''
+  const last = pts[pts.length - 1]
+  if (!first || !last) return ''
   let d = `M${first[0]},${first[1]}`
   for (let i = 0; i + 1 < pts.length; i += 1) {
     const a = pts[i]
@@ -105,7 +128,8 @@ function segmentsPath(pts: readonly (readonly [number, number])[], barWidth: num
     const [x0, y0, x1, y1, x2, y2, x3, y3] = flowSegment(a, b, barWidth)
     d += ` L${x0},${y0} C${x1},${y1} ${x2},${y2} ${x3},${y3}`
   }
-  return d
+  // Across the destination's bar, so the line meets its far side as it left your near one.
+  return `${d} L${last[0] + barWidth},${last[1]}`
 }
 
 interface StaticLayerProps {
@@ -117,6 +141,25 @@ interface StaticLayerProps {
   labelColor: string
   titleColor: string
   plateColor: string
+}
+
+function barLabel(
+  layout: FlowLayout,
+  column: number,
+  country: string,
+  count: number,
+  labelFor: PathFlowProps['labelFor'],
+): string {
+  const x0 = layout.columnX[0] ?? 0
+  const x1 = layout.columnX[1] ?? 0
+  const xLast = layout.columnX[layout.columnX.length - 1] ?? 0
+  const room =
+    column === layout.columnX.length - 1
+      ? layout.width - xLast - layout.barWidth - 12
+      : x1 - x0 - layout.barWidth - 12
+  const suffix = count > 1 ? ` ${count}` : ''
+  const full = `${labelFor(country)}${suffix}`
+  return textWidth(full) <= room ? full : `${country}${suffix}`
 }
 
 /** Bars, labels and lines: redrawn only when the paths change, never per frame. */
@@ -131,28 +174,28 @@ const StaticLayer = memo(function StaticLayer({
   plateColor,
 }: StaticLayerProps) {
   const many = paths.length > 6
+  // Bright lines over faint ones, wherever they sit in the list.
+  const ordered = [...paths].sort((a, b) => Number(a.lit) - Number(b.lit))
   return (
     <G>
       {columnTitles.map((title, k) => (
         <SvgText
           key={title + k}
-          x={(layout.columnX[k] ?? 0) + layout.barWidth / 2}
-          y={14}
+          x={layout.columnX[k] ?? 0}
+          y={TITLE_Y}
           fill={titleColor}
-          fontSize={TITLE_PX}
-          fontWeight="600"
-          textAnchor={k === 0 ? 'start' : 'middle'}
+          {...SVG_FONT}
         >
           {title.toUpperCase()}
         </SvgText>
       ))}
-      {paths.map((p) => {
+      {ordered.map((p) => {
         const pts = layout.points.get(p.key)
         if (!pts) return null
         return (
           <Path
             key={p.key}
-            d={segmentsPath(pts, layout.barWidth)}
+            d={linePath(pts, layout.barWidth)}
             stroke={KIND_COLOR[p.kind]}
             strokeOpacity={p.lit ? 0.95 : many ? 0.22 : 0.4}
             strokeWidth={p.lit ? 2.2 : many ? 1 : 1.5}
@@ -174,14 +217,10 @@ const StaticLayer = memo(function StaticLayer({
         />
       ))}
       {layout.bars
-        .filter((bar) => bar.column > 0 && bar.height >= 10)
+        .filter((bar) => bar.column > 0 && bar.height >= LABEL_MIN_BAR)
         .map((bar) => {
           const x = (layout.columnX[bar.column] ?? 0) + layout.barWidth + 5
-          const next = layout.columnX[bar.column + 1]
-          const room = (next ?? layout.width) - x - 6
-          const count = bar.count > 1 ? ` ${bar.count}` : ''
-          const full = `${labelFor(bar.country)}${count}`
-          const text = textWidth(full) <= room ? full : `${bar.country}${count}`
+          const text = barLabel(layout, bar.column, bar.country, bar.count, labelFor)
           const y = bar.y + bar.height / 2
           return (
             <G key={`label-${bar.column}-${bar.country}`}>
@@ -193,7 +232,7 @@ const StaticLayer = memo(function StaticLayer({
                 fill={plateColor}
                 fillOpacity={0.8}
               />
-              <SvgText x={x} y={y + 3.5} fill={labelColor} fontSize={LABEL_PX} fontWeight="600">
+              <SvgText x={x} y={y + 3.5} fill={labelColor} fillOpacity={0.85} {...SVG_FONT}>
                 {text}
               </SvgText>
             </G>
@@ -203,18 +242,43 @@ const StaticLayer = memo(function StaticLayer({
   )
 })
 
+/** The radius of a request's `ring`th layer, counting out from its core. */
+function layerRadius(ring: number): number {
+  return 4.5 + (ring - 1) * 2.75
+}
+
 interface PacketLayerProps {
   layout: FlowLayout
   paths: readonly PathFlowPath[]
   packets: readonly PathFlowPacket[]
   onionLayers: boolean
   ringColor: string
+  glowId: (kind: PathFlowKind) => string
+}
+
+interface Flight {
+  packet: PathFlowPacket
+  kind: PathFlowKind
+  links: number
+  journey: Journey
 }
 
 /** The requests in flight, redrawn every frame while there are any. */
-function PacketLayer({ layout, paths, packets, onionLayers, ringColor }: PacketLayerProps) {
+function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }: PacketLayerProps) {
   const [now, setNow] = useState(() => Date.now())
-  const live = packets.some((p) => packetState(p, now) !== null || p.startMs > now)
+  const flights = useMemo(() => {
+    const kinds = new Map(paths.map((p) => [p.key, p.kind]))
+    const list: Flight[] = []
+    for (const packet of packets) {
+      const kind = kinds.get(packet.pathKey)
+      if (!kind) continue
+      const links = linksOf(kind)
+      const onion = onionLayers && packet.quiet !== true
+      list.push({ packet, kind, links, journey: journeyOf(packet.hopMs, links, onion) })
+    }
+    return list
+  }, [paths, packets, onionLayers])
+  const live = flights.some((f) => now < f.packet.startMs + f.journey.totalMs)
   useEffect(() => {
     if (!live) return
     let frame = 0
@@ -226,44 +290,88 @@ function PacketLayer({ layout, paths, packets, onionLayers, ringColor }: PacketL
     return () => cancelAnimationFrame(frame)
   }, [live])
 
-  const kinds = useMemo(() => new Map(paths.map((p) => [p.key, p.kind])), [paths])
   return (
     <G>
-      {packets.map((packet) => {
-        const state = packetState(packet, now)
+      {flights.map(({ packet, kind, journey }) => {
+        const state = journeyAt(journey, now - packet.startMs)
         const pts = layout.points.get(packet.pathKey)
-        const kind = kinds.get(packet.pathKey)
-        if (!state || !pts || !kind) return null
-        const [x, y] = pointAlong(pts, state.h, layout.barWidth)
-        const color = KIND_COLOR[kind]
+        if (!state || !pts) return null
+        const quiet = packet.quiet === true
+        const at = (h: number) => pointAlong(pts, h, layout.barWidth)
+        const [x, y] = at(state.h)
+        const fill = `url(#${glowId(kind)})`
+        const trail = quiet ? 2 : TRAIL
         return (
-          <G key={packet.id}>
-            {onionLayers
-              ? Array.from({ length: state.layers }, (_, i) => (
+          <G key={packet.id} opacity={quiet ? QUIET_OPACITY : 1}>
+            {Array.from({ length: trail }, (_, i) => {
+              const j = trail - i
+              const [tx, ty] = at(state.back ? state.h + j * TRAIL_STEP : state.h - j * TRAIL_STEP)
+              return (
+                <Circle
+                  key={`t${j}`}
+                  cx={tx}
+                  cy={ty}
+                  r={(quiet ? 8 - j : 14 - j * 2) / 2}
+                  fill={fill}
+                  opacity={0.5 - j * 0.09}
+                />
+              )
+            })}
+            <Circle cx={x} cy={y} r={quiet ? 6 : onionLayers ? 10 : 11} fill={fill} />
+            {quiet || !onionLayers
+              ? null
+              : Array.from({ length: state.layers }, (_, k) => (
                   <Circle
-                    key={i}
+                    key={`l${k}`}
                     cx={x}
                     cy={y}
-                    r={6 + (i + 1) * 3}
+                    r={layerRadius(k + 1)}
                     stroke={ringColor}
-                    strokeOpacity={0.75 - i * 0.12}
-                    strokeWidth={1.2}
+                    strokeOpacity={0.9 - k * 0.12}
+                    strokeWidth={1}
                     fill="none"
                   />
-                ))
-              : null}
-            <Circle cx={x} cy={y} r={5} fill={color} />
-            <Circle cx={x} cy={y} r={2} fill={ringColor} />
+                ))}
           </G>
         )
       })}
+      {onionLayers
+        ? flights.flatMap(({ packet, links, journey }) => {
+            const pts = layout.points.get(packet.pathKey)
+            if (!pts || packet.quiet === true) return []
+            return ringsAt(journey, now - packet.startMs).map(({ ring, age }) => {
+              const [x, y] = pointAlong(pts, ring.hop, layout.barWidth)
+              const base = layerRadius(ring.kind === 'open' ? links : links + 1 - ring.hop)
+              // A layer coming off swells and fades; one going on closes onto the request; at
+              // home every layer comes off at once.
+              const r =
+                ring.kind === 'wrap'
+                  ? base + (1 - age) * 8
+                  : ring.kind === 'open'
+                    ? 6 + age * 11
+                    : base + age * 9
+              return (
+                <Circle
+                  key={`${packet.id}-${ring.kind}-${ring.hop}-${ring.atMs}`}
+                  cx={x}
+                  cy={y}
+                  r={r}
+                  stroke={ringColor}
+                  strokeOpacity={(1 - age) * 0.9}
+                  strokeWidth={2}
+                  fill="none"
+                />
+              )
+            })
+          })
+        : null}
     </G>
   )
 }
 
 /**
  * The country flow: every drawn path as a line from you through the country of each relay to the
- * destination, with each request travelling its path and back.
+ * destination, with each request travelling its path and back, on a card of its own.
  *
  * Motion stops under the system's reduced-motion setting: the lines and highlights stay, the
  * travelling requests do not.
@@ -274,7 +382,6 @@ export function PathFlow({
   onionLayers,
   columnTitles,
   labelFor,
-  heightPx = 380,
   testID,
 }: PathFlowProps) {
   const still = useReducedMotion()
@@ -283,6 +390,9 @@ export function PathFlow({
   const labelColor = useTokenColor('$textPrimary')
   const titleColor = useTokenColor('$textSecondary')
   const plateColor = useTokenColor('$backgroundSecondary')
+  // An id per drawing, as a gradient's id is global to the page and two flows could share one.
+  const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
+  const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, paths.length) : 0
   const layout = useMemo(
     () =>
       layoutPathFlow(
@@ -292,15 +402,29 @@ export function PathFlow({
       ),
     [paths, widthPx, heightPx],
   )
+  const glowId = (kind: PathFlowKind) => `pathflow${idBase}${kind}`
   return (
     <YStack
       alignSelf="stretch"
-      height={heightPx}
+      minHeight={heightPx}
+      borderRadius="$lg"
+      overflow="hidden"
+      backgroundColor="$backgroundSecondary"
       onLayout={(event: LayoutChangeEvent) => setWidthPx(event.nativeEvent.layout.width)}
       testID={testID}
     >
       {widthPx > 0 ? (
         <Svg width={widthPx} height={heightPx}>
+          <Defs>
+            {KINDS.map((kind) => (
+              // A request's glow: white at its heart, its path's colour, then nothing.
+              <RadialGradient key={kind} id={glowId(kind)} cx="50%" cy="50%" r="50%">
+                <Stop offset="0" stopColor={COLORS.WHITE} stopOpacity={1} />
+                <Stop offset="0.18" stopColor={KIND_COLOR[kind]} stopOpacity={1} />
+                <Stop offset="1" stopColor={KIND_COLOR[kind]} stopOpacity={0} />
+              </RadialGradient>
+            ))}
+          </Defs>
           <StaticLayer
             layout={layout}
             paths={paths}
@@ -318,6 +442,7 @@ export function PathFlow({
               packets={packets}
               onionLayers={onionLayers}
               ringColor={labelColor}
+              glowId={glowId}
             />
           )}
         </Svg>

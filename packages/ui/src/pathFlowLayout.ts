@@ -3,8 +3,8 @@
  * drawing on both platforms.
  *
  * Five columns: you, the entry relay, two more relays, and the destination. Each column holds a bar
- * per country, as tall as the share of drawn paths that pass through that country at that column,
- * and each path takes a slot in each bar it passes through, so its line can be followed across.
+ * per country, as tall as the drawn paths that pass through that country at that column, and each
+ * path takes a slot in each bar it passes through, so its line can be followed across.
  */
 
 /** A path as the flow draws it: one country per column after "you", or null where unknown. */
@@ -34,42 +34,61 @@ export interface FlowLayout {
 }
 
 export const FLOW_COLUMNS = 5
-const BAR_WIDTH = 6
-const GAP = 8
-const TOP = 28
-const BOTTOM = 8
+const BAR_WIDTH = 5
+const SIDE = 14
+/** Below the column titles. */
+const TOP = 40
+const BOTTOM = 14
 /** Room kept to the right of the last column for its labels. */
-const RIGHT_LABELS = 96
+const RIGHT_LABELS = 66
 /**
- * The most height one path is given in a bar. A few paths would otherwise each take a third of
- * the column, and one would turn every bar into a rail from top to bottom; capped, they sit
- * together in the middle.
+ * The most height one path is given in a bar, so a few paths sit together in the middle of the
+ * drawing rather than each taking a third of the column.
  */
-const MAX_UNIT = 44
+const MAX_UNIT = 12
+const MAX_GAP = 10
+const MIN_GAP = 2
+
+/**
+ * Countries by how many service nodes they hold, most first (measured November 2026). Every
+ * column orders its bars by this rather than by its own counts, so a country sits at the same
+ * height across the drawing and a line between two of them runs level. Others follow by code.
+ */
+const COUNTRY_RANK = [
+  'DE', 'US', 'FI', 'GB', 'CA', 'FR', 'NL', 'SE', 'SG', 'PL', 'ZA', 'AU',
+  'BG', 'JP', 'CZ', 'AE', 'IE', 'TH', 'IN', 'MY', 'KR', 'IT', 'RO', 'TR',
+] // prettier-ignore
+
+function rankOf(country: string): number {
+  // The file server and unknown countries after every real one.
+  if (country === 'FS') return 2_000
+  if (country === '?') return 1_000
+  const i = COUNTRY_RANK.indexOf(country)
+  return i === -1 ? COUNTRY_RANK.length : i
+}
+
+function byRank(a: string, b: string): number {
+  return rankOf(a) - rankOf(b) || (a < b ? -1 : a > b ? 1 : 0)
+}
+
+/** How tall the drawing is at a width: a band for a few paths, nearly square for many. */
+export function pathFlowHeight(width: number, pathCount: number): number {
+  return Math.round(width * (pathCount <= 6 ? 0.5 : 0.95))
+}
 
 export function layoutPathFlow(
   paths: readonly FlowPathInput[],
   width: number,
   height: number,
 ): FlowLayout {
-  const usable = Math.max(1, width - RIGHT_LABELS)
-  const columnX = Array.from(
-    { length: FLOW_COLUMNS },
-    (_, k) => 8 + (k * (usable - 8 - BAR_WIDTH)) / (FLOW_COLUMNS - 1),
-  )
-  const avail = height - TOP - BOTTOM
-  const bars: FlowBar[] = []
+  const step = Math.max(0, width - 2 * SIDE - BAR_WIDTH - RIGHT_LABELS) / (FLOW_COLUMNS - 1)
+  const columnX = Array.from({ length: FLOW_COLUMNS }, (_, k) => SIDE + k * step)
+  const avail = Math.max(1, height - TOP - BOTTOM)
   const points = new Map<string, Array<readonly [number, number]>>()
   for (const p of paths) points.set(p.key, [])
 
-  // "You": one bar holding every path.
-  const youHeight = Math.min(avail, paths.length * MAX_UNIT)
-  const youTop = TOP + (avail - youHeight) / 2
-  bars.push({ column: 0, country: 'you', count: paths.length, y: youTop, height: youHeight })
-  paths.forEach((p, i) =>
-    points.get(p.key)?.push([columnX[0] ?? 0, youTop + (youHeight * (i + 0.5)) / paths.length]),
-  )
-
+  const columns: [string, FlowPathInput[]][][] = []
+  columns.push([['you', [...paths]]])
   for (let column = 1; column < FLOW_COLUMNS; column += 1) {
     const groups = new Map<string, FlowPathInput[]>()
     for (const p of paths) {
@@ -78,27 +97,36 @@ export function layoutPathFlow(
       if (list) list.push(p)
       else groups.set(cc, [p])
     }
-    // Largest first, so the busiest countries sit at the top of every column.
-    const ordered = [...groups.entries()].sort(
-      (a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1),
-    )
-    const gaps = GAP * Math.max(0, ordered.length - 1)
-    const unit =
-      paths.length === 0 ? 0 : Math.min(MAX_UNIT, Math.max(0, avail - gaps) / paths.length)
-    const used = ordered.reduce((sum, [, members]) => sum + Math.max(4, unit * members.length), 0)
-    let y = TOP + Math.max(0, (avail - used - gaps) / 2)
-    for (const [country, members] of ordered) {
-      const h = Math.max(4, unit * members.length)
+    columns.push([...groups.entries()].sort((a, b) => byRank(a[0], b[0])))
+  }
+
+  // Gaps shrink as countries multiply, so they never take the height the paths need.
+  const mostBars = Math.max(...columns.map((c) => c.length))
+  const gap = Math.max(MIN_GAP, Math.min(MAX_GAP, (avail * 0.3) / Math.max(1, mostBars - 1)))
+  const unit =
+    paths.length === 0
+      ? 0
+      : Math.min(
+          MAX_UNIT,
+          ...columns.map((c) => Math.max(0, avail - (c.length - 1) * gap) / paths.length),
+        )
+
+  const bars: FlowBar[] = []
+  columns.forEach((groups, column) => {
+    const columnHeight = paths.length * unit + (groups.length - 1) * gap
+    let y = TOP + (avail - columnHeight) / 2
+    for (const [country, members] of groups) {
+      const h = members.length * unit
       bars.push({ column, country, count: members.length, y, height: h })
       // Within a bar, paths keep the order they had in the previous column, so lines cross less.
       const previous = (p: FlowPathInput) => points.get(p.key)?.[column - 1]?.[1] ?? 0
-      const sorted = [...members].sort((a, b) => previous(a) - previous(b))
+      const sorted = column === 0 ? members : [...members].sort((a, b) => previous(a) - previous(b))
       sorted.forEach((p, i) => {
-        points.get(p.key)?.push([columnX[column] ?? 0, y + (h * (i + 0.5)) / members.length])
+        points.get(p.key)?.push([columnX[column] ?? 0, y + (i + 0.5) * unit])
       })
-      y += h + GAP
+      y += h + gap
     }
-  }
+  })
   return { width, columnX, barWidth: BAR_WIDTH, bars, points }
 }
 

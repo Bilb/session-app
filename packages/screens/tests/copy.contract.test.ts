@@ -175,6 +175,22 @@ describe('screen copy', () => {
       'messageQuoteHint',
       'messageScrollToLatest',
       'messageBackToReply',
+      'onionRoutingPathsInUse',
+      'onionRoutingPathCountries',
+      'onionRoutingPathEntryNodes',
+      'onionRoutingPathRebuilt',
+      'onionRoutingPathAverage',
+      'onionRoutingPathFastest',
+      'onionRoutingPathSlowest',
+      'onionRoutingPathJitter',
+      'onionRoutingPathMilliseconds',
+      'onionRoutingPathJitterMilliseconds',
+      'onionRoutingPathIntro',
+      'onionRoutingPathEntry',
+      'onionRoutingPathRelay',
+      'onionRoutingPathHighlightLatest',
+      'onionRoutingPathHighlightBusy',
+      'onionRoutingPathWaiting',
     ])
   })
 })

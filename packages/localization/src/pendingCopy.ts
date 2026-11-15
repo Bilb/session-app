@@ -145,19 +145,28 @@ export const PENDING_COPY = {
   messageScrollToLatest: 'Scroll to latest message',
   messageBackToReply: 'Back to reply',
   /**
-   * The path screen's figures, under its country flow. The catalogue has the path's node names
-   * (`onionRoutingPathEntryNode` and the rest) but nothing for counts or timings.
+   * The path screen's figures, under its country flow: a figure above each, so they read on as
+   * "3 paths in use". The catalogue has the path's node names (`onionRoutingPathEntryNode` and the
+   * rest) but nothing for counts or timings.
    */
-  onionRoutingPathsInUse: 'Paths in use',
-  onionRoutingPathCountries: 'Countries crossed',
-  onionRoutingPathEntryNodes: 'Entry nodes',
-  onionRoutingPathRebuilt: 'Rebuilt since opening',
-  onionRoutingPathAverage: 'Average round trip',
-  onionRoutingPathFastest: 'Fastest round trip',
-  onionRoutingPathSlowest: 'Slowest round trip',
-  onionRoutingPathJitter: 'Jitter',
-  /** A round trip or jitter in milliseconds; the figure is a whole number. */
+  onionRoutingPathsInUse: 'paths in use',
+  onionRoutingPathCountries: 'countries crossed',
+  onionRoutingPathEntryNodes: 'entry nodes',
+  onionRoutingPathRebuilt: 'rebuilt since opening',
+  onionRoutingPathAverage: 'average round trip',
+  onionRoutingPathFastest: 'fastest path',
+  onionRoutingPathSlowest: 'slowest path',
+  onionRoutingPathJitter: 'jitter',
+  /** A round trip in milliseconds; the figure is a whole number. */
   onionRoutingPathMilliseconds: '{ms} ms',
+  /** Jitter: how far round trips stray either side of each other, in whole milliseconds. */
+  onionRoutingPathJitterMilliseconds: '±{ms} ms',
+  /**
+   * The path screen's introduction: `onionRoutingPathDescription` without its closing "This is
+   * your current path:", which introduced the single path the old screen drew.
+   */
+  onionRoutingPathIntro:
+    "Session hides your IP by routing your messages through multiple service nodes in Session's decentralized network.",
   /**
    * The flow's column headings for the first relay and the two after it. The catalogue's
    * `onionRoutingPathEntryNode` and `onionRoutingPathServiceNode` are too wide for five columns
