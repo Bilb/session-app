@@ -863,7 +863,8 @@ struct JSIConverter<::session_bridge::NetworkPath> final {
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "latencyMs"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "jitterMs"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "requestsSent"))),
-                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "proxiedRequestsSent"))));
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "proxiedRequestsSent"))),
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "pingsAnswered"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::NetworkPath& arg) {
         jsi::Object obj(runtime);
@@ -874,6 +875,7 @@ struct JSIConverter<::session_bridge::NetworkPath> final {
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "jitterMs"), JSIConverter<double>::toJSI(runtime, arg.jitter_ms));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "requestsSent"), JSIConverter<double>::toJSI(runtime, arg.requests_sent));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "proxiedRequestsSent"), JSIConverter<double>::toJSI(runtime, arg.proxied_requests_sent));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "pingsAnswered"), JSIConverter<double>::toJSI(runtime, arg.pings_answered));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime&, const jsi::Value& value) {

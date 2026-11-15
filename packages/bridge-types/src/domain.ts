@@ -525,6 +525,11 @@ export interface NetworkPath {
    */
   requestsSent: number
   proxiedRequestsSent: number
+  /**
+   * The router's pings answered along it since it was built. A total that starts again from zero
+   * when the path is replaced, which a change in `hops` tells.
+   */
+  pingsAnswered: number
 }
 
 /** Every path the client is holding open, for the path screen. */

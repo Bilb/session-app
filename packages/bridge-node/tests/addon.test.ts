@@ -687,6 +687,7 @@ describeEcho('the generated converters', () => {
               jitterMs: 12.5,
               requestsSent: 9_007_199_254_740_991,
               proxiedRequestsSent: 0,
+              pingsAnswered: 2_147_483_647,
             })),
             countryAttribution: 'IP Geolocation by DB-IP (https://db-ip.com)',
           },

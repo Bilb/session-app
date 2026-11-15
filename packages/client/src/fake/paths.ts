@@ -8,6 +8,7 @@ import type { NetworkPath, NetworkPaths, PathDestination } from '@session/bridge
  *   - none at all until the network has connected, and none once it is gone;
  *   - four hops to a storage node, the last being the node, and three to the file server;
  *   - request totals that only grow, so two snapshots tell what went in between;
+ *   - a ping answered along every path every five seconds, counted from when it was last built;
  *   - a path to the same remote keeps its remote when its hops change.
  *
  * The totals grow with the world's clock rather than with what the account does, because the
@@ -16,6 +17,9 @@ import type { NetworkPath, NetworkPaths, PathDestination } from '@session/bridge
  */
 
 const ATTRIBUTION = 'IP Geolocation by DB-IP (https://db-ip.com)'
+
+/** How often the router pings each path. */
+const PING_EVERY_MS = 5_000
 
 /** Countries in roughly the proportions the network's relays are in. */
 const RELAY_COUNTRIES = ['DE', 'DE', 'DE', 'US', 'US', 'FI', 'FI', 'CA', 'NL', 'FR', 'GB', 'SG']
@@ -93,6 +97,7 @@ function pathOf(spec: FakePathSpec, index: number, elapsedMs: number): NetworkPa
     jitterMs: 4 + ((base * 11) % 30),
     requestsSent,
     proxiedRequestsSent: spec.proxied ? requestsSent : 0,
+    pingsAnswered: Math.floor((elapsedMs - build * spec.rebuildMs) / PING_EVERY_MS),
   }
 }
 
