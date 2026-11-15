@@ -24,6 +24,8 @@ export interface FlowBar {
 }
 
 export interface FlowLayout {
+  /** The drawing's width, which the last column's labels run up to. */
+  width: number
   columnX: readonly number[]
   barWidth: number
   bars: FlowBar[]
@@ -38,6 +40,12 @@ const TOP = 28
 const BOTTOM = 8
 /** Room kept to the right of the last column for its labels. */
 const RIGHT_LABELS = 96
+/**
+ * The most height one path is given in a bar. A few paths would otherwise each take a third of
+ * the column, and one would turn every bar into a rail from top to bottom; capped, they sit
+ * together in the middle.
+ */
+const MAX_UNIT = 44
 
 export function layoutPathFlow(
   paths: readonly FlowPathInput[],
@@ -55,10 +63,12 @@ export function layoutPathFlow(
   for (const p of paths) points.set(p.key, [])
 
   // "You": one bar holding every path.
-  const youSlot = (i: number) =>
-    paths.length === 1 ? TOP + avail / 2 : TOP + (avail * (i + 0.5)) / paths.length
-  bars.push({ column: 0, country: 'you', count: paths.length, y: TOP, height: avail })
-  paths.forEach((p, i) => points.get(p.key)?.push([columnX[0] ?? 0, youSlot(i)]))
+  const youHeight = Math.min(avail, paths.length * MAX_UNIT)
+  const youTop = TOP + (avail - youHeight) / 2
+  bars.push({ column: 0, country: 'you', count: paths.length, y: youTop, height: youHeight })
+  paths.forEach((p, i) =>
+    points.get(p.key)?.push([columnX[0] ?? 0, youTop + (youHeight * (i + 0.5)) / paths.length]),
+  )
 
   for (let column = 1; column < FLOW_COLUMNS; column += 1) {
     const groups = new Map<string, FlowPathInput[]>()
@@ -73,8 +83,10 @@ export function layoutPathFlow(
       (a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1),
     )
     const gaps = GAP * Math.max(0, ordered.length - 1)
-    const unit = paths.length === 0 ? 0 : Math.max(0, avail - gaps) / paths.length
-    let y = TOP
+    const unit =
+      paths.length === 0 ? 0 : Math.min(MAX_UNIT, Math.max(0, avail - gaps) / paths.length)
+    const used = ordered.reduce((sum, [, members]) => sum + Math.max(4, unit * members.length), 0)
+    let y = TOP + Math.max(0, (avail - used - gaps) / 2)
     for (const [country, members] of ordered) {
       const h = Math.max(4, unit * members.length)
       bars.push({ column, country, count: members.length, y, height: h })
@@ -87,7 +99,7 @@ export function layoutPathFlow(
       y += h + GAP
     }
   }
-  return { columnX, barWidth: BAR_WIDTH, bars, points }
+  return { width, columnX, barWidth: BAR_WIDTH, bars, points }
 }
 
 /** The cubic between two columns' points, which every line and packet follows. */

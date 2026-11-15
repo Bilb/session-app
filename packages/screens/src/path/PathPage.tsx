@@ -49,9 +49,7 @@ function makeLabeller(): (country: string) => string {
   return (country) => {
     if (country === '?') return tr('onionRoutingPathUnknownCountry')
     if (country === 'FS') return 'File server'
-    const name = names?.of(country)
-    // A long name crowds the next column: the code says the same in less room.
-    return name !== undefined && name.length <= 14 ? name : country
+    return names?.of(country) ?? country
   }
 }
 
@@ -201,8 +199,8 @@ export function PathPage() {
           onionLayers
           columnTitles={[
             tr('you'),
-            tr('onionRoutingPathEntryNode'),
-            tr('onionRoutingPathServiceNode'),
+            PENDING_COPY.onionRoutingPathEntry,
+            PENDING_COPY.onionRoutingPathRelay,
             PENDING_COPY.onionRoutingPathRelay,
             tr('onionRoutingPathDestination'),
           ]}

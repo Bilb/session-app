@@ -158,7 +158,12 @@ export const PENDING_COPY = {
   onionRoutingPathJitter: 'Jitter',
   /** A round trip or jitter in milliseconds; the figure is a whole number. */
   onionRoutingPathMilliseconds: '{ms} ms',
-  /** The flow's column for the relay just before the destination. */
+  /**
+   * The flow's column headings for the first relay and the two after it. The catalogue's
+   * `onionRoutingPathEntryNode` and `onionRoutingPathServiceNode` are too wide for five columns
+   * across a phone: at 390 points they run into each other.
+   */
+  onionRoutingPathEntry: 'Entry',
   onionRoutingPathRelay: 'Relay',
   /** Which paths are drawn bright: the latest request's, or every path a request is moving on. */
   onionRoutingPathHighlightLatest: 'Latest request',

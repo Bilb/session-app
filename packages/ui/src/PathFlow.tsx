@@ -40,7 +40,10 @@ export interface PathFlowProps {
   onionLayers: boolean
   /** The five column headings: you, entry, relay, relay, destination. */
   columnTitles: readonly [string, string, string, string, string]
-  /** A bar's label, from its country code (`?` unknown, `FS` the file server). */
+  /**
+   * A bar's name, from its country code (`?` unknown, `FS` the file server). Where the name does
+   * not fit before the next column, the bar is labelled with the code instead.
+   */
   labelFor: (country: string) => string
   heightPx?: number | undefined
   testID?: string | undefined
@@ -81,6 +84,14 @@ export function packetState(
 
 export function pathFlowColor(kind: PathFlowKind): string {
   return KIND_COLOR[kind]
+}
+
+/**
+ * About how wide a label is drawn: react-native-svg cannot measure text before drawing it, and an
+ * estimate on the generous side only means a code where a name would just have fitted.
+ */
+function textWidth(text: string): number {
+  return text.length * 6.2
 }
 
 function segmentsPath(pts: readonly (readonly [number, number])[], barWidth: number): string {
@@ -165,15 +176,19 @@ const StaticLayer = memo(function StaticLayer({
       {layout.bars
         .filter((bar) => bar.column > 0 && bar.height >= 10)
         .map((bar) => {
-          const text = `${labelFor(bar.country)}${bar.count > 1 ? ` ${bar.count}` : ''}`
           const x = (layout.columnX[bar.column] ?? 0) + layout.barWidth + 5
+          const next = layout.columnX[bar.column + 1]
+          const room = (next ?? layout.width) - x - 6
+          const count = bar.count > 1 ? ` ${bar.count}` : ''
+          const full = `${labelFor(bar.country)}${count}`
+          const text = textWidth(full) <= room ? full : `${bar.country}${count}`
           const y = bar.y + bar.height / 2
           return (
             <G key={`label-${bar.column}-${bar.country}`}>
               <Rect
                 x={x - 2}
                 y={y - 7}
-                width={text.length * 6.2 + 4}
+                width={textWidth(text) + 4}
                 height={13}
                 fill={plateColor}
                 fillOpacity={0.8}
