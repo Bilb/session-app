@@ -182,7 +182,8 @@ function barLabel(
     column === layout.columnX.length - 1
       ? layout.width - FLOW_SIDE - xLast - layout.barWidth - 5
       : x1 - x0 - layout.barWidth - 12
-  const suffix = count > 1 ? ` ${count}` : ''
+  // Every path there ends at the same server, so a count would only crowd its name out.
+  const suffix = count > 1 && country !== 'FS' ? ` ${count}` : ''
   const full = `${labelFor(country)}${suffix}`
   return textWidth(full) <= room ? full : `${country}${suffix}`
 }
