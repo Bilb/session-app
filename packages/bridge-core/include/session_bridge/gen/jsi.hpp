@@ -859,6 +859,7 @@ struct JSIConverter<::session_bridge::NetworkPath> final {
         return ::session_bridge::NetworkPath(
                 JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "remoteHex"))),
                 JSIConverter<::session_bridge::PathDestination>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "destination"))),
+                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "standby"))),
                 JSIConverter<std::vector<::session_bridge::PathHop>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "hops"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "latencyMs"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "jitterMs"))),
@@ -870,6 +871,7 @@ struct JSIConverter<::session_bridge::NetworkPath> final {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "remoteHex"), JSIConverter<std::string>::toJSI(runtime, arg.remote_hex));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "destination"), JSIConverter<::session_bridge::PathDestination>::toJSI(runtime, arg.destination));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "standby"), JSIConverter<bool>::toJSI(runtime, arg.standby));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "hops"), JSIConverter<std::vector<::session_bridge::PathHop>>::toJSI(runtime, arg.hops));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "latencyMs"), JSIConverter<double>::toJSI(runtime, arg.latency_ms));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "jitterMs"), JSIConverter<double>::toJSI(runtime, arg.jitter_ms));

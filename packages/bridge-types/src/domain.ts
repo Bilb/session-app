@@ -510,6 +510,11 @@ export interface NetworkPath {
   remoteHex: string
   destination: PathDestination
   /**
+   * A spare the router holds ready for the same remote and sends nothing along. Each remote has
+   * one path that is not, and that one carries the request counts; a standby path's are zero.
+   */
+  standby: boolean
+  /**
    * The hops, nearest first. To a storage node there are four and the last is the node itself; to
    * the file server there are three and the last is the relay it is reached through.
    */

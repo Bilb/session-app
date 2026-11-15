@@ -781,6 +781,7 @@ struct Codec<::session_bridge::NetworkPath> {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("remoteHex", Codec<std::string>::to(env, value.remote_hex));
         obj.Set("destination", Codec<::session_bridge::PathDestination>::to(env, value.destination));
+        obj.Set("standby", Codec<bool>::to(env, value.standby));
         obj.Set("hops", Codec<std::vector<::session_bridge::PathHop>>::to(env, value.hops));
         obj.Set("latencyMs", Codec<double>::to(env, value.latency_ms));
         obj.Set("jitterMs", Codec<double>::to(env, value.jitter_ms));
@@ -794,6 +795,7 @@ struct Codec<::session_bridge::NetworkPath> {
         return ::session_bridge::NetworkPath(
                 Codec<std::string>::from(obj.Get("remoteHex"), "NetworkPath.remoteHex"),
                 Codec<::session_bridge::PathDestination>::from(obj.Get("destination"), "NetworkPath.destination"),
+                Codec<bool>::from(obj.Get("standby"), "NetworkPath.standby"),
                 Codec<std::vector<::session_bridge::PathHop>>::from(obj.Get("hops"), "NetworkPath.hops"),
                 Codec<double>::from(obj.Get("latencyMs"), "NetworkPath.latencyMs"),
                 Codec<double>::from(obj.Get("jitterMs"), "NetworkPath.jitterMs"),

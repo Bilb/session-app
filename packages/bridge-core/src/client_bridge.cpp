@@ -1384,6 +1384,7 @@ struct ClientBridge::Impl {
                 paths.emplace_back(
                         open.remote.hex(),
                         destination,
+                        open.standby,
                         std::move(hops),
                         static_cast<double>(open.performance.latency.count()),
                         static_cast<double>(open.performance.jitter.count()) / 1000.0,

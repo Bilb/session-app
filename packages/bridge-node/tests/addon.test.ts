@@ -682,6 +682,7 @@ describeEcho('the generated converters', () => {
             paths: (['ownSwarm', 'storageNode', 'fileServer'] as const).map((destination, i) => ({
               remoteHex: String(i).repeat(64),
               destination,
+              standby: i === 1,
               hops: [{ pubkeyHex: 'a'.repeat(64), country: 'DE' }, { pubkeyHex: 'b'.repeat(64) }],
               latencyMs: 240 + i,
               jitterMs: 12.5,

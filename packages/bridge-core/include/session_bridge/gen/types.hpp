@@ -682,6 +682,9 @@ struct NetworkPath {
     /// Who the path's session is with, hex. Stays the same when the path itself is replaced.
     std::string remote_hex;
     ::session_bridge::PathDestination destination;
+    /// A spare the router holds ready for the same remote and sends nothing along. Each remote has
+    /// one path that is not, and that one carries the request counts; a standby path's are zero.
+    bool standby;
     /// The hops, nearest first. To a storage node there are four and the last is the node itself; to
     /// the file server there are three and the last is the relay it is reached through.
     std::vector<::session_bridge::PathHop> hops;
@@ -698,8 +701,8 @@ struct NetworkPath {
     /// when the path is replaced, which a change in `hops` tells.
     double pings_answered;
 
-    NetworkPath(std::string remote_hex_, ::session_bridge::PathDestination destination_, std::vector<::session_bridge::PathHop> hops_, double latency_ms_, double jitter_ms_, double requests_sent_, double proxied_requests_sent_, double pings_answered_) :
-            remote_hex{std::move(remote_hex_)}, destination{std::move(destination_)}, hops{std::move(hops_)}, latency_ms{std::move(latency_ms_)}, jitter_ms{std::move(jitter_ms_)}, requests_sent{std::move(requests_sent_)}, proxied_requests_sent{std::move(proxied_requests_sent_)}, pings_answered{std::move(pings_answered_)} {}
+    NetworkPath(std::string remote_hex_, ::session_bridge::PathDestination destination_, bool standby_, std::vector<::session_bridge::PathHop> hops_, double latency_ms_, double jitter_ms_, double requests_sent_, double proxied_requests_sent_, double pings_answered_) :
+            remote_hex{std::move(remote_hex_)}, destination{std::move(destination_)}, standby{std::move(standby_)}, hops{std::move(hops_)}, latency_ms{std::move(latency_ms_)}, jitter_ms{std::move(jitter_ms_)}, requests_sent{std::move(requests_sent_)}, proxied_requests_sent{std::move(proxied_requests_sent_)}, pings_answered{std::move(pings_answered_)} {}
 };
 
 /// Every path the client is holding open, for the path screen.

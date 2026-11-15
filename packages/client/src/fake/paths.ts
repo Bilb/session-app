@@ -9,7 +9,9 @@ import type { NetworkPath, NetworkPaths, PathDestination } from '@session/bridge
  *   - four hops to a storage node, the last being the node, and three to the file server;
  *   - request totals that only grow, so two snapshots tell what went in between;
  *   - a ping answered along every path every five seconds, counted from when it was last built;
- *   - a path to the same remote keeps its remote when its hops change.
+ *   - a path to the same remote keeps its remote when its hops change;
+ *   - each remote has a standby path beside its current one, as the router keeps a spare, with
+ *     no requests of its own but answering pings.
  *
  * The totals grow with the world's clock rather than with what the account does, because the
  * screen is about traffic over time and the fake sends nothing over a network. The countries are
@@ -83,15 +85,21 @@ function relay(seed: number): { pubkeyHex: string; country: string } {
   }
 }
 
-function pathOf(spec: FakePathSpec, index: number, elapsedMs: number): NetworkPath {
+function pathOf(
+  spec: FakePathSpec,
+  index: number,
+  elapsedMs: number,
+  standby: boolean,
+): NetworkPath {
   const build = Math.floor(elapsedMs / spec.rebuildMs)
-  const base = index * 7 + build * 13
+  const base = index * 7 + build * 13 + (standby ? 3 : 0)
   const hopCount = spec.destination === 'fileServer' ? 3 : 4
   const hops = Array.from({ length: hopCount }, (_, k) => relay(base + k * 5))
-  const requestsSent = Math.floor(elapsedMs / spec.everyMs)
+  const requestsSent = standby ? 0 : Math.floor(elapsedMs / spec.everyMs)
   return {
     remoteHex: spec.remoteHex,
     destination: spec.destination,
+    standby,
     hops,
     latencyMs: 180 + ((base * 37) % 260),
     jitterMs: 4 + ((base * 11) % 30),
@@ -105,7 +113,10 @@ function pathOf(spec: FakePathSpec, index: number, elapsedMs: number): NetworkPa
 export function fakeNetworkPaths(elapsedMs: number | null): NetworkPaths {
   if (elapsedMs === null) return { paths: [], countryAttribution: ATTRIBUTION }
   return {
-    paths: SPECS.map((spec, index) => pathOf(spec, index, elapsedMs)),
+    paths: SPECS.flatMap((spec, index) => [
+      pathOf(spec, index, elapsedMs, false),
+      pathOf(spec, index, elapsedMs, true),
+    ]),
     countryAttribution: ATTRIBUTION,
   }
 }
