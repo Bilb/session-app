@@ -1,5 +1,5 @@
 export { CatalogPage } from './CatalogPage'
-export { catalogPages, cellsOn } from './pages'
+export { catalogPages, cellsOn, layoutOf } from './pages'
 export { CatalogPictures } from './pictures'
 export type { CatalogPageSpec, CatalogTier } from './pages'
 export { STORIES } from './stories'

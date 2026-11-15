@@ -110,6 +110,15 @@ export function catalogPages(
   return stories.flatMap((story) => pagesFor(story, tier))
 }
 
+/**
+ * What a page's size depends on. Pages that share it differ only in colour, which changes no size,
+ * so laying out one of them lays out them all.
+ */
+export function layoutOf(page: CatalogPageSpec): string {
+  const { story, kind, themes, accents, rtl, width, forced } = page
+  return [storyId(story), kind, themes.length, accents.length, rtl, width, forced].join(' ')
+}
+
 /** How many component renders a page holds: what one capture covers. */
 export function cellsOn(page: CatalogPageSpec): number {
   const rows = Object.keys(page.story.variants).length

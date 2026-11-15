@@ -28,6 +28,7 @@ interface CatalogPageSummary {
   id: string
   story: string
   rows: string[]
+  layout: string
 }
 
 interface CatalogGlobal {
@@ -203,7 +204,11 @@ test('lays out every nightly page within the capture window @catalog-layout', as
   const app = await launchCatalog()
   try {
     const tooTall: string[] = []
-    for (const { id } of await catalogPages(app, 'nightly')) {
+    const laidOut = new Set<string>()
+    for (const { id, layout } of await catalogPages(app, 'nightly')) {
+      // One page stands for every page that differs from it only in colour.
+      if (laidOut.has(layout)) continue
+      laidOut.add(layout)
       await openPage(app, 'nightly', id)
       const fits = await windowForPage(app, id)
       if (typeof fits === 'string') tooTall.push(fits)

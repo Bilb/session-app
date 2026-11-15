@@ -3,6 +3,7 @@ import {
   CatalogPage,
   catalogPages,
   cellsOn,
+  layoutOf,
   STORIES,
   type CatalogPageSpec,
   type CatalogTier,
@@ -37,6 +38,8 @@ interface CatalogPageSummary {
   story: string
   rows: string[]
   cells: number
+  /** Shared by the pages that differ only in colour: see `layoutOf`. */
+  layout: string
 }
 
 window.sessionCatalog = {
@@ -46,6 +49,7 @@ window.sessionCatalog = {
       story: `${page.story.component}.${page.story.story}`,
       rows: Object.keys(page.story.variants),
       cells: cellsOn(page),
+      layout: layoutOf(page),
     })),
 }
 
