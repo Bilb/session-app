@@ -24,7 +24,7 @@ export const keyCombo = defineStory<KeyComboProps>({
       names: 'pc',
       testID: 'catalog-key-combo-pc-longest',
     },
-    arrow: { keys: ['up'], names: 'pc', testID: 'catalog-key-combo-arrow' },
+    arrow: { keys: ['down'], names: 'pc', testID: 'catalog-key-combo-arrow' },
     word: { keys: ['enter'], names: 'mac', testID: 'catalog-key-combo-word' },
   },
   render: (props) => <KeyCombo {...props} />,
