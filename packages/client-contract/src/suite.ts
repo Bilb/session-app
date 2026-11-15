@@ -1165,6 +1165,14 @@ export function runSessionClientContract(
       expect(await alice.getNetworkStatus()).toBe('disconnected')
     })
 
+    /** As with the status: paths need service nodes, so only their absence is asserted here. */
+    it('holds no paths without a network', async () => {
+      const { alice } = await harness.friends()
+      const snapshot = await alice.getNetworkPaths()
+      expect(snapshot.paths).toEqual([])
+      expect(typeof snapshot.countryAttribution).toBe('string')
+    })
+
     it('goes nowhere on a network accepted before there is an account', async () => {
       const { client } = await harness.newcomer()
       const seen = collect(client)

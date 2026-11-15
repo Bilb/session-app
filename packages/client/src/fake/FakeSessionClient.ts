@@ -11,6 +11,7 @@ import type {
   Deletion,
   ExportAttachmentOptions,
   MessageCursor,
+  NetworkPaths,
   NetworkStatus,
   SendPlan,
   SessionEvent,
@@ -472,6 +473,11 @@ export class FakeSessionClient implements SessionClient {
     }
     this.account.setThumbnailEdge(edgePx)
     return Promise.resolve()
+  }
+
+  getNetworkPaths(): Promise<NetworkPaths> {
+    this.assertOpen()
+    return Promise.resolve(this.account.networkPaths())
   }
 
   getConfigSizes(): Promise<ConfigSize[]> {

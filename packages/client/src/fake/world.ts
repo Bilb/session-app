@@ -37,6 +37,7 @@ import {
   type Deletion,
   type ListPlacement,
   type Message,
+  type NetworkPaths,
   type NetworkStatus,
   type OutgoingAttachment,
   type SendPlan,
@@ -47,6 +48,7 @@ import {
 
 import { SessionClientError } from '../errors'
 
+import { fakeNetworkPaths } from './paths'
 import { inferContentType } from './contentType'
 import { fakeSendPlan, isReencoded, reencodedContentType } from './sendPlan'
 
@@ -325,6 +327,8 @@ export class FakeAccount {
    */
   networkPlanned = false
   networkStatus: NetworkStatus = 'disconnected'
+  /** When the network last connected, on the world's clock; null while it is not connected. */
+  connectedAtMs: number | null = null
   /**
    * When a restored profile becomes visible, or 0 where there is nothing outstanding.
    *
@@ -423,6 +427,7 @@ export class FakeAccount {
   setNetworkStatus(status: NetworkStatus): void {
     if (this.networkStatus === status) return
     this.networkStatus = status
+    this.connectedAtMs = status === 'connected' ? (this.world?.now() ?? Date.now()) : null
     this.emit({ type: 'network-status-changed', status })
   }
 
@@ -1242,6 +1247,12 @@ export class FakeAccount {
    * sizes - the fake keeps no dumps - but in the same order, under the same names, and empty before
    * there is an account, which is what a caller can rely on.
    */
+  /** The paths the network holds, which are none until it has connected. */
+  networkPaths(): NetworkPaths {
+    const now = this.world?.now() ?? Date.now()
+    return fakeNetworkPaths(this.connectedAtMs === null ? null : now - this.connectedAtMs)
+  }
+
   configSizes(): ConfigSize[] {
     if (!this.haveAccount) return []
     const conversations = this.conversations.size

@@ -53,6 +53,15 @@ export type { TopTab, TopTabsProps } from './TopTabs.types'
 export { SafeArea, type SafeAreaProps } from './SafeArea'
 export { useTokenColor } from './useTokenColor'
 export { useWindowSize } from './useWindowSize'
+export {
+  PathFlow,
+  packetState,
+  pathFlowColor,
+  type PathFlowKind,
+  type PathFlowPacket,
+  type PathFlowPath,
+  type PathFlowProps,
+} from './PathFlow'
 export { ProgressRing } from './ProgressRing'
 export { inkFor, ON_ACCENT_SECONDARY_OPACITY, type InkTone } from './ink'
 export type { AvatarProps } from './Avatar'

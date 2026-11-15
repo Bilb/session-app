@@ -144,4 +144,25 @@ export const PENDING_COPY = {
    */
   messageScrollToLatest: 'Scroll to latest message',
   messageBackToReply: 'Back to reply',
+  /**
+   * The path screen's figures, under its country flow. The catalogue has the path's node names
+   * (`onionRoutingPathEntryNode` and the rest) but nothing for counts or timings.
+   */
+  onionRoutingPathsInUse: 'Paths in use',
+  onionRoutingPathCountries: 'Countries crossed',
+  onionRoutingPathEntryNodes: 'Entry nodes',
+  onionRoutingPathRebuilt: 'Rebuilt since opening',
+  onionRoutingPathAverage: 'Average round trip',
+  onionRoutingPathFastest: 'Fastest round trip',
+  onionRoutingPathSlowest: 'Slowest round trip',
+  onionRoutingPathJitter: 'Jitter',
+  /** A round trip or jitter in milliseconds; the figure is a whole number. */
+  onionRoutingPathMilliseconds: '{ms} ms',
+  /** The flow's column for the relay just before the destination. */
+  onionRoutingPathRelay: 'Relay',
+  /** Which paths are drawn bright: the latest request's, or every path a request is moving on. */
+  onionRoutingPathHighlightLatest: 'Latest request',
+  onionRoutingPathHighlightBusy: 'Every busy path',
+  /** Shown before any path has carried a request since the screen opened. */
+  onionRoutingPathWaiting: 'Waiting for traffic',
 } as const

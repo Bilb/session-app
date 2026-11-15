@@ -10,6 +10,7 @@
 #include <session/image/thumbnail.hpp>
 #include <session/logging.hpp>
 #include <session/mnemonics.hpp>
+#include <session/network/ip_country.hpp>
 #include <session/network/network_opt.hpp>
 #include <session/network/session_network.hpp>
 #include <session/sqlite.hpp>
@@ -1360,6 +1361,39 @@ struct ClientBridge::Impl {
             std::ranges::sort(sizes, {}, &ConfigSize::name);
             respond(id, ConfigSizesResult{std::move(sizes)});
         }));
+    }
+
+    void handle(double id, const GetNetworkPathsCommand&) {
+        std::vector<NetworkPath> paths;
+        if (auto* net = client->core.network()) {
+            // On Core's loop, which is where the subscription moves it.
+            auto own = client->core.loop().call_get([&] { return client->core.swarm_node(); });
+            for (auto& open : net->get_open_paths()) {
+                std::vector<PathHop> hops;
+                hops.reserve(open.path.hops.size());
+                for (auto& hop : open.path.hops) {
+                    auto country = ::session::ip_country::lookup(hop.ip);
+                    hops.emplace_back(
+                            hop.pubkey.hex(),
+                            country ? std::optional<std::string>{*country} : std::nullopt);
+                }
+                auto destination = open.remote_is_client ? PathDestination::file_server
+                                 : own && own->remote_pubkey == open.remote
+                                         ? PathDestination::own_swarm
+                                         : PathDestination::storage_node;
+                paths.emplace_back(
+                        open.remote.hex(),
+                        destination,
+                        std::move(hops),
+                        static_cast<double>(open.performance.latency.count()),
+                        static_cast<double>(open.performance.jitter.count()) / 1000.0,
+                        static_cast<double>(open.requests_sent),
+                        static_cast<double>(open.proxied_requests_sent));
+            }
+        }
+        respond(id,
+                NetworkPathsResult{NetworkPaths{
+                        std::move(paths), std::string{::session::ip_country::attribution()}}});
     }
 
     void handle(double id, const GetPrefCommand& cmd) {

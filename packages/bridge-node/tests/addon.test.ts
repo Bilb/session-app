@@ -671,6 +671,35 @@ describeEcho('the generated converters', () => {
       },
     },
     { type: 'response', response: { id: 900_019, result: { type: 'configSizes', sizes: [] } } },
+    // Every PathDestination once, and a hop with no country beside one with.
+    {
+      type: 'response',
+      response: {
+        id: 900_060,
+        result: {
+          type: 'networkPaths',
+          snapshot: {
+            paths: (['ownSwarm', 'storageNode', 'fileServer'] as const).map((destination, i) => ({
+              remoteHex: String(i).repeat(64),
+              destination,
+              hops: [{ pubkeyHex: 'a'.repeat(64), country: 'DE' }, { pubkeyHex: 'b'.repeat(64) }],
+              latencyMs: 240 + i,
+              jitterMs: 12.5,
+              requestsSent: 9_007_199_254_740_991,
+              proxiedRequestsSent: 0,
+            })),
+            countryAttribution: 'IP Geolocation by DB-IP (https://db-ip.com)',
+          },
+        },
+      },
+    },
+    {
+      type: 'response',
+      response: {
+        id: 900_061,
+        result: { type: 'networkPaths', snapshot: { paths: [], countryAttribution: '' } },
+      },
+    },
     ...(
       [
         'reencoded',
