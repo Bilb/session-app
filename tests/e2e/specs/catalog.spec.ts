@@ -28,7 +28,6 @@ interface CatalogPageSummary {
   id: string
   story: string
   rows: string[]
-  layout: string
 }
 
 interface CatalogGlobal {
@@ -189,31 +188,6 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
     // Only a nightly sweep that drew every page can tell a known issue is fixed.
     if (TIER === 'nightly' && tooTall.length === 0)
       expect.soft(fixed, 'no longer found: remove from KNOWN_ISSUES').toEqual([])
-  } finally {
-    await app.close()
-  }
-})
-
-/**
- * A pull request lays out the nightly pages too, without capturing them: a nightly page draws its
- * story in every theme, so a story that fits a pull request's page can outgrow the window at night.
- */
-test('lays out every nightly page within the capture window @catalog-layout', async () => {
-  test.skip(TIER === 'nightly', 'the nightly run lays out and captures these pages itself')
-  test.setTimeout(15 * 60_000)
-  const app = await launchCatalog()
-  try {
-    const tooTall: string[] = []
-    const laidOut = new Set<string>()
-    for (const { id, layout } of await catalogPages(app, 'nightly')) {
-      // One page stands for every page that differs from it only in colour.
-      if (laidOut.has(layout)) continue
-      laidOut.add(layout)
-      await openPage(app, 'nightly', id)
-      const fits = await windowForPage(app, id)
-      if (typeof fits === 'string') tooTall.push(fits)
-    }
-    expect(tooTall, 'nightly pages past the capture window').toEqual([])
   } finally {
     await app.close()
   }

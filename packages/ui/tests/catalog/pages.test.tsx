@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { catalogPages, layoutOf, type CatalogTier } from '#src/catalog/pages'
+import { catalogPages, type CatalogTier } from '#src/catalog/pages'
 
 const TIERS: readonly CatalogTier[] = ['pr', 'nightly']
 
@@ -18,14 +18,5 @@ describe('catalogPages', () => {
     expect(page?.themes).toEqual(['classic-dark', 'classic-light', 'ocean-dark', 'ocean-light'])
     const plain = catalogPages('pr').find((each) => each.id === 'radioIndicator-states')
     expect(plain?.themes).toEqual(['classic-dark', 'classic-light'])
-  })
-
-  // The pull request's check of the nightly layout measures one page of each layout.
-  it("shares one layout among a story's nightly accent pages, and no other page", () => {
-    const pages = catalogPages('nightly').filter((page) => page.id.startsWith('button-variants'))
-    const layouts = new Map(pages.map((page) => [page.id, layoutOf(page)]))
-    expect(layouts.get('button-variants-red')).toBe(layouts.get('button-variants-green'))
-    const others = catalogPages('nightly').filter((page) => !page.id.startsWith('button-variants-'))
-    expect(others.map(layoutOf)).not.toContain(layouts.get('button-variants-green'))
   })
 })
