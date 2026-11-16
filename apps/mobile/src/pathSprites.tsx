@@ -1,6 +1,6 @@
 import type { PathSprites } from '@session/ui'
 import { requireNativeView } from 'expo'
-import { Platform, type ViewStyle } from 'react-native'
+import type { ViewStyle } from 'react-native'
 
 interface NativeProps {
   spritesJson: string
@@ -8,20 +8,16 @@ interface NativeProps {
   style: ViewStyle
 }
 
-const NativePathSprites =
-  Platform.OS === 'ios' ? requireNativeView<NativeProps>('PathSprites') : null
+const NativePathSprites = requireNativeView<NativeProps>('PathSprites')
 
 /**
- * The path screen's requests run by Core Animation (`modules/path-sprites`), so the app does no
- * work per frame while they travel. Null on Android, where React Native's native driver moves them.
+ * The path screen's requests run by the platform (`modules/path-sprites`): Core Animation on iOS,
+ * one canvas drawing every request on Android. Either way React Native moves no view per frame.
  */
-export const mobilePathSprites: PathSprites | null =
-  NativePathSprites === null
-    ? null
-    : ({ sprites, width, height }) => (
-        <NativePathSprites
-          spritesJson={JSON.stringify(sprites)}
-          pointerEvents="none"
-          style={{ position: 'absolute', top: 0, left: 0, width, height }}
-        />
-      )
+export const mobilePathSprites: PathSprites = ({ sprites, width, height }) => (
+  <NativePathSprites
+    spritesJson={JSON.stringify(sprites)}
+    pointerEvents="none"
+    style={{ position: 'absolute', top: 0, left: 0, width, height }}
+  />
+)

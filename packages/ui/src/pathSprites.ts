@@ -52,7 +52,7 @@ const PathSpritesContext = createContext<PathSprites | null>(null)
 
 export const PathSpritesProvider = PathSpritesContext.Provider
 
-/** Null where the platform has no animator of its own (Android, desktop). */
+/** Null where the app injects none (desktop). */
 export function usePathSprites(): PathSprites | null {
   return useContext(PathSpritesContext)
 }
