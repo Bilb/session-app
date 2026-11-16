@@ -525,8 +525,6 @@ const LEG_SAMPLES = 5
 const STEP_MS = 0.01
 /** The browser has no native driver: there the same interpolations run in JavaScript. */
 const NATIVE_DRIVER = Platform.OS !== 'web'
-/** The most layers a request carries at once, and so the rings drawn round it. */
-const MOST_LAYERS = 4
 
 interface PacketSpritesProps {
   layout: FlowLayout
@@ -638,6 +636,86 @@ function samePoints(
  * One request and its trail, rings and the layers coming off and going on at each node, moved by
  * the native driver from one clock: nothing about it is drawn again or rendered while it travels.
  */
+const SPRITE = { position: 'absolute', left: 0, top: 0 } as const
+const QUIET_STYLE = { opacity: QUIET_OPACITY } as const
+
+function ringBorder(width: number, color: string) {
+  return { borderWidth: width, borderColor: color }
+}
+
+/** When a request's layers change on its trip, from its keyframes: each time and the new count. */
+function layerSteps(frames: Keyframes): { atMs: number; layers: number }[] {
+  const steps: { atMs: number; layers: number }[] = []
+  frames.layers.forEach((layers, i) => {
+    if (steps.length === 0 || steps[steps.length - 1]?.layers !== layers) {
+      steps.push({ atMs: frames.times[i] ?? 0, layers })
+    }
+  })
+  return steps
+}
+
+function layersAt(steps: readonly { atMs: number; layers: number }[], elapsedMs: number): number {
+  let layers = steps[0]?.layers ?? 0
+  for (const step of steps) if (step.atMs <= elapsedMs) layers = step.layers
+  return layers
+}
+
+interface BurstProps {
+  x: number
+  y: number
+  /** Its radius as it starts and as it ends. */
+  r0: number
+  r1: number
+  /** When it starts, into the trip. */
+  atMs: number
+  startMs: number
+  ringColor: string
+  stillAtMs: number | undefined
+}
+
+/**
+ * A ring at a node as a layer comes off or goes on, on a clock of its own that runs only while it
+ * shows: a view the native driver moves is updated every frame its clock runs.
+ */
+function Burst({ x, y, r0, r1, atMs, startMs, ringColor, stillAtMs }: BurstProps) {
+  const r = Math.max(r0, r1)
+  const [age] = useState(() => new Animated.Value(0))
+  useEffect(() => {
+    const intoMs = (stillAtMs ?? Date.now()) - startMs - atMs
+    if (stillAtMs !== undefined || intoMs >= RING_MS) {
+      age.setValue(Math.min(1, Math.max(0, intoMs / RING_MS)))
+      return
+    }
+    age.setValue(Math.max(0, intoMs) / RING_MS)
+    const run = Animated.timing(age, {
+      toValue: 1,
+      duration: RING_MS - Math.max(0, intoMs),
+      delay: Math.max(0, -intoMs),
+      easing: (t) => t,
+      useNativeDriver: NATIVE_DRIVER,
+    })
+    run.start()
+    return () => run.stop()
+  }, [age, atMs, startMs, stillAtMs])
+  const style = useMemo(
+    () => ({
+      opacity: age.interpolate({ inputRange: [0, STEP_MS, 1], outputRange: [0, 0.9, 0] }),
+      transform: [
+        { translateX: x - r },
+        { translateY: y - r },
+        { scale: age.interpolate({ inputRange: [0, 1], outputRange: [r0 / r, r1 / r] }) },
+      ],
+    }),
+    [age, x, y, r, r0, r1],
+  )
+  return <Animated.View style={[SPRITE, circle(r), ringBorder(2, ringColor), style]} />
+}
+
+/**
+ * One request and its trail, rings and the layers coming off and going on at each node. Only what
+ * moves every frame is on the native driver's clock, the request and its trail; how many layers it
+ * carries is state, changed a few times a trip, and each burst runs its own short clock.
+ */
 const PacketSprite = memo(
   function PacketSprite({
     packet,
@@ -654,43 +732,49 @@ const PacketSprite = memo(
       () => journeyOf(packet.hopMs, links, !onionLayers ? 'plain' : quiet ? 'ping' : 'request'),
       [packet.hopMs, links, onionLayers, quiet],
     )
+    const total = journey.totalMs
     const trail = quiet ? 2 : TRAIL
+    const frames = useMemo(
+      () => keyframesOf(journey, pts, barWidth, trail),
+      [journey, pts, barWidth, trail],
+    )
+    const steps = useMemo(() => layerSteps(frames), [frames])
+
     const [clock] = useState(() => new Animated.Value(0))
     useEffect(() => {
-      if (stillAtMs !== undefined) {
-        clock.setValue(stillAtMs - packet.startMs)
-        return
-      }
-      // Until the last ring has faded too.
-      const endMs = journey.totalMs + RING_MS
-      const fromMs = Date.now() - packet.startMs
+      const fromMs = (stillAtMs ?? Date.now()) - packet.startMs
       clock.setValue(fromMs)
-      if (fromMs >= endMs) return
+      if (stillAtMs !== undefined || fromMs >= total) return
       const run = Animated.timing(clock, {
-        toValue: endMs,
-        duration: endMs - fromMs,
+        toValue: total,
+        duration: total - fromMs,
         easing: (t) => t,
         useNativeDriver: NATIVE_DRIVER,
       })
       run.start()
       return () => run.stop()
-    }, [clock, journey, packet.startMs, stillAtMs])
+    }, [clock, total, packet.startMs, stillAtMs])
 
-    const sprites = useMemo(() => {
-      const frames = keyframesOf(journey, pts, barWidth, trail)
-      const total = journey.totalMs
+    // Moved on by a timer at each change of layers and at the end of the trip, not every frame.
+    const [markMs, setMarkMs] = useState(() => (stillAtMs ?? Date.now()) - packet.startMs)
+    useEffect(() => {
+      if (stillAtMs !== undefined) return
+      const fromMs = Date.now() - packet.startMs
+      const ids = [...steps.map((step) => step.atMs), total]
+        .filter((atMs) => atMs > fromMs)
+        .map((atMs) => setTimeout(() => setMarkMs(atMs), atMs - fromMs))
+      return () => ids.forEach(clearTimeout)
+    }, [steps, total, packet.startMs, stillAtMs])
+    const layers = onionLayers ? layersAt(steps, markMs) : 0
+    const home = markMs >= total || markMs < 0
+
+    const moving = useMemo(() => {
       const track = (values: readonly number[], offset: number) =>
         clock.interpolate({
           inputRange: frames.times,
           outputRange: values.map((v) => v - offset),
           extrapolate: 'clamp',
         })
-      // The whole request, trail and rings: hidden before it sets off and once it is home.
-      const visible = clock.interpolate({
-        inputRange: [-STEP_MS, 0, total, total + STEP_MS],
-        outputRange: [0, 1, 1, 0],
-        extrapolate: 'clamp',
-      })
       const dot = (j: number, r: number) => ({
         r,
         opacity: j === 0 ? 1 : 0.5 - j * 0.09,
@@ -699,93 +783,71 @@ const PacketSprite = memo(
           { translateY: track(frames.ys[j] ?? [], r) },
         ],
       })
-      const trailDots = Array.from({ length: trail }, (_, i) => {
-        const j = trail - i
-        return dot(j, (quiet ? 8 - j : 14 - j * 2) / 2)
-      })
-      const core = dot(0, quiet ? QUIET_CORE : onionLayers ? 10 : 11)
-      // Round the request, so they move with it: only whether each shows is animated.
-      const layers = !onionLayers
-        ? []
-        : Array.from({ length: MOST_LAYERS }, (_, k) => ({
-            r: layerRadius(k + 1, quiet),
-            opacity: clock.interpolate({
-              inputRange: frames.times,
-              outputRange: frames.layers.map((n) => (n > k ? 0.9 - k * 0.12 : 0)),
-              extrapolate: 'clamp',
-            }),
-          }))
-      // A layer coming off swells and fades; one going on closes onto the request; at home every
-      // layer comes off at once.
-      const bursts =
-        !onionLayers || quiet
-          ? []
-          : journey.rings.map((ring) => {
-              const [x, y] = pointAlong(pts, ring.hop, barWidth)
-              const base = layerRadius(ring.kind === 'open' ? links : links + 1 - ring.hop)
-              const [r0, r1] =
-                ring.kind === 'wrap'
-                  ? [base + 8, base]
-                  : ring.kind === 'open'
-                    ? [6, 17]
-                    : [base, base + 9]
-              const r = Math.max(r0, r1)
-              const span = [ring.atMs, ring.atMs + RING_MS]
-              return {
-                key: `${ring.kind}-${ring.hop}-${ring.atMs}`,
-                r,
-                opacity: clock.interpolate({
-                  inputRange: [ring.atMs - STEP_MS, ...span],
-                  outputRange: [0, 0.9, 0],
-                  extrapolate: 'clamp',
-                }),
-                transform: [
-                  { translateX: x - r },
-                  { translateY: y - r },
-                  {
-                    scale: clock.interpolate({
-                      inputRange: span,
-                      outputRange: [r0 / r, r1 / r],
-                      extrapolate: 'clamp',
-                    }),
-                  },
-                ],
-              }
-            })
-      return { visible, trailDots, core, layers, bursts }
-    }, [clock, journey, pts, barWidth, trail, quiet, onionLayers, links])
+      return {
+        trail: Array.from({ length: trail }, (_, i) => {
+          const j = trail - i
+          return dot(j, (quiet ? 8 - j : 14 - j * 2) / 2)
+        }),
+        core: dot(0, quiet ? QUIET_CORE : onionLayers ? 10 : 11),
+      }
+    }, [clock, frames, trail, quiet, onionLayers])
 
-    const { core } = sprites
+    // A layer coming off swells and fades; one going on closes onto the request; at home every
+    // layer comes off at once.
+    const bursts =
+      !onionLayers || quiet
+        ? []
+        : journey.rings.map((ring) => {
+            const [x, y] = pointAlong(pts, ring.hop, barWidth)
+            const base = layerRadius(ring.kind === 'open' ? links : links + 1 - ring.hop)
+            const [r0, r1] =
+              ring.kind === 'wrap'
+                ? [base + 8, base]
+                : ring.kind === 'open'
+                  ? [6, 17]
+                  : [base, base + 9]
+            return { key: `${ring.kind}-${ring.hop}-${ring.atMs}`, x, y, r0, r1, atMs: ring.atMs }
+          })
+
+    const { core } = moving
     return (
       <View style={[StyleSheet.absoluteFill, quiet ? QUIET_STYLE : null]} pointerEvents="none">
-        <Animated.View style={[StyleSheet.absoluteFill, { opacity: sprites.visible }]}>
-          {sprites.trailDots.map((d, i) => (
-            <Animated.View
-              key={`d${i}`}
-              style={[SPRITE, { opacity: d.opacity, transform: d.transform }]}
-            >
-              <GlowDot kind={kind} r={d.r} heart={false} />
-            </Animated.View>
-          ))}
-          <Animated.View style={[SPRITE, { transform: core.transform }]}>
-            <GlowDot kind={kind} r={core.r} heart />
-            {sprites.layers.map((l, k) => (
+        {home ? null : (
+          <>
+            {moving.trail.map((d, i) => (
               <Animated.View
-                key={`l${k}`}
-                style={[circle(l.r, core.r), ringBorder(1, ringColor), { opacity: l.opacity }]}
-              />
+                key={`d${i}`}
+                style={[SPRITE, { opacity: d.opacity, transform: d.transform }]}
+              >
+                <GlowDot kind={kind} r={d.r} heart={false} />
+              </Animated.View>
             ))}
-          </Animated.View>
-        </Animated.View>
-        {sprites.bursts.map((b) => (
-          <Animated.View
+            <Animated.View style={[SPRITE, { transform: core.transform }]}>
+              <GlowDot kind={kind} r={core.r} heart />
+              {Array.from({ length: layers }, (_, k) => (
+                <View
+                  key={`l${k}`}
+                  style={[
+                    circle(layerRadius(k + 1, quiet), core.r),
+                    ringBorder(1, ringColor),
+                    { opacity: 0.9 - k * 0.12 },
+                  ]}
+                />
+              ))}
+            </Animated.View>
+          </>
+        )}
+        {bursts.map((b) => (
+          <Burst
             key={b.key}
-            style={[
-              SPRITE,
-              circle(b.r),
-              ringBorder(2, ringColor),
-              { opacity: b.opacity, transform: b.transform },
-            ]}
+            x={b.x}
+            y={b.y}
+            r0={b.r0}
+            r1={b.r1}
+            atMs={b.atMs}
+            startMs={packet.startMs}
+            ringColor={ringColor}
+            stillAtMs={stillAtMs}
           />
         ))}
       </View>
@@ -800,13 +862,6 @@ const PacketSprite = memo(
     a.stillAtMs === b.stillAtMs &&
     samePoints(a.pts, b.pts),
 )
-
-const SPRITE = { position: 'absolute', left: 0, top: 0 } as const
-const QUIET_STYLE = { opacity: QUIET_OPACITY } as const
-
-function ringBorder(width: number, color: string) {
-  return { borderWidth: width, borderColor: color }
-}
 
 /** The requests in flight, over the drawing: moved by the native driver, never redrawn. */
 const PacketSprites = memo(function PacketSprites({
