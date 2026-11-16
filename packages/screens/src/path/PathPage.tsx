@@ -1,6 +1,6 @@
 import { URLS } from '@session/app'
 import { PENDING_COPY, tr } from '@session/localization'
-import { useSessionActions } from '@session/state'
+import { useConversations, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
   Icon,
@@ -19,6 +19,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import {
   EMPTY_TRACKER,
+  expectedPathCount,
   hopMsFor,
   inUse,
   pathStats,
@@ -171,6 +172,7 @@ function StatsCard({ stats }: { stats: PathStats }) {
  */
 export function PathPage() {
   const actions = useSessionActions()
+  const conversations = useConversations()
   const modals = useModals()
   const [tracker, setTracker] = useState<PathTracker>(EMPTY_TRACKER)
   const [packets, setPackets] = useState<PathFlowPacket[]>([])
@@ -260,6 +262,7 @@ export function PathPage() {
             labelFor={labelFor}
             kindLabels={kindLabels()}
             buildingLabel={PENDING_COPY.onionRoutingPathBuilding}
+            expectedPaths={expectedPathCount(conversations)}
             testID={ELEMENT.settings.pathFlow}
           />
           <StatsCard stats={stats} />

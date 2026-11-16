@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   BUSY_REQUESTS,
   EMPTY_TRACKER,
+  expectedPathCount,
   hopMsFor,
   IN_USE_MS,
   inUse,
@@ -285,5 +286,12 @@ describe('hopMsFor', () => {
     expect(hopMsFor(200)).toBeLessThan(hopMsFor(500))
     expect(hopMsFor(1)).toBe(140)
     expect(hopMsFor(5_000)).toBe(700)
+  })
+})
+
+describe('expectedPathCount', () => {
+  it("counts your swarm's two paths, which every account has, and no chat's", () => {
+    expect(expectedPathCount([])).toBe(2)
+    expect(expectedPathCount([{ kind: 'dm' }, { kind: 'dm' }])).toBe(2)
   })
 })

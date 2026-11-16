@@ -1,4 +1,4 @@
-import type { NetworkPath, NetworkPaths } from '@session/client'
+import type { ConversationKind, NetworkPath, NetworkPaths } from '@session/client'
 
 /**
  * What the path screen makes of the snapshots it polls: which paths are in use, which requests
@@ -296,6 +296,31 @@ export function pathStats(tracker: PathTracker, nowMs: number): PathStats {
     slowestMs: latencies.length === 0 ? null : Math.max(...latencies),
     jitterMs: mean(timed.map((p) => p.jitterMs)),
   }
+}
+
+/** A session's paths: its current one, and the spare the router keeps beside it. */
+const PATHS_PER_SESSION = 2
+
+/**
+ * How many paths the account will have in use, guessed from its conversations before a snapshot
+ * says, so the drawing can open at the height it will need: your swarm's session always, and one
+ * for each conversation that keeps a session of its own open. One-to-one chats do not: a message
+ * to a contact uses a session only while it is sent.
+ */
+export function expectedPathCount(conversations: readonly { kind: ConversationKind }[]): number {
+  // Unread until the client has groups or communities; the terms below are what reads it.
+  void conversations
+  const sessions =
+    // Your swarm.
+    1
+  // TODO: a group's swarm is subscribed to as yours is, so each group holds a session open. Count
+  // them once the client has groups:
+  //   + conversations.filter((c) => c.kind === 'group').length
+  // TODO: a community is polled every few seconds, each poll through a node no other request is
+  // using, so a minute holds about a dozen of its sessions. Count them once the client has
+  // communities:
+  //   + conversations.filter((c) => c.kind === 'community').length * 12
+  return sessions * PATHS_PER_SESSION
 }
 
 /**

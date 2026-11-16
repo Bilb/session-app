@@ -74,6 +74,11 @@ export interface PathFlowProps {
   /** Shown while there is no path yet, over a drawing of one being built. */
   buildingLabel: string
   /**
+   * How many paths the caller expects to draw, so the drawing opens at the height those need
+   * rather than growing into it as they arrive.
+   */
+  expectedPaths?: number | undefined
+  /**
    * Draws the requests as they are at this moment, still, and under reduced motion too: for the
    * catalog, which cannot capture motion but should show what a request and a ping look like.
    */
@@ -592,6 +597,7 @@ export function PathFlow({
   labelFor,
   kindLabels,
   buildingLabel,
+  expectedPaths,
   stillAtMs,
   testID,
 }: PathFlowProps) {
@@ -604,10 +610,10 @@ export function PathFlow({
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
   const building = paths.length === 0
-  // Sized for the most paths drawn since it opened, so the card grows when it must and never
-  // shrinks as paths fall idle: the page below it stays where it is. Building takes the room one
-  // path would.
-  const [mostPaths, setMostPaths] = useState(Math.max(1, paths.length))
+  // Sized for the most paths drawn since it opened, or expected, so the card grows only when the
+  // guess fell short and never shrinks as paths fall idle: the page below it stays where it is.
+  // Building takes the room one path would.
+  const [mostPaths, setMostPaths] = useState(Math.max(1, paths.length, expectedPaths ?? 0))
   if (paths.length > mostPaths) setMostPaths(paths.length)
   const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(mostPaths, paths.length)) : 0
   const layout = useMemo(
