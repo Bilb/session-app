@@ -289,6 +289,22 @@ describe('hopMsFor', () => {
   })
 })
 
+describe('pings just after opening', () => {
+  it('counts the client busy from when its sessions last sent, before any request is seen', () => {
+    const recent = ['g1', 'g2', 'g3', 'g4'].map((remoteHex) =>
+      path({ remoteHex, requestsSent: 3, msSinceLastRequest: 1_000 }),
+    )
+    const first = trackSnapshot(EMPTY_TRACKER, snap(...recent), 0, 1_000)
+    const next = trackSnapshot(
+      first.tracker,
+      snap(...recent.map((p) => ({ ...p, pingsAnswered: 1, msSinceLastRequest: 2_000 }))),
+      1_000,
+      1_000,
+    )
+    expect(next.requests.filter((r) => r.kind === 'ping')).toEqual([])
+  })
+})
+
 describe('expectedPathCount', () => {
   it("counts your swarm's two paths, which every account has, and no chat's", () => {
     expect(expectedPathCount([])).toBe(2)

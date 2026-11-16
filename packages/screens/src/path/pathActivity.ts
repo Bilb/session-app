@@ -212,7 +212,12 @@ export function trackSnapshot(
     ({ lastRequestAtMs }) => lastRequestAtMs === null || nowMs - lastRequestAtMs >= PING_QUIET_MS,
   )
   // Busy, your own swarm's pings still show: they are what says your messages can reach you.
-  const busy = recentRequestsMs.length >= BUSY_REQUESTS
+  // What went out since the screen opened, or what libsession says went out lately, whichever is
+  // more: just after opening, the first counts nothing yet.
+  const recentlyUsed = paths.filter(
+    (p) => !p.standby && p.lastRequestAtMs !== null && nowMs - p.lastRequestAtMs < PING_QUIET_MS,
+  ).length
+  const busy = Math.max(recentlyUsed, recentRequestsMs.length) >= BUSY_REQUESTS
   const shownPings = busy ? quiet.filter((p) => p.kind === 'swarm') : quiet
   for (const { key } of shownPings) {
     seq += 1
