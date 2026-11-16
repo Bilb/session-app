@@ -35,6 +35,14 @@ describe('fakeNetworkPaths', () => {
     expect(new Set(paths.map((p) => p.hops[0]?.pubkeyHex)).size).toBeLessThanOrEqual(4)
   })
 
+  it('opens on an account that has been running a while: every group probed in the last minute', () => {
+    const groups = fakeNetworkPaths(0, 'busy').paths.filter(
+      (p) => !p.standby && p.destination === 'storageNode' && p.proxiedRequestsSent === 0,
+    )
+    expect(groups).toHaveLength(36)
+    expect(groups.every((p) => (p.msSinceLastRequest ?? Infinity) < 60_000)).toBe(true)
+  })
+
   it('holds no paths before the network has connected', () => {
     expect(fakeNetworkPaths(null, 'busy').paths).toEqual([])
   })

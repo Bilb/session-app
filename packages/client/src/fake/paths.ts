@@ -147,6 +147,12 @@ const COMMUNITY_POLL_MS = [5_000, 11_000] as const
 const FILE_EVERY_MS = 45_000
 /** How long a community's one-request session stays open after its request. */
 const PROXY_LINGER_MS = 75_000
+/**
+ * How long the busy account has been connected when its app opens: long enough that every group
+ * has probed and the communities' sessions have built up, so the path screen sees an account that
+ * has been running a while rather than one that started this second.
+ */
+const BUSY_WARM_MS = 15 * 60_000
 
 const BUSY_SPECS: readonly FakePathSpec[] = [
   { remoteHex: hex64(0x51), destination: 'ownSwarm', everyMs: PROBE_EVERY_MS, rebuildMs: 600_000, proxied: false },
@@ -220,10 +226,11 @@ export function fakeNetworkPaths(
 ): NetworkPaths {
   if (elapsedMs === null) return { paths: [], countryAttribution: ATTRIBUTION }
   if (traffic === 'busy') {
+    const warmMs = elapsedMs + BUSY_WARM_MS
     return {
       paths: [
-        ...BUSY_SPECS.flatMap((spec, index) => busyPair(spec, index, elapsedMs)),
-        ...proxySessions(elapsedMs),
+        ...BUSY_SPECS.flatMap((spec, index) => busyPair(spec, index, warmMs)),
+        ...proxySessions(warmMs),
       ],
       countryAttribution: ATTRIBUTION,
     }
