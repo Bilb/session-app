@@ -42,8 +42,6 @@ const POLL_MS = 1_000
 /** Anything that set off this long ago is home, however slow its path. */
 const PACKET_LIFE_MS = 30_000
 
-type Highlight = 'latest' | 'busy'
-
 /** What each colour of path is for, worded on each render so a language change reaches it. */
 function kindLabels(): Record<PathKind, string> {
   return {
@@ -177,7 +175,6 @@ export function PathPage() {
   const [tracker, setTracker] = useState<PathTracker>(EMPTY_TRACKER)
   const [packets, setPackets] = useState<PathFlowPacket[]>([])
   const [latestKey, setLatestKey] = useState<string | null>(null)
-  const [highlight, setHighlight] = useState<Highlight>('busy')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const trackerRef = useRef(tracker)
 
@@ -235,7 +232,7 @@ export function PathPage() {
     kind: p.kind,
     countries: p.countries,
     standby: p.standby,
-    lit: highlight === 'busy' ? busy.has(p.key) || p.key === latestKey : p.key === latestKey,
+    lit: busy.has(p.key) || p.key === latestKey,
   }))
   const stats = pathStats(tracker, nowMs)
 
@@ -276,21 +273,6 @@ export function PathPage() {
           onPress={() => confirmLink(modals, LEARN_MORE_URL)}
           testID={ELEMENT.settings.pathLearnMore}
         />
-      </SettingsGroup>
-      <SettingsGroup>
-        {(['latest', 'busy'] as const).map((mode) => (
-          <SettingsRow
-            key={mode}
-            label={
-              mode === 'latest'
-                ? PENDING_COPY.onionRoutingPathHighlightLatest
-                : PENDING_COPY.onionRoutingPathHighlightBusy
-            }
-            trailing={highlight === mode ? <Icon name="check" size="sm" /> : null}
-            onPress={() => setHighlight(mode)}
-            testID={ELEMENT.settings.pathHighlight(mode)}
-          />
-        ))}
       </SettingsGroup>
       {tracker.attribution.length === 0 ? null : (
         <Text size="$caption" tone="secondary">

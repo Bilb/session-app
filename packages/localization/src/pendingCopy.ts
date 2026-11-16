@@ -174,9 +174,6 @@ export const PENDING_COPY = {
    */
   onionRoutingPathEntry: 'Entry',
   onionRoutingPathRelay: 'Relay',
-  /** Which paths are drawn bright: the latest request's, or every path a request is moving on. */
-  onionRoutingPathHighlightLatest: 'Latest request',
-  onionRoutingPathHighlightBusy: 'Every busy path',
   /** Over the drawing of a path being built, before the client has any. */
   onionRoutingPathBuilding: 'Building paths',
   /** The flow's last column for a path to the file server, which lies past its last relay. */

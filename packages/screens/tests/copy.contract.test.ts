@@ -188,8 +188,6 @@ describe('screen copy', () => {
       'onionRoutingPathIntro',
       'onionRoutingPathEntry',
       'onionRoutingPathRelay',
-      'onionRoutingPathHighlightLatest',
-      'onionRoutingPathHighlightBusy',
       'onionRoutingPathBuilding',
       'onionRoutingPathFileServer',
       'onionRoutingPathYourMessages',

@@ -148,7 +148,6 @@ export const ELEMENT = {
     pathFlow: 'settings-path-flow',
     pathLearnMore: 'settings-path-learn-more',
     pathStat: (name: string) => `settings-path-stat-${name}` as const,
-    pathHighlight: (mode: string) => `settings-path-highlight-${mode}` as const,
     clearData: 'settings-clear-data',
     confirmClearData: 'settings-confirm-clear-data',
     confirmClearDataButton: 'settings-confirm-clear-data-button',
