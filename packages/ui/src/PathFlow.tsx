@@ -16,6 +16,12 @@ import {
   pointAlong,
   type FlowLayout,
 } from './pathFlowLayout'
+import {
+  usePathSprites,
+  type PathSprite,
+  type PathSpriteLayer,
+  type PathSprites,
+} from './pathSprites'
 import { Text } from './Text'
 import { useReducedMotion } from './useReducedMotion'
 import { useTokenColor } from './useTokenColor'
@@ -863,6 +869,136 @@ const PacketSprite = memo(
     samePoints(a.pts, b.pts),
 )
 
+/** A request as layers a platform animator runs on its own: see `pathSprites.ts`. */
+function spriteOf(
+  packet: PathFlowPacket,
+  kind: PathFlowKind,
+  pts: readonly (readonly [number, number])[],
+  barWidth: number,
+  onionLayers: boolean,
+  ringColor: string,
+): PathSprite {
+  const quiet = packet.quiet === true
+  const links = linksOf(kind)
+  const journey = journeyOf(
+    packet.hopMs,
+    links,
+    !onionLayers ? 'plain' : quiet ? 'ping' : 'request',
+  )
+  const total = journey.totalMs
+  const trail = quiet ? 2 : TRAIL
+  const frames = keyframesOf(journey, pts, barWidth, trail)
+  const color = KIND_COLOR[kind]
+  const layer = (rest: Partial<PathSpriteLayer> & Pick<PathSpriteLayer, 'shape' | 'r'>) => ({
+    color,
+    borderWidth: 0,
+    times: frames.times,
+    xs: frames.xs[0] ?? [],
+    ys: frames.ys[0] ?? [],
+    opacityTimes: [0, total],
+    opacityValues: [1, 0],
+    opacitySteps: true,
+    scaleTimes: [],
+    scaleValues: [],
+    ...rest,
+  })
+  const layers: PathSpriteLayer[] = []
+  for (let i = 0; i < trail; i += 1) {
+    const j = trail - i
+    layers.push(
+      layer({
+        shape: 'glow',
+        r: (quiet ? 8 - j : 14 - j * 2) / 2,
+        xs: frames.xs[j] ?? [],
+        ys: frames.ys[j] ?? [],
+        opacityValues: [0.5 - j * 0.09, 0],
+      }),
+    )
+  }
+  layers.push(layer({ shape: 'glow', r: quiet ? QUIET_CORE : onionLayers ? 10 : 11 }))
+  if (onionLayers) {
+    const steps = layerSteps(frames)
+    for (let k = 0; k < 4; k += 1) {
+      layers.push(
+        layer({
+          shape: 'ring',
+          color: ringColor,
+          r: layerRadius(k + 1, quiet),
+          borderWidth: 1,
+          opacityTimes: [...steps.map((step) => step.atMs), total],
+          opacityValues: [...steps.map((step) => (step.layers > k ? 0.9 - k * 0.12 : 0)), 0],
+        }),
+      )
+    }
+  }
+  if (onionLayers && !quiet) {
+    // A layer coming off swells and fades; one going on closes onto the request; at home every
+    // layer comes off at once.
+    for (const ring of journey.rings) {
+      const [x, y] = pointAlong(pts, ring.hop, barWidth)
+      const base = layerRadius(ring.kind === 'open' ? links : links + 1 - ring.hop)
+      const [r0, r1] =
+        ring.kind === 'wrap' ? [base + 8, base] : ring.kind === 'open' ? [6, 17] : [base, base + 9]
+      const r = Math.max(r0, r1)
+      layers.push(
+        layer({
+          shape: 'ring',
+          color: ringColor,
+          r,
+          borderWidth: 2,
+          times: [0],
+          xs: [x],
+          ys: [y],
+          opacityTimes: [0, Math.max(0, ring.atMs - STEP_MS), ring.atMs, ring.atMs + RING_MS],
+          opacityValues: [0, 0, 0.9, 0],
+          opacitySteps: false,
+          scaleTimes: [ring.atMs, ring.atMs + RING_MS],
+          scaleValues: [r0 / r, r1 / r],
+        }),
+      )
+    }
+  }
+  return {
+    id: packet.id,
+    startAtMs: packet.startMs,
+    endMs: total + RING_MS,
+    opacity: quiet ? QUIET_OPACITY : 1,
+    layers,
+  }
+}
+
+interface NativeSpritesProps extends PacketSpritesProps {
+  host: PathSprites
+  width: number
+  height: number
+}
+
+/** The requests in flight, run by the platform's own animator: handed over once each. */
+const NativeSprites = memo(function NativeSprites({
+  host: Host,
+  layout,
+  paths,
+  packets,
+  onionLayers,
+  ringColor,
+  width,
+  height,
+}: NativeSpritesProps) {
+  const kinds = useMemo(() => new Map(paths.map((p) => [p.key, p.kind])), [paths])
+  // Re-rendered with each snapshot, about once a second: a request home since then goes.
+  const nowMs = Date.now()
+  const sprites: PathSprite[] = []
+  for (const packet of packets) {
+    const kind = kinds.get(packet.pathKey)
+    const pts = layout.points.get(packet.pathKey)
+    if (!kind || !pts) continue
+    const tripMs = pathFlowTripMs(packet.hopMs, kind, onionLayers && packet.quiet !== true)
+    if (nowMs - packet.startMs > tripMs + RING_MS) continue
+    sprites.push(spriteOf(packet, kind, pts, layout.barWidth, onionLayers, ringColor))
+  }
+  return <Host sprites={sprites} width={width} height={height} />
+})
+
 /** The requests in flight, over the drawing: moved by the native driver, never redrawn. */
 const PacketSprites = memo(function PacketSprites({
   layout,
@@ -1039,6 +1175,7 @@ export function PathFlow({
   const [widthPx, setWidthPx] = useState(0)
   const barColor = useTokenColor('$textPrimary')
   const ringColor = useTokenColor('$textPrimary')
+  const spritesHost = usePathSprites()
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
   // A still for the catalog is drawn as given; a live flow redraws its paths only now and then.
@@ -1141,7 +1278,19 @@ export function PathFlow({
                 />
               </Svg>
             ) : null}
-            {building || (still && stillAtMs === undefined) ? null : (
+            {building || (still && stillAtMs === undefined) ? null : spritesHost !== null &&
+              stillAtMs === undefined ? (
+              <NativeSprites
+                host={spritesHost}
+                layout={layout}
+                paths={drawn}
+                packets={packets}
+                onionLayers={onionLayers}
+                ringColor={ringColor}
+                width={widthPx}
+                height={heightPx}
+              />
+            ) : (
               <PacketSprites
                 layout={layout}
                 paths={drawn}

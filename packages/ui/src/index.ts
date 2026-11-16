@@ -141,6 +141,7 @@ export { UIProvider } from './UIProvider'
 export type { UIProviderProps } from './UIProvider'
 export type { BackdropBlur, BackdropBlurProps } from './backdropBlur'
 export type { Glass, GlassProps } from './glass'
+export type { PathSprite, PathSpriteLayer, PathSprites, PathSpritesProps } from './pathSprites'
 export {
   useTopBarControlsPadding,
   WindowControlsInsetProvider,
