@@ -5,7 +5,7 @@ import { XStack, YStack } from 'tamagui'
 
 import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 
-import { journeyOf, RING_MS, type Journey } from './pathFlowJourney'
+import { journeyOf, retime, RING_MS, type Journey } from './pathFlowJourney'
 import {
   FLOW_SIDE,
   flowSegment,
@@ -448,6 +448,15 @@ function useHeldPaths(
  */
 const RELAYOUT_MS = 30_000
 
+/**
+ * From this many paths the lines are held and the bars laid out only now and then; below it they
+ * follow the paths at once, which costs little with few lines to draw.
+ */
+const THROTTLE_FROM_PATHS = 40
+
+/** Drawn at once however many paths there are: what the reader most wants to see move. */
+const FIRST_KINDS: ReadonlySet<PathFlowKind> = new Set(['swarm', 'file'])
+
 interface SettledLayout {
   layout: FlowLayout
   keys: string
@@ -488,19 +497,6 @@ function useSettledLayout(
   })
   const keys = paths.map((p) => p.key).join(';')
   const resized = held.widthPx !== widthPx || held.heightPx !== heightPx
-  useEffect(() => {
-    if (keys === held.keys && !resized) return
-    const now = Date.now()
-    const waitMs =
-      resized || relayoutMs === 0 || held.keys === ''
-        ? 0
-        : Math.max(0, held.atMs + relayoutMs - now)
-    const id = setTimeout(() => {
-      const { paths: p, widthPx: w, heightPx: h } = latest.current
-      setHeld(settle(p, w, h))
-    }, waitMs)
-    return () => clearTimeout(id)
-  }, [keys, held, resized, relayoutMs])
   const layout = useMemo(() => {
     const points = new Map<string, readonly (readonly [number, number])[]>()
     for (const p of paths) {
@@ -509,6 +505,21 @@ function useSettledLayout(
     }
     return { ...held.layout, points }
   }, [held, paths])
+  // Your swarm and the file server are never left waiting for a layout.
+  const urgent = paths.some((p) => FIRST_KINDS.has(p.kind) && !layout.points.has(p.key))
+  useEffect(() => {
+    if (keys === held.keys && !resized) return
+    const now = Date.now()
+    const waitMs =
+      resized || urgent || relayoutMs === 0 || held.keys === ''
+        ? 0
+        : Math.max(0, held.atMs + relayoutMs - now)
+    const id = setTimeout(() => {
+      const { paths: p, widthPx: w, heightPx: h } = latest.current
+      setHeld(settle(p, w, h))
+    }, waitMs)
+    return () => clearTimeout(id)
+  }, [keys, held, resized, urgent, relayoutMs])
   return { base: held.layout, layout }
 }
 
@@ -1156,6 +1167,20 @@ function groupLines(paths: readonly PathFlowPath[]): readonly PathFlowPath[][] {
   return groups
 }
 
+/**
+ * When each path's line was first drawn: 0 for those drawn as the flow opened, whose requests
+ * already under way join part way along.
+ */
+function useDrawnSince(layout: FlowLayout): ReadonlyMap<string, number> {
+  const [since, setSince] = useState<ReadonlyMap<string, number> | null>(null)
+  const keys = [...layout.points.keys()]
+  if (since !== null && since.size === keys.length && keys.every((k) => since.has(k))) return since
+  const nowMs = Date.now()
+  const next = new Map(keys.map((k) => [k, since === null ? 0 : (since.get(k) ?? nowMs)]))
+  setSince(next)
+  return next
+}
+
 /** The moving canvas, laid exactly over the still one. */
 const OVERLAY = { position: 'absolute', top: 0, left: 0 } as const
 
@@ -1178,15 +1203,17 @@ export function PathFlow({
   const spritesHost = usePathSprites()
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
-  // A still for the catalog is drawn as given; a live flow redraws its paths only now and then.
-  // Each canvas of lines is held on its own, a quarter of a hold out of step with the next, so the
-  // ones that change all the time never redraw in the same frame.
-  const holdMs = stillAtMs === undefined ? PATH_HOLD_MS : 0
+  // A still for the catalog is drawn as given; a busy live flow redraws its paths only now and
+  // then. Each canvas of lines is held on its own, a third of a hold out of step with the next, so
+  // the ones that change all the time never redraw in the same frame. Your swarm and the file
+  // server are never held.
+  const throttled = stillAtMs === undefined && paths.length >= THROTTLE_FROM_PATHS
+  const holdMs = throttled ? PATH_HOLD_MS : 0
   const live = groupLines(paths)
   const held0 = useHeldPaths(live[0] ?? NO_PATHS, holdMs, 0)
-  const held1 = useHeldPaths(live[1] ?? NO_PATHS, holdMs, holdMs / 2)
-  const held2 = useHeldPaths(live[2] ?? NO_PATHS, holdMs, holdMs / 4)
-  const held3 = useHeldPaths(live[3] ?? NO_PATHS, holdMs, (holdMs * 3) / 4)
+  const held1 = useHeldPaths(live[1] ?? NO_PATHS, holdMs, holdMs / 3)
+  const held2 = useHeldPaths(live[2] ?? NO_PATHS, holdMs, (holdMs * 2) / 3)
+  const held3 = useHeldPaths(live[3] ?? NO_PATHS, 0, 0)
   const lineGroups = useMemo(() => [held0, held1, held2, held3], [held0, held1, held2, held3])
   const drawn = useMemo(() => lineGroups.flat(), [lineGroups])
   const titles = useSameStrings(columnTitles)
@@ -1201,13 +1228,15 @@ export function PathFlow({
     drawn,
     widthPx,
     heightPx,
-    stillAtMs === undefined ? RELAYOUT_MS : 0,
+    throttled ? RELAYOUT_MS : 0,
   )
   const buildingLayout = useMemo(
     () => layoutPathFlow(BUILDING_PATH, widthPx, heightPx),
     [widthPx, heightPx],
   )
   const layout = building ? buildingLayout : settled
+  const since = useDrawnSince(layout)
+  const shownPackets = useMemo(() => retime(packets, since), [packets, since])
   const barsLayout = building ? buildingLayout : base
   const litKeys = paths
     .filter((p) => p.lit)
@@ -1284,7 +1313,7 @@ export function PathFlow({
                 host={spritesHost}
                 layout={layout}
                 paths={drawn}
-                packets={packets}
+                packets={shownPackets}
                 onionLayers={onionLayers}
                 ringColor={ringColor}
                 width={widthPx}
@@ -1294,7 +1323,7 @@ export function PathFlow({
               <PacketSprites
                 layout={layout}
                 paths={drawn}
-                packets={packets}
+                packets={shownPackets}
                 onionLayers={onionLayers}
                 ringColor={ringColor}
                 stillAtMs={stillAtMs}

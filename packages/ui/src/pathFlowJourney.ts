@@ -143,3 +143,18 @@ export function ringsAt(journey: Journey, elapsedMs: number): { ring: JourneyRin
     .filter((ring) => elapsedMs >= ring.atMs && elapsedMs < ring.atMs + RING_MS)
     .map((ring) => ({ ring, age: (elapsedMs - ring.atMs) / RING_MS }))
 }
+
+/**
+ * A request that set off before its path was drawn starts from the beginning once it is, rather
+ * than appearing part way along a line that was not there. `drawnAtMs` holds when each path was
+ * first drawn: 0 for those drawn as the flow opened, whose requests under way join part way along.
+ */
+export function retime<T extends { pathKey: string; startMs: number }>(
+  packets: readonly T[],
+  drawnAtMs: ReadonlyMap<string, number>,
+): readonly T[] {
+  return packets.map((p) => {
+    const atMs = drawnAtMs.get(p.pathKey) ?? 0
+    return atMs > p.startMs ? { ...p, startMs: atMs } : p
+  })
+}
