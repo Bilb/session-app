@@ -449,12 +449,6 @@ function useHeldPaths(
  */
 const RELAYOUT_MS = 30_000
 
-/**
- * From this many paths the lines are held and the bars laid out only now and then; below it they
- * follow the paths at once, which costs little with few lines to draw.
- */
-const THROTTLE_FROM_PATHS = 40
-
 /** Drawn at once however many paths there are: what the reader most wants to see move. */
 const FIRST_KINDS: ReadonlySet<PathFlowKind> = new Set(['swarm', 'file'])
 
@@ -1204,11 +1198,12 @@ export function PathFlow({
   const spritesHost = usePathSprites() ?? defaultPathSprites
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
-  // A still for the catalog is drawn as given; a busy live flow redraws its paths only now and
-  // then. Each canvas of lines is held on its own, a third of a hold out of step with the next, so
-  // the ones that change all the time never redraw in the same frame. Your swarm and the file
-  // server are never held.
-  const throttled = stillAtMs === undefined && paths.length >= THROTTLE_FROM_PATHS
+  // A still for the catalog is drawn as given; a live flow redraws its paths only now and then,
+  // which costs nothing while they stay put and saves a fifth or more of the screen's CPU once
+  // sessions come and go. Each canvas of lines is held on its own, a third of a hold out of step
+  // with the next, so the ones that change all the time never redraw in the same frame. Your
+  // swarm and the file server are never held.
+  const throttled = stillAtMs === undefined
   const holdMs = throttled ? PATH_HOLD_MS : 0
   const live = groupLines(paths)
   const held0 = useHeldPaths(live[0] ?? NO_PATHS, holdMs, 0)
