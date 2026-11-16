@@ -2,29 +2,62 @@ import ExpoModulesCore
 import QuartzCore
 import UIKit
 
+/// The few colours the requests use, converted once each.
+private var colors: [String: UIColor] = [:]
+
+private func colorFrom(_ value: String?) -> UIColor {
+  guard let value else { return .white }
+  if let known = colors[value] { return known }
+  let color = (try? UIColor.convert(from: value)) ?? .white
+  colors[value] = color
+  return color
+}
+
 /// One layer of a request: see `PathSpriteLayer` in `packages/ui/src/pathSprites.ts`.
-struct SpriteLayerRecord: Record {
-  @Field var shape: String = "glow"
-  @Field var color: UIColor = .white
-  @Field var r: Double = 1
-  @Field var borderWidth: Double = 0
-  @Field var times: [Double] = []
-  @Field var xs: [Double] = []
-  @Field var ys: [Double] = []
-  @Field var opacityTimes: [Double] = []
-  @Field var opacityValues: [Double] = []
-  @Field var opacitySteps: Bool = true
-  @Field var scaleTimes: [Double] = []
-  @Field var scaleValues: [Double] = []
+struct SpriteLayerRecord {
+  var shape: String
+  var color: UIColor
+  var r: Double
+  var borderWidth: Double
+  var times: [Double]
+  var xs: [Double]
+  var ys: [Double]
+  var opacityTimes: [Double]
+  var opacityValues: [Double]
+  var opacitySteps: Bool
+  var scaleTimes: [Double]
+  var scaleValues: [Double]
+
+  init(_ d: [String: Any]) {
+    shape = d["shape"] as? String ?? "glow"
+    color = colorFrom(d["color"] as? String)
+    r = d["r"] as? Double ?? 1
+    borderWidth = d["borderWidth"] as? Double ?? 0
+    times = d["times"] as? [Double] ?? []
+    xs = d["xs"] as? [Double] ?? []
+    ys = d["ys"] as? [Double] ?? []
+    opacityTimes = d["opacityTimes"] as? [Double] ?? []
+    opacityValues = d["opacityValues"] as? [Double] ?? []
+    opacitySteps = d["opacitySteps"] as? Bool ?? true
+    scaleTimes = d["scaleTimes"] as? [Double] ?? []
+    scaleValues = d["scaleValues"] as? [Double] ?? []
+  }
 }
 
 /// A request on its trip: see `PathSprite` in `packages/ui/src/pathSprites.ts`.
-struct SpriteRecord: Record {
-  @Field var id: String = ""
-  @Field var startAtMs: Double = 0
-  @Field var endMs: Double = 0
-  @Field var opacity: Double = 1
-  @Field var layers: [SpriteLayerRecord] = []
+struct SpriteRecord {
+  var id: String
+  var startAtMs: Double
+  var opacity: Double
+  var layers: [[String: Any]]
+
+  init?(_ d: [String: Any]) {
+    guard let id = d["id"] as? String else { return nil }
+    self.id = id
+    startAtMs = d["startAtMs"] as? Double ?? 0
+    opacity = d["opacity"] as? Double ?? 1
+    layers = d["layers"] as? [[String: Any]] ?? []
+  }
 }
 
 public class PathSpritesModule: Module {
@@ -32,8 +65,10 @@ public class PathSpritesModule: Module {
     Name("PathSprites")
 
     View(PathSpritesView.self) {
-      Prop("sprites") { (view: PathSpritesView, sprites: [SpriteRecord]) in
-        view.show(sprites)
+      // One JSON string rather than records: converting records field by field, every sprite on
+      // every snapshot, cost more than the animation it replaced.
+      Prop("spritesJson") { (view: PathSpritesView, json: String) in
+        view.show(json)
       }
     }
   }
@@ -50,7 +85,11 @@ final class PathSpritesView: ExpoView {
     isUserInteractionEnabled = false
   }
 
-  func show(_ sprites: [SpriteRecord]) {
+  func show(_ json: String) {
+    guard let data = json.data(using: .utf8),
+      let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]]
+    else { return }
+    let sprites = list.compactMap(SpriteRecord.init)
     let ids = Set(sprites.map { $0.id })
     for (id, sprite) in shown where !ids.contains(id) {
       sprite.removeFromSuperlayer()
@@ -65,7 +104,7 @@ final class PathSpritesView: ExpoView {
       container.opacity = Float(sprite.opacity)
       let begin = now - (nowMs - sprite.startAtMs) / 1000
       for record in sprite.layers {
-        container.addSublayer(makeLayer(record, begin: begin))
+        container.addSublayer(makeLayer(SpriteLayerRecord(record), begin: begin))
       }
       layer.addSublayer(container)
       shown[sprite.id] = container

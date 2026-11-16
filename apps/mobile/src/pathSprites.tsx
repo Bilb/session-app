@@ -1,9 +1,9 @@
-import type { PathSprite, PathSprites } from '@session/ui'
+import type { PathSprites } from '@session/ui'
 import { requireNativeView } from 'expo'
 import { Platform, type ViewStyle } from 'react-native'
 
 interface NativeProps {
-  sprites: readonly PathSprite[]
+  spritesJson: string
   pointerEvents: 'none'
   style: ViewStyle
 }
@@ -20,7 +20,7 @@ export const mobilePathSprites: PathSprites | null =
     ? null
     : ({ sprites, width, height }) => (
         <NativePathSprites
-          sprites={sprites}
+          spritesJson={JSON.stringify(sprites)}
           pointerEvents="none"
           style={{ position: 'absolute', top: 0, left: 0, width, height }}
         />
