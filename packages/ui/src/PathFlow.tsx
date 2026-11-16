@@ -124,31 +124,10 @@ export function pathFlowTripMs(hopMs: number, kind: PathFlowKind, onionLayers: b
 }
 
 /**
- * Whether the card is light: an inactive line in a path's colour, faint enough on a dark card,
- * all but disappears against a light one, so light themes draw them stronger. Reads `#rgb`,
- * `#rrggbb` and `rgb()`; anything else counts as dark.
+ * How strongly a line no request is on is drawn: one value for every theme and every number of
+ * paths, so a line never changes colour as the drawing fills or a theme loads.
  */
-function isLightSurface(color: string): boolean {
-  const hex = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color.trim())?.[1]
-  const rgb = /^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i.exec(color.trim())
-  let channels: number[] | null = null
-  if (hex !== undefined) {
-    const full = hex.length === 3 ? [...hex].map((c) => c + c).join('') : hex
-    channels = [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16))
-  } else if (rgb) {
-    channels = [rgb[1], rgb[2], rgb[3]].map(Number)
-  }
-  if (!channels) return false
-  const [r = 0, g = 0, b = 0] = channels
-  // Perceived brightness, 0-255: past the middle, dark ink reads on it better than light.
-  return 0.299 * r + 0.587 * g + 0.114 * b > 140
-}
-
-/** How strongly a line no request is on is drawn: fainter where there are many. */
-function faintOpacity(many: boolean, light: boolean): number {
-  if (light) return many ? 0.4 : 0.6
-  return many ? 0.22 : 0.4
-}
+const FAINT_OPACITY = 0.3
 
 /**
  * About how wide a label is drawn: react-native-svg cannot measure text before drawing it, and an
@@ -290,7 +269,7 @@ const StaticLayer = memo(function StaticLayer({
             key={p.key}
             d={linePath(pts, layout.barWidth)}
             stroke={KIND_COLOR[p.kind]}
-            strokeOpacity={p.lit ? 0.95 : faintOpacity(many, isLightSurface(plateColor))}
+            strokeOpacity={p.lit ? 0.95 : FAINT_OPACITY}
             strokeWidth={p.lit ? 2.2 : many ? 1 : 1.5}
             strokeLinecap="round"
             {...(p.standby === true && !p.lit ? { strokeDasharray: '3 4' } : {})}
@@ -625,8 +604,12 @@ export function PathFlow({
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
   const building = paths.length === 0
-  // Building takes the room one path would, so the page does not move when the first arrives.
-  const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(1, paths.length)) : 0
+  // Sized for the most paths drawn since it opened, so the card grows when it must and never
+  // shrinks as paths fall idle: the page below it stays where it is. Building takes the room one
+  // path would.
+  const [mostPaths, setMostPaths] = useState(Math.max(1, paths.length))
+  if (paths.length > mostPaths) setMostPaths(paths.length)
+  const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(mostPaths, paths.length)) : 0
   const layout = useMemo(
     () =>
       layoutPathFlow(

@@ -18,12 +18,11 @@ const MAX_PER_POLL = 4
 
 /**
  * Pings are drawn only where they are the only thing happening: not on a path that carried a
- * request this recently, and on no path while this many requests went anywhere in that time.
+ * request this recently, and while this many requests went anywhere in that time, only on your
+ * own swarm's paths.
  */
 export const PING_QUIET_MS = 5_000
 export const BUSY_REQUESTS = 4
-/** While busy, at most this many pings a poll: a sample, so the paths are still seen alive. */
-const BUSY_PINGS_PER_POLL = 1
 
 /**
  * A poll this much later than the last one means the screen was not being drawn (a window in the
@@ -124,7 +123,7 @@ export function trackSnapshot(
   const pingTotals = new Map<string, number>()
   const hopSignatures = new Map<string, string>()
   const requests: SeenRequest[] = []
-  const pinged: { key: string; lastRequestAtMs: number | null }[] = []
+  const pinged: { key: string; kind: PathKind; lastRequestAtMs: number | null }[] = []
   let rebuilt = tracker.rebuilt
   let seq = tracker.seq
 
@@ -189,7 +188,7 @@ export function trackSnapshot(
       }
       const pingsWere = tracker.pingTotals.get(key)
       if (!replaced && pingsWere !== undefined && path.pingsAnswered > pingsWere)
-        pinged.push({ key, lastRequestAtMs })
+        pinged.push({ key, kind: kindFor(path), lastRequestAtMs })
     }
 
     return {
@@ -212,16 +211,9 @@ export function trackSnapshot(
   const quiet = pinged.filter(
     ({ lastRequestAtMs }) => lastRequestAtMs === null || nowMs - lastRequestAtMs >= PING_QUIET_MS,
   )
+  // Busy, your own swarm's pings still show: they are what says your messages can reach you.
   const busy = recentRequestsMs.length >= BUSY_REQUESTS
-  // Busy, a different path's each poll, by the running count, rather than always the first.
-  const shownPings = busy
-    ? quiet.length === 0
-      ? []
-      : Array.from(
-          { length: Math.min(BUSY_PINGS_PER_POLL, quiet.length) },
-          (_, i) => quiet[(seq + i) % quiet.length],
-        ).filter((p) => p !== undefined)
-    : quiet
+  const shownPings = busy ? quiet.filter((p) => p.kind === 'swarm') : quiet
   for (const { key } of shownPings) {
     seq += 1
     // Half a poll in, so a ping never sets off in step with the requests found beside it.

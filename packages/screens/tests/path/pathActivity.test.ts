@@ -232,8 +232,12 @@ describe('pings', () => {
     expect(both.requests.map((r) => r.kind)).toEqual(['request'])
   })
 
-  it('shows one ping a poll while the client is busy elsewhere, rather than all or none', () => {
-    const idle = ['a', 'c', 'd'].map((remoteHex) => path({ remoteHex }))
+  it("keeps your swarm's pings while the client is busy, and leaves out every other", () => {
+    const idle = [
+      path({ remoteHex: 'a' }),
+      path({ remoteHex: 'c' }),
+      path({ remoteHex: 's', destination: 'ownSwarm' }),
+    ]
     const first = trackSnapshot(EMPTY_TRACKER, snap(...idle, path({ remoteHex: 'b' })), 0, 1_000)
     const busy = trackSnapshot(
       first.tracker,
@@ -244,7 +248,7 @@ describe('pings', () => {
       1_000,
       1_000,
     )
-    expect(busy.requests.filter((r) => r.kind === 'ping')).toHaveLength(1)
+    expect(busy.requests.filter((r) => r.kind === 'ping').map((r) => r.pathKey)).toEqual(['s'])
   })
 })
 

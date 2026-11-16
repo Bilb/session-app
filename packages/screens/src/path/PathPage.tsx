@@ -242,25 +242,29 @@ export function PathPage() {
       <Text size="$body" tone="secondary">
         {PENDING_COPY.onionRoutingPathIntro}
       </Text>
-      <YStack gap="$xs">
-        <PathFlow
-          paths={flowPaths}
-          packets={packets.filter((p) => kinds.has(p.pathKey))}
-          onionLayers
-          columnTitles={[
-            tr('you'),
-            PENDING_COPY.onionRoutingPathEntry,
-            PENDING_COPY.onionRoutingPathRelay,
-            PENDING_COPY.onionRoutingPathRelay,
-            tr('onionRoutingPathDestination'),
-          ]}
-          labelFor={labelFor}
-          kindLabels={kindLabels()}
-          buildingLabel={PENDING_COPY.onionRoutingPathBuilding}
-          testID={ELEMENT.settings.pathFlow}
-        />
-        <StatsCard stats={stats} />
-      </YStack>
+      {/* Not drawn until the first snapshot is in, a moment after opening, which already holds
+          every path in use: the card opens at its height rather than growing into it. */}
+      {tracker.lastPollMs === null ? null : (
+        <YStack gap="$xs">
+          <PathFlow
+            paths={flowPaths}
+            packets={packets.filter((p) => kinds.has(p.pathKey))}
+            onionLayers
+            columnTitles={[
+              tr('you'),
+              PENDING_COPY.onionRoutingPathEntry,
+              PENDING_COPY.onionRoutingPathRelay,
+              PENDING_COPY.onionRoutingPathRelay,
+              tr('onionRoutingPathDestination'),
+            ]}
+            labelFor={labelFor}
+            kindLabels={kindLabels()}
+            buildingLabel={PENDING_COPY.onionRoutingPathBuilding}
+            testID={ELEMENT.settings.pathFlow}
+          />
+          <StatsCard stats={stats} />
+        </YStack>
+      )}
       <SettingsGroup>
         <SettingsRow
           label={tr('learnMore')}
