@@ -174,3 +174,12 @@ describe('a Button on native', () => {
     expect(restated).toEqual([])
   })
 })
+
+describe('Reply as an accessibility action on native', () => {
+  it('runs the reply only for its own action name', () => {
+    // The action is VoiceOver's and TalkBack's menu, which no driver opens.
+    expect(source('replyAction.ts')).toContain(
+      'if (event.nativeEvent.actionName === REPLY_ACTION) onReply()',
+    )
+  })
+})

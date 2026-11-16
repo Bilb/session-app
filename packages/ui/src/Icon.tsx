@@ -1,5 +1,6 @@
 import { ArrowDown } from '@tamagui/lucide-icons-2/icons/ArrowDown'
 import { ArrowUp } from '@tamagui/lucide-icons-2/icons/ArrowUp'
+import { Ban } from '@tamagui/lucide-icons-2/icons/Ban'
 import { BellOff } from '@tamagui/lucide-icons-2/icons/BellOff'
 import { Bookmark } from '@tamagui/lucide-icons-2/icons/Bookmark'
 import { Check } from '@tamagui/lucide-icons-2/icons/Check'
@@ -40,6 +41,7 @@ import { LockKeyhole } from '@tamagui/lucide-icons-2/icons/LockKeyhole'
 import { Mail } from '@tamagui/lucide-icons-2/icons/Mail'
 import { MessageSquare } from '@tamagui/lucide-icons-2/icons/MessageSquare'
 import { MessageSquareWarning } from '@tamagui/lucide-icons-2/icons/MessageSquareWarning'
+import { Mic } from '@tamagui/lucide-icons-2/icons/Mic'
 import { Moon } from '@tamagui/lucide-icons-2/icons/Moon'
 import { PackageCheck } from '@tamagui/lucide-icons-2/icons/PackageCheck'
 import { PaintbrushVertical } from '@tamagui/lucide-icons-2/icons/PaintbrushVertical'
@@ -80,6 +82,7 @@ import { isLayoutRtl } from './layoutDirection'
 const GLYPHS = {
   arrowDown: ArrowDown,
   arrowUp: ArrowUp,
+  ban: Ban,
   bellOff: BellOff,
   bookmark: Bookmark,
   check: Check,
@@ -120,6 +123,7 @@ const GLYPHS = {
   mail: Mail,
   messageSquare: MessageSquare,
   messageSquareWarning: MessageSquareWarning,
+  mic: Mic,
   moon: Moon,
   packageCheck: PackageCheck,
   paintbrush: PaintbrushVertical,

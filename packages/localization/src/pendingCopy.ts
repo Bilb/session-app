@@ -131,4 +131,15 @@ export const PENDING_COPY = {
    * Navigate to Conversation, which is a different command.
    */
   messageNavigate: 'Move Between Messages',
+  /**
+   * What a press on a reply's quote does, said after its name. Android's "Reply to message" is no
+   * catalogue string either, and `reply` already names the action that starts one.
+   */
+  messageQuoteHint: 'Shows the original message',
+  /**
+   * The transcript's floating button, in its two states: no client has a way back after a jump, and
+   * nothing in the catalogue names the button that goes to the newest message.
+   */
+  messageScrollToLatest: 'Scroll to latest message',
+  messageBackToReply: 'Back to reply',
 } as const

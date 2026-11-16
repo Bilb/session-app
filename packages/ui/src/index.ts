@@ -79,6 +79,18 @@ export { List } from './List'
 export type { ListFocusEntry } from './listFocus'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { MESSAGE_FRAME_INSET_PX, MessageFrame, type MessageFrameProps } from './MessageFrame'
+export { ComposerReply, type ComposerReplyProps } from './ComposerReply'
+export { type Haptics, HapticsProvider } from './haptics'
+export { replyAction } from './replyAction'
+export { SwipeToReply, type SwipeToReplyProps } from './SwipeToReply'
+export { ScrollToLatest, type ScrollToLatestProps } from './ScrollToLatest'
+export { MessageQuote, type MessageQuoteProps } from './MessageQuote'
+export {
+  quotePreview,
+  type QuotedAttachment,
+  type QuotedMessage,
+  type QuoteLabels,
+} from './quotePreview'
 export { Modal } from './Modal'
 /** What a row of small controls grows to on touch, and 0 with a pointer. */
 export { ROW_TOUCH_TARGET } from './rowTouchTarget'

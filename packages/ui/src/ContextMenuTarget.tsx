@@ -15,6 +15,20 @@ function selectsTextIn(element: Element): boolean {
 }
 
 /**
+ * Whether a double-click selected words: one on a word is a selection, as everywhere else. One on
+ * the padding or a picture selects nothing, or only the whitespace beside it.
+ */
+function selectsWords(): boolean {
+  return String(globalThis.getSelection?.() ?? '').trim() !== ''
+}
+
+/** A press on a control inside the target is that control's, not the message's. */
+function onControl(event: MouseEvent): boolean {
+  const control = (event.target as Element).closest('button, a, input, textarea, [role="button"]')
+  return control !== null && event.currentTarget.contains(control)
+}
+
+/**
  * The web half: a right-click opens the menu at the pointer.
  *
  * **Not over a text selection inside it.** There the click is left to the window, whose own menu
@@ -24,6 +38,7 @@ export function ContextMenuTarget({
   onOpen,
   alignSelf,
   maxWidth,
+  onDoublePress,
   children,
 }: ContextMenuTargetProps) {
   return (
@@ -39,6 +54,14 @@ export function ContextMenuTarget({
           const zoom = currentPageZoom()
           onOpen({ kind: 'point', x: event.clientX / zoom, y: event.clientY / zoom })
         }}
+        {...(onDoublePress === undefined
+          ? {}
+          : {
+              // Reported after the browser has selected the word under the second press.
+              onDoubleClick: (event: MouseEvent) => {
+                if (!selectsWords() && !onControl(event)) onDoublePress()
+              },
+            })}
       >
         {children}
       </YStack>
