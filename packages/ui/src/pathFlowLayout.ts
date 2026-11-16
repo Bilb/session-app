@@ -48,26 +48,16 @@ const MAX_UNIT = 12
 const MAX_GAP = 10
 const MIN_GAP = 2
 
-/**
- * Countries by how many service nodes they hold, most first (measured November 2026). Every
- * column orders its bars by this rather than by its own counts, so a country sits at the same
- * height across the drawing and a line between two of them runs level. Others follow by code.
- */
-const COUNTRY_RANK = [
-  'DE', 'US', 'FI', 'GB', 'CA', 'FR', 'NL', 'SE', 'SG', 'PL', 'ZA', 'AU',
-  'BG', 'JP', 'CZ', 'AE', 'IE', 'TH', 'IN', 'MY', 'KR', 'IT', 'RO', 'TR',
-] // prettier-ignore
-
-function rankOf(country: string): number {
+function rankOf(country: string, order: readonly string[]): number {
   // The file server and unknown countries after every real one.
   if (country === 'FS') return 2_000
   if (country === '?') return 1_000
-  const i = COUNTRY_RANK.indexOf(country)
-  return i === -1 ? COUNTRY_RANK.length : i
+  const i = order.indexOf(country)
+  return i === -1 ? order.length : i
 }
 
-function byRank(a: string, b: string): number {
-  return rankOf(a) - rankOf(b) || (a < b ? -1 : a > b ? 1 : 0)
+function byRank(a: string, b: string, order: readonly string[]): number {
+  return rankOf(a, order) - rankOf(b, order) || (a < b ? -1 : a > b ? 1 : 0)
 }
 
 /** How tall the drawing is at a width: a band for a few paths, nearly square for many. */
@@ -75,11 +65,17 @@ export function pathFlowHeight(width: number, pathCount: number): number {
   return Math.round(width * (pathCount <= 6 ? 0.5 : 0.95))
 }
 
-/** Your bar and the destination's sit at the margins, and the relays' evenly between them. */
+/**
+ * Your bar and the destination's sit at the margins, and the relays' evenly between them. Every
+ * column orders its bars by `countryOrder`, the network's countries by how many nodes they hold,
+ * rather than by its own counts, so a country sits at the same height across the drawing and a
+ * line between two of them runs level. Countries not in it follow by code.
+ */
 export function layoutPathFlow(
   paths: readonly FlowPathInput[],
   width: number,
   height: number,
+  countryOrder: readonly string[] = [],
 ): FlowLayout {
   const lastX = width - FLOW_SIDE - BAR_WIDTH
   const step = Math.max(0, lastX - FLOW_SIDE) / (FLOW_COLUMNS - 1)
@@ -98,7 +94,7 @@ export function layoutPathFlow(
       if (list) list.push(p)
       else groups.set(cc, [p])
     }
-    columns.push([...groups.entries()].sort((a, b) => byRank(a[0], b[0])))
+    columns.push([...groups.entries()].sort((a, b) => byRank(a[0], b[0], countryOrder)))
   }
 
   // Gaps shrink as countries multiply, so they never take the height the paths need.

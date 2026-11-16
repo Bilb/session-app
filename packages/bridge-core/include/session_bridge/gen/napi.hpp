@@ -809,11 +809,29 @@ struct Codec<::session_bridge::NetworkPath> {
 };
 
 template <>
+struct Codec<::session_bridge::CountryNodes> {
+    static constexpr std::string_view name = "CountryNodes";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::CountryNodes& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("country", Codec<std::string>::to(env, value.country));
+        obj.Set("nodes", Codec<double>::to(env, value.nodes));
+        return obj;
+    }
+    static ::session_bridge::CountryNodes from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::CountryNodes(
+                Codec<std::string>::from(obj.Get("country"), "CountryNodes.country"),
+                Codec<double>::from(obj.Get("nodes"), "CountryNodes.nodes"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::NetworkPaths> {
     static constexpr std::string_view name = "NetworkPaths";
     static Napi::Value to(Napi::Env env, const ::session_bridge::NetworkPaths& value) {
         Napi::Object obj = Napi::Object::New(env);
         obj.Set("paths", Codec<std::vector<::session_bridge::NetworkPath>>::to(env, value.paths));
+        obj.Set("nodesByCountry", Codec<std::vector<::session_bridge::CountryNodes>>::to(env, value.nodes_by_country));
         obj.Set("countryAttribution", Codec<std::string>::to(env, value.country_attribution));
         return obj;
     }
@@ -821,6 +839,7 @@ struct Codec<::session_bridge::NetworkPaths> {
         Napi::Object obj = object(value, where);
         return ::session_bridge::NetworkPaths(
                 Codec<std::vector<::session_bridge::NetworkPath>>::from(obj.Get("paths"), "NetworkPaths.paths"),
+                Codec<std::vector<::session_bridge::CountryNodes>>::from(obj.Get("nodesByCountry"), "NetworkPaths.nodesByCountry"),
                 Codec<std::string>::from(obj.Get("countryAttribution"), "NetworkPaths.countryAttribution"));
     }
 };

@@ -76,6 +76,11 @@ export interface PathFlowProps {
    */
   expectedPaths?: number | undefined
   /**
+   * The network's countries by how many service nodes they hold, most first: the order every
+   * column stacks its bars in. Empty or absent orders them by code.
+   */
+  countryOrder?: readonly string[] | undefined
+  /**
    * Draws the requests as they are at this moment, still, and under reduced motion too: for the
    * catalog, which cannot capture motion but should show what a request and a ping look like.
    */
@@ -407,6 +412,7 @@ const BarsLayer = memo(function BarsLayer({ layout, barColor }: BarsLayerProps) 
  */
 const PATH_HOLD_MS = 5_000
 const NO_PATHS: readonly PathFlowPath[] = []
+const NO_COUNTRIES: readonly string[] = []
 
 /** What changes a path's drawn line: not whether it is lit, which is drawn on its own. */
 function shapeOf(paths: readonly PathFlowPath[]): string {
@@ -460,14 +466,25 @@ interface SettledLayout {
   atMs: number
 }
 
-function settle(paths: readonly PathFlowPath[], widthPx: number, heightPx: number): SettledLayout {
+/** What a layout was made from: a change in either is a reason to lay the bars out again. */
+function keysOf(paths: readonly PathFlowPath[], countryOrder: readonly string[]): string {
+  return `${paths.map((p) => p.key).join(';')}|${countryOrder.join(',')}`
+}
+
+function settle(
+  paths: readonly PathFlowPath[],
+  widthPx: number,
+  heightPx: number,
+  countryOrder: readonly string[],
+): SettledLayout {
   return {
     layout: layoutPathFlow(
       paths.map((p) => ({ key: p.key, countries: p.countries })),
       widthPx,
       heightPx,
+      countryOrder,
     ),
-    keys: paths.map((p) => p.key).join(';'),
+    keys: keysOf(paths, countryOrder),
     widthPx,
     heightPx,
     atMs: Date.now(),
@@ -484,13 +501,14 @@ function useSettledLayout(
   widthPx: number,
   heightPx: number,
   relayoutMs: number,
+  countryOrder: readonly string[],
 ): { base: FlowLayout; layout: FlowLayout } {
-  const [held, setHeld] = useState(() => settle(paths, widthPx, heightPx))
-  const latest = useRef({ paths, widthPx, heightPx })
+  const [held, setHeld] = useState(() => settle(paths, widthPx, heightPx, countryOrder))
+  const latest = useRef({ paths, widthPx, heightPx, countryOrder })
   useEffect(() => {
-    latest.current = { paths, widthPx, heightPx }
+    latest.current = { paths, widthPx, heightPx, countryOrder }
   })
-  const keys = paths.map((p) => p.key).join(';')
+  const keys = keysOf(paths, countryOrder)
   const resized = held.widthPx !== widthPx || held.heightPx !== heightPx
   const layout = useMemo(() => {
     const points = new Map<string, readonly (readonly [number, number])[]>()
@@ -506,12 +524,12 @@ function useSettledLayout(
     if (keys === held.keys && !resized) return
     const now = Date.now()
     const waitMs =
-      resized || urgent || relayoutMs === 0 || held.keys === ''
+      resized || urgent || relayoutMs === 0 || held.layout.points.size === 0
         ? 0
         : Math.max(0, held.atMs + relayoutMs - now)
     const id = setTimeout(() => {
-      const { paths: p, widthPx: w, heightPx: h } = latest.current
-      setHeld(settle(p, w, h))
+      const { paths: p, widthPx: w, heightPx: h, countryOrder: order } = latest.current
+      setHeld(settle(p, w, h, order))
     }, waitMs)
     return () => clearTimeout(id)
   }, [keys, held, resized, urgent, relayoutMs])
@@ -1188,6 +1206,7 @@ export function PathFlow({
   kindLabels,
   buildingLabel,
   expectedPaths,
+  countryOrder = NO_COUNTRIES,
   stillAtMs,
   testID,
 }: PathFlowProps) {
@@ -1225,6 +1244,7 @@ export function PathFlow({
     widthPx,
     heightPx,
     throttled ? RELAYOUT_MS : 0,
+    countryOrder,
   )
   const buildingLayout = useMemo(
     () => layoutPathFlow(BUILDING_PATH, widthPx, heightPx),

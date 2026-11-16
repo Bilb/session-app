@@ -35,6 +35,7 @@ export type {
   ConversationId,
   ConversationKind,
   ConversationList,
+  CountryNodes,
   Deletion,
   ExportAttachmentOptions,
   ListPlacement,

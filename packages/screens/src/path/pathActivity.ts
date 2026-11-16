@@ -68,6 +68,11 @@ export interface PathTracker {
   recentRequestsMs: readonly number[]
   rebuilt: number
   attribution: string
+  /**
+   * The network's countries, most nodes first, from the first snapshot that had them: kept while
+   * the screen is open, so the bars are never reordered under the reader.
+   */
+  countryOrder: readonly string[]
   /** How many requests and pings have been seen, for ids. */
   seq: number
   /** When the last snapshot was taken, or null before the first. */
@@ -82,6 +87,7 @@ export const EMPTY_TRACKER: PathTracker = {
   recentRequestsMs: [],
   rebuilt: 0,
   attribution: '',
+  countryOrder: [],
   seq: 0,
   lastPollMs: null,
 }
@@ -234,6 +240,10 @@ export function trackSnapshot(
       recentRequestsMs,
       rebuilt,
       attribution: snapshot.countryAttribution,
+      countryOrder:
+        tracker.countryOrder.length > 0
+          ? tracker.countryOrder
+          : snapshot.nodesByCountry.map((c) => c.country),
       seq,
       lastPollMs: nowMs,
     },

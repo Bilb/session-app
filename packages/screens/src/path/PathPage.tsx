@@ -247,6 +247,7 @@ export function PathPage() {
         <YStack gap="$xs">
           <PathFlow
             paths={flowPaths}
+            countryOrder={tracker.countryOrder}
             packets={packets.filter((p) => kinds.has(p.pathKey))}
             onionLayers
             columnTitles={[

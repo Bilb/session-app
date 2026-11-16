@@ -638,9 +638,9 @@ struct NetworkStatusResult {
 };
 
 /// What a path leads to. `ownSwarm` is the storage node the account's subscription is held with;
-/// `storageNode` is any other, which is a group's swarm, a contact's a message was sent to, or a proxy
-/// a community request went through; `fileServer` is the file server, which is reached as a client
-/// behind a relay of its own choosing rather than as a node on the network.
+/// `storageNode` is any other, which is a group's swarm, a contact's a message was sent to, or a
+/// proxy a community request went through; `fileServer` is the file server, which is reached as a
+/// client behind a relay of its own choosing rather than as a node on the network.
 enum class PathDestination {
     own_swarm,
     storage_node,
@@ -708,16 +708,31 @@ struct NetworkPath {
             remote_hex{std::move(remote_hex_)}, destination{std::move(destination_)}, standby{std::move(standby_)}, hops{std::move(hops_)}, latency_ms{std::move(latency_ms_)}, jitter_ms{std::move(jitter_ms_)}, requests_sent{std::move(requests_sent_)}, proxied_requests_sent{std::move(proxied_requests_sent_)}, ms_since_last_request{std::move(ms_since_last_request_)}, pings_answered{std::move(pings_answered_)} {}
 };
 
+/// How many service nodes one country holds.
+struct CountryNodes {
+    /// The ISO 3166-1 alpha-2 code, from the same IP table as a hop's `country`.
+    std::string country;
+    double nodes;
+
+    CountryNodes(std::string country_, double nodes_) :
+            country{std::move(country_)}, nodes{std::move(nodes_)} {}
+};
+
 /// Every path the client is holding open, for the path screen.
 struct NetworkPaths {
     /// In no particular order. Empty with no network, or one that sends without paths.
     std::vector<::session_bridge::NetworkPath> paths;
+    /// How many service nodes each country holds, most first, from the node cache: the network as
+    /// this client knows it, which changes over hours rather than between snapshots. Nodes the table
+    /// cannot place are left out. Empty until the cache is first fetched, with no network, or in a
+    /// build without the country table.
+    std::vector<::session_bridge::CountryNodes> nodes_by_country;
     /// The credit the country table's licence requires wherever its results are shown, or empty when
     /// the build carries no table.
     std::string country_attribution;
 
-    NetworkPaths(std::vector<::session_bridge::NetworkPath> paths_, std::string country_attribution_) :
-            paths{std::move(paths_)}, country_attribution{std::move(country_attribution_)} {}
+    NetworkPaths(std::vector<::session_bridge::NetworkPath> paths_, std::vector<::session_bridge::CountryNodes> nodes_by_country_, std::string country_attribution_) :
+            paths{std::move(paths_)}, nodes_by_country{std::move(nodes_by_country_)}, country_attribution{std::move(country_attribution_)} {}
 };
 
 struct NetworkPathsResult {

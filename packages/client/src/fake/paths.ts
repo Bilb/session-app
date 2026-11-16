@@ -1,4 +1,9 @@
-import type { NetworkPath, NetworkPaths, PathDestination } from '@session/bridge-types'
+import type {
+  CountryNodes,
+  NetworkPath,
+  NetworkPaths,
+  PathDestination,
+} from '@session/bridge-types'
 
 /**
  * The fake's paths: a handful shaped like Session Router's, with the countries real relays are in.
@@ -23,6 +28,21 @@ const ATTRIBUTION = 'IP Geolocation by DB-IP (https://db-ip.com)'
 
 /** How often the router pings each path. */
 const PING_EVERY_MS = 5_000
+
+/**
+ * The node cache by country: the order the network had in November 2026, with counts made up to
+ * match it. What `nodesByCountry` reports once there is a network.
+ */
+const NODES_BY_COUNTRY: readonly CountryNodes[] = [
+  { country: 'DE', nodes: 420 }, { country: 'US', nodes: 260 }, { country: 'FI', nodes: 150 },
+  { country: 'GB', nodes: 90 }, { country: 'CA', nodes: 70 }, { country: 'FR', nodes: 60 },
+  { country: 'NL', nodes: 55 }, { country: 'SE', nodes: 30 }, { country: 'SG', nodes: 28 },
+  { country: 'PL', nodes: 20 }, { country: 'ZA', nodes: 15 }, { country: 'AU', nodes: 14 },
+  { country: 'BG', nodes: 12 }, { country: 'JP', nodes: 10 }, { country: 'CZ', nodes: 9 },
+  { country: 'AE', nodes: 8 }, { country: 'IE', nodes: 7 }, { country: 'TH', nodes: 6 },
+  { country: 'IN', nodes: 5 }, { country: 'MY', nodes: 4 }, { country: 'KR', nodes: 3 },
+  { country: 'IT', nodes: 3 }, { country: 'RO', nodes: 2 }, { country: 'TR', nodes: 2 },
+] // prettier-ignore
 
 /** Countries in roughly the proportions the network's relays are in. */
 const RELAY_COUNTRIES = ['DE', 'DE', 'DE', 'US', 'US', 'FI', 'FI', 'CA', 'NL', 'FR', 'GB', 'SG']
@@ -224,7 +244,8 @@ export function fakeNetworkPaths(
   elapsedMs: number | null,
   traffic: FakePathTraffic = 'quiet',
 ): NetworkPaths {
-  if (elapsedMs === null) return { paths: [], countryAttribution: ATTRIBUTION }
+  if (elapsedMs === null) return { paths: [], nodesByCountry: [], countryAttribution: ATTRIBUTION }
+  const nodesByCountry = [...NODES_BY_COUNTRY]
   if (traffic === 'busy') {
     const warmMs = elapsedMs + BUSY_WARM_MS
     return {
@@ -232,6 +253,7 @@ export function fakeNetworkPaths(
         ...BUSY_SPECS.flatMap((spec, index) => busyPair(spec, index, warmMs)),
         ...proxySessions(warmMs),
       ],
+      nodesByCountry,
       countryAttribution: ATTRIBUTION,
     }
   }
@@ -240,6 +262,7 @@ export function fakeNetworkPaths(
       pathOf(spec, index, elapsedMs, false),
       pathOf(spec, index, elapsedMs, true),
     ]),
+    nodesByCountry,
     countryAttribution: ATTRIBUTION,
   }
 }

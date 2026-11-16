@@ -692,6 +692,10 @@ describeEcho('the generated converters', () => {
               ...(i === 0 ? { msSinceLastRequest: 1_234 } : {}),
               pingsAnswered: 2_147_483_647,
             })),
+            nodesByCountry: [
+              { country: 'DE', nodes: 412 },
+              { country: 'US', nodes: 230 },
+            ],
             countryAttribution: 'IP Geolocation by DB-IP (https://db-ip.com)',
           },
         },
@@ -701,7 +705,10 @@ describeEcho('the generated converters', () => {
       type: 'response',
       response: {
         id: 900_061,
-        result: { type: 'networkPaths', snapshot: { paths: [], countryAttribution: '' } },
+        result: {
+          type: 'networkPaths',
+          snapshot: { paths: [], nodesByCountry: [], countryAttribution: '' },
+        },
       },
     },
     ...(

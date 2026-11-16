@@ -889,16 +889,37 @@ struct JSIConverter<::session_bridge::NetworkPath> final {
 };
 
 template <>
+struct JSIConverter<::session_bridge::CountryNodes> final {
+    static inline ::session_bridge::CountryNodes fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+        jsi::Object obj = arg.asObject(runtime);
+        return ::session_bridge::CountryNodes(
+                JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "country"))),
+                JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "nodes"))));
+    }
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::CountryNodes& arg) {
+        jsi::Object obj(runtime);
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "country"), JSIConverter<std::string>::toJSI(runtime, arg.country));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "nodes"), JSIConverter<double>::toJSI(runtime, arg.nodes));
+        return obj;
+    }
+    static inline bool canConvert(jsi::Runtime&, const jsi::Value& value) {
+        return value.isObject();
+    }
+};
+
+template <>
 struct JSIConverter<::session_bridge::NetworkPaths> final {
     static inline ::session_bridge::NetworkPaths fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::NetworkPaths(
                 JSIConverter<std::vector<::session_bridge::NetworkPath>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "paths"))),
+                JSIConverter<std::vector<::session_bridge::CountryNodes>>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "nodesByCountry"))),
                 JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "countryAttribution"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::NetworkPaths& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "paths"), JSIConverter<std::vector<::session_bridge::NetworkPath>>::toJSI(runtime, arg.paths));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "nodesByCountry"), JSIConverter<std::vector<::session_bridge::CountryNodes>>::toJSI(runtime, arg.nodes_by_country));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "countryAttribution"), JSIConverter<std::string>::toJSI(runtime, arg.country_attribution));
         return obj;
     }

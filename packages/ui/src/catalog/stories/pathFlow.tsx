@@ -3,6 +3,12 @@ import { defineStory } from '../story'
 
 const TITLES = ['You', 'Entry', 'Relay', 'Relay', 'Destination'] as const
 
+/** The network's countries by how many nodes they hold, as they were in November 2026. */
+const COUNTRY_ORDER = [
+  'DE', 'US', 'FI', 'GB', 'CA', 'FR', 'NL', 'SE', 'SG', 'PL', 'ZA', 'AU',
+  'BG', 'JP', 'CZ', 'AE', 'IE', 'TH', 'IN', 'MY', 'KR', 'IT', 'RO', 'TR',
+] as const // prettier-ignore
+
 const NAMES: Record<string, string> = {
   DE: 'Germany',
   US: 'United States',
@@ -98,6 +104,7 @@ export const pathFlow = defineStory<{
   render: ({ paths, packets }) => (
     <PathFlow
       paths={paths}
+      countryOrder={COUNTRY_ORDER}
       packets={packets ?? []}
       stillAtMs={packets === undefined ? undefined : STILL_AT_MS}
       onionLayers

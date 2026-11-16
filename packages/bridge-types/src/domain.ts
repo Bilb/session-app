@@ -484,9 +484,9 @@ export type NetworkStatus = 'unknown' | 'connecting' | 'connected' | 'disconnect
 
 /**
  * What a path leads to. `ownSwarm` is the storage node the account's subscription is held with;
- * `storageNode` is any other, which is a group's swarm, a contact's a message was sent to, or a proxy
- * a community request went through; `fileServer` is the file server, which is reached as a client
- * behind a relay of its own choosing rather than as a node on the network.
+ * `storageNode` is any other, which is a group's swarm, a contact's a message was sent to, or a
+ * proxy a community request went through; `fileServer` is the file server, which is reached as a
+ * client behind a relay of its own choosing rather than as a node on the network.
  */
 export type PathDestination = 'ownSwarm' | 'storageNode' | 'fileServer'
 
@@ -542,10 +542,24 @@ export interface NetworkPath {
   pingsAnswered: number
 }
 
+/** How many service nodes one country holds. */
+export interface CountryNodes {
+  /** The ISO 3166-1 alpha-2 code, from the same IP table as a hop's `country`. */
+  country: string
+  nodes: number
+}
+
 /** Every path the client is holding open, for the path screen. */
 export interface NetworkPaths {
   /** In no particular order. Empty with no network, or one that sends without paths. */
   paths: NetworkPath[]
+  /**
+   * How many service nodes each country holds, most first, from the node cache: the network as
+   * this client knows it, which changes over hours rather than between snapshots. Nodes the table
+   * cannot place are left out. Empty until the cache is first fetched, with no network, or in a
+   * build without the country table.
+   */
+  nodesByCountry: CountryNodes[]
   /**
    * The credit the country table's licence requires wherever its results are shown, or empty when
    * the build carries no table.

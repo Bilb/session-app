@@ -1165,11 +1165,15 @@ export function runSessionClientContract(
       expect(await alice.getNetworkStatus()).toBe('disconnected')
     })
 
-    /** As with the status: paths need service nodes, so only their absence is asserted here. */
-    it('holds no paths without a network', async () => {
+    /**
+     * As with the status: paths need service nodes, so only their absence is asserted here. So does
+     * the node cache the countries are counted from.
+     */
+    it('holds no paths and counts no countries without a network', async () => {
       const { alice } = await harness.friends()
       const snapshot = await alice.getNetworkPaths()
       expect(snapshot.paths).toEqual([])
+      expect(snapshot.nodesByCountry).toEqual([])
       expect(typeof snapshot.countryAttribution).toBe('string')
     })
 

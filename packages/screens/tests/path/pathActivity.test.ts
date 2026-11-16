@@ -32,7 +32,7 @@ function path(over: Partial<NetworkPath> & { remoteHex: string }): NetworkPath {
 }
 
 function snap(...paths: NetworkPath[]): NetworkPaths {
-  return { paths, countryAttribution: 'credit' }
+  return { paths, nodesByCountry: [], countryAttribution: 'credit' }
 }
 
 /**
@@ -250,6 +250,28 @@ describe('pings', () => {
       1_000,
     )
     expect(busy.requests.filter((r) => r.kind === 'ping').map((r) => r.pathKey)).toEqual(['s'])
+  })
+})
+
+describe('country order', () => {
+  const counted = (...countries: string[]): NetworkPaths => ({
+    ...snap(path({ remoteHex: 'a' })),
+    nodesByCountry: countries.map((country, i) => ({ country, nodes: 100 - i })),
+  })
+
+  it('waits for a snapshot that has counted the countries', () => {
+    const first = trackSnapshot(EMPTY_TRACKER, snap(path({ remoteHex: 'a' })), 0, 1_000).tracker
+    expect(first.countryOrder).toEqual([])
+    expect(trackSnapshot(first, counted('DE', 'US'), 1_000, 1_000).tracker.countryOrder).toEqual([
+      'DE',
+      'US',
+    ])
+  })
+
+  it('keeps the first order while the screen is open, so the bars never reorder', () => {
+    const first = trackSnapshot(EMPTY_TRACKER, counted('DE', 'US'), 0, 1_000).tracker
+    const later = trackSnapshot(first, counted('US', 'DE', 'FI'), 1_000, 1_000).tracker
+    expect(later.countryOrder).toEqual(['DE', 'US'])
   })
 })
 

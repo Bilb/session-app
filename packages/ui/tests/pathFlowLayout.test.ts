@@ -38,3 +38,26 @@ describe('placeInLayout', () => {
     expect(placeInLayout(laidOut, { key: 'f', countries: ['SG', 'US', 'FI', 'DE'] })).toBeNull()
   })
 })
+
+function laidOutTop(bars: readonly { country: string; y: number }[]): string | undefined {
+  return [...bars].sort((a, b) => a.y - b.y)[0]?.country
+}
+
+describe('layoutPathFlow', () => {
+  const paths = [
+    { key: 'a', countries: ['DE', 'US', 'FI', 'DE'] },
+    { key: 'b', countries: ['US', 'DE', 'FI', 'US'] },
+  ]
+  const top = (layout: ReturnType<typeof layoutPathFlow>, column: number) =>
+    laidOutTop(layout.bars.filter((b) => b.column === column))
+
+  it('stacks every column in the order given, so a country sits at one height throughout', () => {
+    const layout = layoutPathFlow(paths, 380, 300, ['US', 'DE'])
+    expect([1, 2, 4].map((column) => top(layout, column))).toEqual(['US', 'US', 'US'])
+  })
+
+  it('stacks countries by code where no order is given', () => {
+    const layout = layoutPathFlow(paths, 380, 300)
+    expect([1, 2, 4].map((column) => top(layout, column))).toEqual(['DE', 'DE', 'DE'])
+  })
+})
