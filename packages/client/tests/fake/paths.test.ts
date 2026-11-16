@@ -30,6 +30,11 @@ describe('fakeNetworkPaths', () => {
     expect(group(at(10 * MINUTE + 30_000))?.requestsSent).toBe(before + 1)
   })
 
+  it('builds every path from one of four entry nodes, as the router does', () => {
+    const { paths } = fakeNetworkPaths(10 * MINUTE, 'busy')
+    expect(new Set(paths.map((p) => p.hops[0]?.pubkeyHex)).size).toBeLessThanOrEqual(4)
+  })
+
   it('holds no paths before the network has connected', () => {
     expect(fakeNetworkPaths(null, 'busy').paths).toEqual([])
   })

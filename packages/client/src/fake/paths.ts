@@ -7,6 +7,7 @@ import type { NetworkPath, NetworkPaths, PathDestination } from '@session/bridge
  *
  *   - none at all until the network has connected, and none once it is gone;
  *   - four hops to a storage node, the last being the node, and three to the file server;
+ *   - every path's first hop one of four entry nodes, as the router keeps;
  *   - request totals that only grow, so two snapshots tell what went in between;
  *   - a ping answered along every path every five seconds, counted from when it was last built;
  *   - a path to the same remote keeps its remote when its hops change;
@@ -78,6 +79,16 @@ const SPECS: readonly FakePathSpec[] = [
   },
 ]
 
+/** The router's entry nodes: a client keeps four and builds every path from one of them. */
+const ENTRY_NODES = 4
+
+/** A path's hops: an entry node, then relays, the last being the destination where it is one. */
+function hopsFor(base: number, count: number): { pubkeyHex: string; country: string }[] {
+  return Array.from({ length: count }, (_, k) =>
+    k === 0 ? relay(0x900 + (base % ENTRY_NODES)) : relay(base + k * 5),
+  )
+}
+
 function relay(seed: number): { pubkeyHex: string; country: string } {
   return {
     pubkeyHex: hex64(0x1000 + seed),
@@ -94,7 +105,7 @@ function pathOf(
   const build = Math.floor(elapsedMs / spec.rebuildMs)
   const base = index * 7 + build * 13 + (standby ? 3 : 0)
   const hopCount = spec.destination === 'fileServer' ? 3 : 4
-  const hops = Array.from({ length: hopCount }, (_, k) => relay(base + k * 5))
+  const hops = hopsFor(base, hopCount)
   const requestsSent = standby ? 0 : Math.floor(elapsedMs / spec.everyMs)
   return {
     remoteHex: spec.remoteHex,
@@ -175,7 +186,7 @@ function proxySessions(elapsedMs: number): NetworkPath[] {
           remoteHex: hex64(seed),
           destination: 'storageNode',
           standby,
-          hops: Array.from({ length: 4 }, (_, k) => relay(base + k * 5)),
+          hops: hopsFor(base, 4),
           latencyMs: 180 + ((base * 37) % 260),
           jitterMs: 4 + ((base * 11) % 30),
           requestsSent: standby ? 0 : 1,
