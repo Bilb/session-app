@@ -399,6 +399,7 @@ const BarsLayer = memo(function BarsLayer({ layout, barColor }: BarsLayerProps) 
  * seconds; the requests keep moving between redraws.
  */
 const PATH_HOLD_MS = 5_000
+const NO_PATHS: readonly PathFlowPath[] = []
 
 /** What changes a path's drawn line: not whether it is lit, which is drawn on its own. */
 function shapeOf(paths: readonly PathFlowPath[]): string {
@@ -408,12 +409,17 @@ function shapeOf(paths: readonly PathFlowPath[]): string {
 }
 
 /**
- * The paths as last drawn: `paths` once its shape has changed, at most once per `holdMs`. The
- * first paths are drawn at once.
+ * The paths as last drawn: `paths` once its shape has changed, at most once per `holdMs`, the
+ * first of those `phaseMs` early so that holds started together come due apart. The first paths
+ * are drawn at once.
  */
-function useHeldPaths(paths: readonly PathFlowPath[], holdMs: number): readonly PathFlowPath[] {
+function useHeldPaths(
+  paths: readonly PathFlowPath[],
+  holdMs: number,
+  phaseMs: number,
+): readonly PathFlowPath[] {
   const shape = shapeOf(paths)
-  const [held, setHeld] = useState(() => ({ paths, shape, atMs: Date.now() }))
+  const [held, setHeld] = useState(() => ({ paths, shape, atMs: Date.now() - phaseMs }))
   const latest = useRef(paths)
   useEffect(() => {
     latest.current = paths
@@ -949,7 +955,7 @@ function Legend({
  * which change least and matter most, drawn over the rest. A path added or dropped redraws only
  * its own canvas, which on an older phone is what a hundred lines on one canvas cost.
  */
-function groupLines(paths: readonly PathFlowPath[]): PathFlowPath[][] {
+function groupLines(paths: readonly PathFlowPath[]): readonly PathFlowPath[][] {
   const groups: PathFlowPath[][] = [[], [], [], []]
   for (const p of paths) {
     const k =
@@ -981,7 +987,16 @@ export function PathFlow({
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
   // A still for the catalog is drawn as given; a live flow redraws its paths only now and then.
-  const drawn = useHeldPaths(paths, stillAtMs === undefined ? PATH_HOLD_MS : 0)
+  // Each canvas of lines is held on its own, a quarter of a hold out of step with the next, so the
+  // ones that change all the time never redraw in the same frame.
+  const holdMs = stillAtMs === undefined ? PATH_HOLD_MS : 0
+  const live = groupLines(paths)
+  const held0 = useHeldPaths(live[0] ?? NO_PATHS, holdMs, 0)
+  const held1 = useHeldPaths(live[1] ?? NO_PATHS, holdMs, holdMs / 2)
+  const held2 = useHeldPaths(live[2] ?? NO_PATHS, holdMs, holdMs / 4)
+  const held3 = useHeldPaths(live[3] ?? NO_PATHS, holdMs, (holdMs * 3) / 4)
+  const lineGroups = useMemo(() => [held0, held1, held2, held3], [held0, held1, held2, held3])
+  const drawn = useMemo(() => lineGroups.flat(), [lineGroups])
   const titles = useSameStrings(columnTitles)
   const building = drawn.length === 0
   // Sized for the most paths drawn since it opened, or expected, so the card grows only when the
@@ -1011,7 +1026,6 @@ export function PathFlow({
     return drawn.filter((p) => keys.has(p.key))
   }, [drawn, litKeys])
   const glowId = (kind: PathFlowKind) => `pathflow${idBase}${kind}`
-  const lineGroups = useMemo(() => groupLines(drawn), [drawn])
   return (
     <YStack alignSelf="stretch" gap="$xs">
       <YStack
