@@ -18,7 +18,6 @@ import {
   ScrollToLatest,
   Text,
   TranscriptList,
-  useReducedMotion,
   XStack,
   YStack,
   type TranscriptListHandle,
@@ -97,7 +96,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const { ready } = transcript
   const showLoading = useShowAfter(!ready)
   const actions = useSessionActions()
-  const reducedMotion = useReducedMotion()
   const list = useRef<TranscriptListHandle | null>(null)
   const [farFromEnd, setFarFromEnd] = useState(false)
   const staging = useStaging((file) => actions.attachmentSendPlan(file.path, file.contentType))
@@ -134,7 +132,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   )
 
   function toLatest(): void {
-    list.current?.scrollToEnd({ animated: !reducedMotion })
+    list.current?.scrollToEnd({ animated: true })
   }
 
   // The id stands in for the conversation as well as for the name: opening one from a route
