@@ -1,4 +1,4 @@
-import { memo, useEffect, useId, useMemo, useState } from 'react'
+import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Platform, type LayoutChangeEvent } from 'react-native'
 import Svg, {
   Circle,
@@ -192,9 +192,13 @@ function linePath(pts: readonly (readonly [number, number])[], barWidth: number)
   return d
 }
 
-interface StaticLayerProps {
+interface LinesLayerProps {
   layout: FlowLayout
   paths: readonly PathFlowPath[]
+}
+
+interface BarsLayerProps {
+  layout: FlowLayout
   columnTitles: PathFlowProps['columnTitles']
   labelFor: PathFlowProps['labelFor']
   barColor: string
@@ -249,24 +253,12 @@ function Titles({
   )
 }
 
-/** Bars, labels and lines: redrawn only when the paths change, never per frame. */
-const StaticLayer = memo(function StaticLayer({
-  layout,
-  paths,
-  columnTitles,
-  labelFor,
-  barColor,
-  labelColor,
-  titleColor,
-  plateColor,
-}: StaticLayerProps) {
+/** Every path, faint: redrawn only when the set of paths does. */
+const LinesLayer = memo(function LinesLayer({ layout, paths }: LinesLayerProps) {
   const many = paths.length > 6
-  // Bright lines over faint ones, wherever they sit in the list.
-  const ordered = [...paths].sort((a, b) => Number(a.lit) - Number(b.lit))
   return (
     <G>
-      <Titles layout={layout} columnTitles={columnTitles} color={titleColor} />
-      {ordered.map((p) => {
+      {paths.map((p) => {
         const pts = layout.points.get(p.key)
         if (!pts) return null
         return (
@@ -274,14 +266,54 @@ const StaticLayer = memo(function StaticLayer({
             key={p.key}
             d={linePath(pts, layout.barWidth)}
             stroke={KIND_COLOR[p.kind]}
-            strokeOpacity={p.lit ? 0.95 : FAINT_OPACITY}
-            strokeWidth={p.lit ? 2.2 : many ? 1 : 1.5}
+            strokeOpacity={FAINT_OPACITY}
+            strokeWidth={many ? 1 : 1.5}
             strokeLinecap="round"
-            {...(p.standby === true && !p.lit ? { strokeDasharray: '3 4' } : {})}
+            {...(p.standby === true ? { strokeDasharray: '3 4' } : {})}
             fill="none"
           />
         )
       })}
+    </G>
+  )
+})
+
+/** The lit paths, bright over their faint lines: redrawn as requests start and finish. */
+const LitLayer = memo(function LitLayer({ layout, paths }: LinesLayerProps) {
+  return (
+    <G>
+      {paths.map((p) => {
+        const pts = layout.points.get(p.key)
+        if (!pts) return null
+        return (
+          <Path
+            key={p.key}
+            d={linePath(pts, layout.barWidth)}
+            stroke={KIND_COLOR[p.kind]}
+            strokeOpacity={0.95}
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            fill="none"
+          />
+        )
+      })}
+    </G>
+  )
+})
+
+/** Titles, bars and their labels, over the lines: redrawn only when the set of paths changes. */
+const BarsLayer = memo(function BarsLayer({
+  layout,
+  columnTitles,
+  labelFor,
+  barColor,
+  labelColor,
+  titleColor,
+  plateColor,
+}: BarsLayerProps) {
+  return (
+    <G>
+      <Titles layout={layout} columnTitles={columnTitles} color={titleColor} />
       {layout.bars.map((bar) => (
         <Rect
           key={`${bar.column}-${bar.country}`}
@@ -328,6 +360,50 @@ const StaticLayer = memo(function StaticLayer({
     </G>
   )
 })
+
+/**
+ * The least time between two redraws of the paths themselves. Every redraw of a hundred paths
+ * costs the UI thread a few frames on an older phone, and a busy client opens a session every few
+ * seconds; the requests keep moving between redraws.
+ */
+const PATH_HOLD_MS = 5_000
+
+/** What changes a path's drawn line: not whether it is lit, which is drawn on its own. */
+function shapeOf(paths: readonly PathFlowPath[]): string {
+  return paths
+    .map((p) => `${p.key}|${p.kind}|${p.countries.join(',')}|${p.standby === true ? 1 : 0}`)
+    .join(';')
+}
+
+/**
+ * The paths as last drawn: `paths` once its shape has changed, at most once per `holdMs`. The
+ * first paths are drawn at once.
+ */
+function useHeldPaths(paths: readonly PathFlowPath[], holdMs: number): readonly PathFlowPath[] {
+  const shape = shapeOf(paths)
+  const [held, setHeld] = useState(() => ({ paths, shape, atMs: Date.now() }))
+  const latest = useRef(paths)
+  useEffect(() => {
+    latest.current = paths
+  })
+  useEffect(() => {
+    if (shape === held.shape) return
+    const waitMs = held.paths.length === 0 ? 0 : Math.max(0, held.atMs + holdMs - Date.now())
+    const id = setTimeout(() => {
+      setHeld({ paths: latest.current, shape: shapeOf(latest.current), atMs: Date.now() })
+    }, waitMs)
+    return () => clearTimeout(id)
+  }, [shape, held, holdMs])
+  return holdMs === 0 ? paths : held.paths
+}
+
+/** The same array while its contents are: a caller's inline list would redraw a memoised layer. */
+function useSameStrings<T extends readonly string[]>(value: T): T {
+  const [same, setSame] = useState(value)
+  const changed = same.join('\u0000') !== value.join('\u0000')
+  if (changed) setSame(value)
+  return changed ? value : same
+}
 
 /** The radius of a request's `ring`th layer, counting out from its core; a ping's are tighter. */
 function layerRadius(ring: number, quiet = false): number {
@@ -589,6 +665,9 @@ function Legend({
  * Motion stops under the system's reduced-motion setting: the lines and highlights stay, the
  * travelling requests do not.
  */
+/** The moving canvas, laid exactly over the still one. */
+const OVERLAY = { position: 'absolute', top: 0, left: 0 } as const
+
 export function PathFlow({
   paths,
   packets,
@@ -609,22 +688,33 @@ export function PathFlow({
   const plateColor = useTokenColor('$backgroundSecondary')
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
-  const building = paths.length === 0
+  // A still for the catalog is drawn as given; a live flow redraws its paths only now and then.
+  const drawn = useHeldPaths(paths, stillAtMs === undefined ? PATH_HOLD_MS : 0)
+  const titles = useSameStrings(columnTitles)
+  const building = drawn.length === 0
   // Sized for the most paths drawn since it opened, or expected, so the card grows only when the
   // guess fell short and never shrinks as paths fall idle: the page below it stays where it is.
   // Building takes the room one path would.
-  const [mostPaths, setMostPaths] = useState(Math.max(1, paths.length, expectedPaths ?? 0))
-  if (paths.length > mostPaths) setMostPaths(paths.length)
-  const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(mostPaths, paths.length)) : 0
+  const [mostPaths, setMostPaths] = useState(Math.max(1, drawn.length, expectedPaths ?? 0))
+  if (drawn.length > mostPaths) setMostPaths(drawn.length)
+  const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(mostPaths, drawn.length)) : 0
   const layout = useMemo(
     () =>
       layoutPathFlow(
-        building ? BUILDING_PATH : paths.map((p) => ({ key: p.key, countries: p.countries })),
+        building ? BUILDING_PATH : drawn.map((p) => ({ key: p.key, countries: p.countries })),
         widthPx,
         heightPx,
       ),
-    [building, paths, widthPx, heightPx],
+    [building, drawn, widthPx, heightPx],
   )
+  const litKeys = paths
+    .filter((p) => p.lit)
+    .map((p) => p.key)
+    .join(';')
+  const lit = useMemo(() => {
+    const keys = new Set(litKeys.split(';'))
+    return drawn.filter((p) => keys.has(p.key))
+  }, [drawn, litKeys])
   const glowId = (kind: PathFlowKind) => `pathflow${idBase}${kind}`
   return (
     <YStack alignSelf="stretch" gap="$xs">
@@ -638,52 +728,65 @@ export function PathFlow({
         testID={testID}
       >
         {widthPx > 0 ? (
-          <Svg width={widthPx} height={heightPx}>
-            <Defs>
-              {KINDS.map((kind) => (
-                // A request's glow: white at its heart, its path's colour, then nothing.
-                <RadialGradient key={kind} id={glowId(kind)} cx="50%" cy="50%" r="50%">
-                  <Stop offset="0" stopColor={COLORS.WHITE} stopOpacity={1} />
-                  <Stop offset="0.18" stopColor={KIND_COLOR[kind]} stopOpacity={1} />
-                  <Stop offset="1" stopColor={KIND_COLOR[kind]} stopOpacity={0} />
-                </RadialGradient>
-              ))}
-            </Defs>
-            {building ? (
-              <BuildingLayer
-                layout={layout}
-                columnTitles={columnTitles}
-                label={buildingLabel}
-                barColor={barColor}
-                titleColor={titleColor}
-                glowId={glowId('swarm')}
-                still={still}
-              />
-            ) : null}
-            {building ? null : (
-              <StaticLayer
-                layout={layout}
-                paths={paths}
-                columnTitles={columnTitles}
-                labelFor={labelFor}
-                barColor={barColor}
-                labelColor={labelColor}
-                titleColor={titleColor}
-                plateColor={plateColor}
-              />
-            )}
-            {building || (still && stillAtMs === undefined) ? null : (
-              <PacketLayer
-                layout={layout}
-                paths={paths}
-                packets={packets}
-                onionLayers={onionLayers}
-                ringColor={labelColor}
-                glowId={glowId}
-                stillAtMs={stillAtMs}
-              />
-            )}
-          </Svg>
+          <>
+            {/* react-native-svg redraws a whole canvas on the UI thread when any part of it
+                changes, so each part sits on a canvas of its own, stacked in drawing order: the
+                faint lines and the bars change only with the paths, the lit lines as requests
+                start and finish, and the requests every frame. */}
+            <Svg width={widthPx} height={heightPx}>
+              {building ? null : <LinesLayer layout={layout} paths={drawn} />}
+            </Svg>
+            <Svg width={widthPx} height={heightPx} style={OVERLAY} pointerEvents="none">
+              {building ? null : <LitLayer layout={layout} paths={lit} />}
+            </Svg>
+            <Svg width={widthPx} height={heightPx} style={OVERLAY} pointerEvents="none">
+              {building ? null : (
+                <BarsLayer
+                  layout={layout}
+                  columnTitles={titles}
+                  labelFor={labelFor}
+                  barColor={barColor}
+                  labelColor={labelColor}
+                  titleColor={titleColor}
+                  plateColor={plateColor}
+                />
+              )}
+            </Svg>
+            <Svg width={widthPx} height={heightPx} style={OVERLAY} pointerEvents="none">
+              <Defs>
+                {KINDS.map((kind) => (
+                  // A request's glow: white at its heart, its path's colour, then nothing.
+                  <RadialGradient key={kind} id={glowId(kind)} cx="50%" cy="50%" r="50%">
+                    <Stop offset="0" stopColor={COLORS.WHITE} stopOpacity={1} />
+                    <Stop offset="0.18" stopColor={KIND_COLOR[kind]} stopOpacity={1} />
+                    <Stop offset="1" stopColor={KIND_COLOR[kind]} stopOpacity={0} />
+                  </RadialGradient>
+                ))}
+              </Defs>
+              {building ? (
+                <BuildingLayer
+                  layout={layout}
+                  columnTitles={columnTitles}
+                  label={buildingLabel}
+                  barColor={barColor}
+                  titleColor={titleColor}
+                  glowId={glowId('swarm')}
+                  still={still}
+                />
+              ) : null}
+              {building || (still && stillAtMs === undefined) ? null : (
+                <PacketLayer
+                  layout={layout}
+                  paths={drawn}
+                  packets={packets}
+                  onionLayers={onionLayers}
+                  ringColor={labelColor}
+                  glowId={glowId}
+                  stillAtMs={stillAtMs}
+                />
+              )}
+            </Svg>
+          </>
         ) : null}
       </YStack>
       <Legend paths={paths} kindLabels={kindLabels} />
