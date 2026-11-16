@@ -127,6 +127,47 @@ describe('trackSnapshot', () => {
   })
 })
 
+describe('when paths were last used', () => {
+  it('knows from the first snapshot which paths are in use, by when each last had a request', () => {
+    const { tracker, requests } = trackSnapshot(
+      EMPTY_TRACKER,
+      snap(
+        path({ remoteHex: 'recent', requestsSent: 5, msSinceLastRequest: 2_000 }),
+        path({ remoteHex: 'old', requestsSent: 9, msSinceLastRequest: IN_USE_MS + 1 }),
+      ),
+      0,
+      1_000,
+    )
+    expect(requests).toEqual([])
+    expect(inUse(tracker, 0).map((p) => p.key)).toEqual(['recent'])
+  })
+
+  it('takes a long gap between polls as a new baseline, not as a burst of requests', () => {
+    const first = trackSnapshot(EMPTY_TRACKER, snap(path({ remoteHex: 'a' })), 0, 1_000)
+    // A window in the background: the next poll comes a minute late, 40 requests on.
+    const back = trackSnapshot(
+      first.tracker,
+      snap(path({ remoteHex: 'a', requestsSent: 40, pingsAnswered: 12, msSinceLastRequest: 500 })),
+      60_000,
+      1_000,
+    )
+    expect(back.requests).toEqual([])
+    expect(inUse(back.tracker, 60_000).map((p) => p.key)).toEqual(['a'])
+  })
+
+  it('always draws the swarm member last talked to, and another only while in use', () => {
+    const swarm = (remoteHex: string, ms: number) =>
+      path({ remoteHex, destination: 'ownSwarm', requestsSent: 1, msSinceLastRequest: ms })
+    const { tracker } = trackSnapshot(
+      EMPTY_TRACKER,
+      snap(swarm('s1', 5 * IN_USE_MS), swarm('s2', 3 * IN_USE_MS)),
+      0,
+      1_000,
+    )
+    expect(inUse(tracker, 0).map((p) => p.key)).toEqual(['s2'])
+  })
+})
+
 describe('standby paths', () => {
   const spare = (over: Partial<NetworkPath> & { remoteHex: string }) =>
     path({ standby: true, hops: [{ pubkeyHex: 'e7', country: 'SG' }], ...over })
@@ -174,10 +215,10 @@ describe('pings', () => {
   it('sees a ping when a path answers one, but not on the first look or after a rebuild', () => {
     const first = trackSnapshot(EMPTY_TRACKER, snap(quiet({ pingsAnswered: 7 })), 0, 1_000)
     expect(first.requests).toEqual([])
-    const pinged = trackSnapshot(first.tracker, snap(quiet({ pingsAnswered: 8 })), 6_000, 1_000)
+    const pinged = trackSnapshot(first.tracker, snap(quiet({ pingsAnswered: 8 })), 1_000, 1_000)
     expect(pinged.requests.map((r) => [r.kind, r.pathKey])).toEqual([['ping', 'a']])
     const moved = quiet({ pingsAnswered: 1, hops: [{ pubkeyHex: 'e2', country: 'NL' }] })
-    expect(trackSnapshot(pinged.tracker, snap(moved), 12_000, 1_000).requests).toEqual([])
+    expect(trackSnapshot(pinged.tracker, snap(moved), 2_000, 1_000).requests).toEqual([])
   })
 
   it('leaves out the pings on a path that has just carried a request', () => {
@@ -191,15 +232,19 @@ describe('pings', () => {
     expect(both.requests.map((r) => r.kind)).toEqual(['request'])
   })
 
-  it('leaves out every ping while the client is busy elsewhere', () => {
-    const first = trackSnapshot(EMPTY_TRACKER, snap(quiet(), path({ remoteHex: 'b' })), 0, 1_000)
+  it('shows one ping a poll while the client is busy elsewhere, rather than all or none', () => {
+    const idle = ['a', 'c', 'd'].map((remoteHex) => path({ remoteHex }))
+    const first = trackSnapshot(EMPTY_TRACKER, snap(...idle, path({ remoteHex: 'b' })), 0, 1_000)
     const busy = trackSnapshot(
       first.tracker,
-      snap(quiet({ pingsAnswered: 1 }), path({ remoteHex: 'b', requestsSent: BUSY_REQUESTS })),
+      snap(
+        ...idle.map((p) => ({ ...p, pingsAnswered: 1 })),
+        path({ remoteHex: 'b', requestsSent: BUSY_REQUESTS }),
+      ),
       1_000,
       1_000,
     )
-    expect(busy.requests.every((r) => r.kind === 'request')).toBe(true)
+    expect(busy.requests.filter((r) => r.kind === 'ping')).toHaveLength(1)
   })
 })
 

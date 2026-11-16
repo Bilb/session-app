@@ -22,6 +22,14 @@ const MAX_PER_POLL = 4
  */
 export const PING_QUIET_MS = 5_000
 export const BUSY_REQUESTS = 4
+/** While busy, at most this many pings a poll: a sample, so the paths are still seen alive. */
+const BUSY_PINGS_PER_POLL = 1
+
+/**
+ * A poll this much later than the last one means the screen was not being drawn (a window in the
+ * background, whose timers the system slows): what changed meanwhile is not traffic to animate.
+ */
+const STALE_POLLS = 3
 
 export type PathKind = 'swarm' | 'node' | 'community' | 'file'
 
@@ -63,6 +71,8 @@ export interface PathTracker {
   attribution: string
   /** How many requests and pings have been seen, for ids. */
   seq: number
+  /** When the last snapshot was taken, or null before the first. */
+  lastPollMs: number | null
 }
 
 export const EMPTY_TRACKER: PathTracker = {
@@ -74,6 +84,7 @@ export const EMPTY_TRACKER: PathTracker = {
   rebuilt: 0,
   attribution: '',
   seq: 0,
+  lastPollMs: null,
 }
 
 function kindOf(path: NetworkPath): PathKind {
@@ -104,7 +115,10 @@ export function trackSnapshot(
   nowMs: number,
   pollMs: number,
 ): { tracker: PathTracker; requests: SeenRequest[] } {
-  const first = tracker.totals.size === 0 && tracker.paths.length === 0
+  // The first snapshot, or the first after a gap, is a baseline: what the totals moved by since
+  // is not drawn as requests or pings, though when each remote last had one still says what is
+  // in use.
+  const first = tracker.lastPollMs === null || nowMs - tracker.lastPollMs > STALE_POLLS * pollMs
   const previous = new Map(tracker.paths.map((p) => [p.key, p]))
   const totals = new Map<string, number>()
   const pingTotals = new Map<string, number>()
@@ -154,7 +168,10 @@ export function trackSnapshot(
     totals.set(key, path.requestsSent)
     pingTotals.set(key, path.pingsAnswered)
     const was = tracker.totals.get(key)
-    let lastRequestAtMs = previous.get(key)?.lastRequestAtMs ?? null
+    let lastRequestAtMs =
+      path.msSinceLastRequest === undefined
+        ? (previous.get(key)?.lastRequestAtMs ?? null)
+        : nowMs - path.msSinceLastRequest
     if (!first) {
       const added = path.requestsSent - (was ?? 0)
       if (added > 0) {
@@ -192,13 +209,23 @@ export function trackSnapshot(
     ...tracker.recentRequestsMs.filter((at) => nowMs - at < PING_QUIET_MS),
     ...requests.map((r) => r.atMs),
   ]
-  if (recentRequestsMs.length < BUSY_REQUESTS) {
-    for (const { key, lastRequestAtMs } of pinged) {
-      if (lastRequestAtMs !== null && nowMs - lastRequestAtMs < PING_QUIET_MS) continue
-      seq += 1
-      // Half a poll in, so a ping never sets off in step with the requests found beside it.
-      requests.push({ id: `p${seq}`, pathKey: key, atMs: nowMs + pollMs / 2, kind: 'ping' })
-    }
+  const quiet = pinged.filter(
+    ({ lastRequestAtMs }) => lastRequestAtMs === null || nowMs - lastRequestAtMs >= PING_QUIET_MS,
+  )
+  const busy = recentRequestsMs.length >= BUSY_REQUESTS
+  // Busy, a different path's each poll, by the running count, rather than always the first.
+  const shownPings = busy
+    ? quiet.length === 0
+      ? []
+      : Array.from(
+          { length: Math.min(BUSY_PINGS_PER_POLL, quiet.length) },
+          (_, i) => quiet[(seq + i) % quiet.length],
+        ).filter((p) => p !== undefined)
+    : quiet
+  for (const { key } of shownPings) {
+    seq += 1
+    // Half a poll in, so a ping never sets off in step with the requests found beside it.
+    requests.push({ id: `p${seq}`, pathKey: key, atMs: nowMs + pollMs / 2, kind: 'ping' })
   }
 
   return {
@@ -211,6 +238,7 @@ export function trackSnapshot(
       rebuilt,
       attribution: snapshot.countryAttribution,
       seq,
+      lastPollMs: nowMs,
     },
     requests,
   }
@@ -227,8 +255,19 @@ export function inUse(tracker: PathTracker, nowMs: number): TrackedPath[] {
       .filter((p) => p.lastRequestAtMs !== null && nowMs - p.lastRequestAtMs < IN_USE_MS)
       .map((p) => p.sessionKey),
   )
+  // Your swarm has several members and the client may have talked to more than one of them; the
+  // one it talked to last is always drawn, and any other only while in use, like any node.
+  const swarm = tracker.paths
+    .filter((p) => p.kind === 'swarm' && !p.standby)
+    .reduce<TrackedPath | null>(
+      (best, p) =>
+        best === null || (p.lastRequestAtMs ?? -Infinity) > (best.lastRequestAtMs ?? -Infinity)
+          ? p
+          : best,
+      null,
+    )
   return tracker.paths.filter(
-    (p) => p.kind === 'swarm' || p.kind === 'file' || busy.has(p.sessionKey),
+    (p) => p.sessionKey === swarm?.sessionKey || p.kind === 'file' || busy.has(p.sessionKey),
   )
 }
 
