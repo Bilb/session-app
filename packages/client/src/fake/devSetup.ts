@@ -4,6 +4,7 @@ import type { FakeSessionClient } from './FakeSessionClient'
 import { dateStates } from './dates'
 import { crowd, newcomer, type FakeSetup } from './fixtures'
 import { photoFileNames, thumbnailFileNames } from './media'
+import { FAKE_PATH_TRAFFIC, type FakePathTraffic } from './paths'
 import { rowShowcase } from './rows'
 import { showcase } from './showcase'
 import { keyMissing, keyUnavailable, type DatabaseKeyError } from '../databaseKey'
@@ -52,6 +53,8 @@ export interface FakeDevEnv {
   EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN?: string | undefined
   /** One of `FAKE_FAILED_STARTS`: a start that fails, and how, for the failure screen. */
   EXPO_PUBLIC_SESSION_FAKE_FAILED_START?: string | undefined
+  /** One of `FAKE_PATH_TRAFFIC`: what the path screen shows. Unset is `quiet`. */
+  EXPO_PUBLIC_SESSION_FAKE_PATHS?: string | undefined
 }
 
 /**
@@ -117,6 +120,15 @@ function chosenFixture(env: FakeDevEnv, crowdPeers: number | undefined): FakeFix
   if (env.EXPO_PUBLIC_SESSION_FAKE_ROWS === '1') return 'rows'
   if (crowdPeers !== undefined) return 'crowd'
   return 'friends'
+}
+
+function chosenPathTraffic(text: string | undefined): FakePathTraffic {
+  const named = text?.trim()
+  if (named === undefined || named === '') return 'quiet'
+  if ((FAKE_PATH_TRAFFIC as readonly string[]).includes(named)) return named as FakePathTraffic
+  throw new Error(
+    `EXPO_PUBLIC_SESSION_FAKE_PATHS=${named} is not a traffic; use one of ${FAKE_PATH_TRAFFIC.join(', ')}`,
+  )
 }
 
 /** The world the environment names, and which fixture that was. */
@@ -219,6 +231,9 @@ export function startDevFake(env: FakeDevEnv, photos: DevPhotos): DevFake {
   if (!alice) throw new Error('the fixture did not produce a client')
 
   driveFakeClock(world, env.EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN)
+  world.pathTraffic = chosenPathTraffic(env.EXPO_PUBLIC_SESSION_FAKE_PATHS)
+  // The dev loop settles the world rather than running its clock; paths follow the wall's.
+  world.pathClock = () => Date.now()
 
   // The real bridge attaches the network it was opened with as soon as there is an account. The
   // fake is opened with none, so the dev entry asks here: a fixture with an account goes online at

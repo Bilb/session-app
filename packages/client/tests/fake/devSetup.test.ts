@@ -211,6 +211,19 @@ describe('starting a dev fake', () => {
     expect(world.now()).toBe(before + FAKE_TICK_MS / 10)
   })
 
+  it('times paths by the wall clock, with the traffic EXPO_PUBLIC_SESSION_FAKE_PATHS names', () => {
+    const quiet = startDevFake({}, allPhotos).world
+    expect(quiet.pathTraffic).toBe('quiet')
+    // The dev loop does not run the world's clock, so paths would never move on it.
+    expect(quiet.pathNow()).toBe(Date.now())
+    expect(
+      startDevFake({ EXPO_PUBLIC_SESSION_FAKE_PATHS: 'busy' }, allPhotos).world.pathTraffic,
+    ).toBe('busy')
+    expect(() => startDevFake({ EXPO_PUBLIC_SESSION_FAKE_PATHS: 'bsy' }, allPhotos)).toThrow(
+      /EXPO_PUBLIC_SESSION_FAKE_PATHS=bsy is not a traffic/,
+    )
+  })
+
   it('serves a database that will not open on EXPO_PUBLIC_SESSION_FAKE_FAILED_START=1', async () => {
     const { alice, served } = startDevFake(
       { EXPO_PUBLIC_SESSION_FAKE_FAILED_START: '1' },

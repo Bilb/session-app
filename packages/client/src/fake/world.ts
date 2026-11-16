@@ -48,7 +48,7 @@ import {
 
 import { SessionClientError } from '../errors'
 
-import { fakeNetworkPaths } from './paths'
+import { fakeNetworkPaths, type FakePathTraffic } from './paths'
 import { inferContentType } from './contentType'
 import { fakeSendPlan, isReencoded, reencodedContentType } from './sendPlan'
 
@@ -327,7 +327,7 @@ export class FakeAccount {
    */
   networkPlanned = false
   networkStatus: NetworkStatus = 'disconnected'
-  /** When the network last connected, on the world's clock; null while it is not connected. */
+  /** When the network last connected, on the paths' clock; null while it is not connected. */
   connectedAtMs: number | null = null
   /**
    * When a restored profile becomes visible, or 0 where there is nothing outstanding.
@@ -427,7 +427,7 @@ export class FakeAccount {
   setNetworkStatus(status: NetworkStatus): void {
     if (this.networkStatus === status) return
     this.networkStatus = status
-    this.connectedAtMs = status === 'connected' ? (this.world?.now() ?? Date.now()) : null
+    this.connectedAtMs = status === 'connected' ? (this.world?.pathNow() ?? Date.now()) : null
     this.emit({ type: 'network-status-changed', status })
   }
 
@@ -1249,8 +1249,11 @@ export class FakeAccount {
    */
   /** The paths the network holds, which are none until it has connected. */
   networkPaths(): NetworkPaths {
-    const now = this.world?.now() ?? Date.now()
-    return fakeNetworkPaths(this.connectedAtMs === null ? null : now - this.connectedAtMs)
+    const now = this.world?.pathNow() ?? Date.now()
+    return fakeNetworkPaths(
+      this.connectedAtMs === null ? null : now - this.connectedAtMs,
+      this.world?.pathTraffic ?? 'quiet',
+    )
   }
 
   configSizes(): ConfigSize[] {
@@ -1510,6 +1513,20 @@ export class FakeWorld {
 
   now(): number {
     return this.clock
+  }
+
+  /** How much the accounts' paths carry; see `FakePathTraffic`. */
+  pathTraffic: FakePathTraffic = 'quiet'
+
+  /**
+   * The clock the paths' traffic is timed by: the world's, unless an app sets the wall clock. An
+   * app's dev loop only settles the world rather than running its clock, and a path screen with
+   * no time passing has nothing to draw.
+   */
+  pathClock: (() => number) | undefined = undefined
+
+  pathNow(): number {
+    return this.pathClock?.() ?? this.clock
   }
 
   account(name: string, options?: Partial<FakeAccountOptions>): FakeAccount {
