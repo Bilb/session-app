@@ -14,14 +14,14 @@ import {
   DropOverlay,
   DropZone,
   elementMenuAnchor,
-  List,
   Screen,
   ScrollToLatest,
   Text,
+  TranscriptList,
   useReducedMotion,
   XStack,
   YStack,
-  type ListHandle,
+  type TranscriptListHandle,
 } from '@session/ui'
 import { useCallback, useMemo, useRef, useState, type Ref } from 'react'
 
@@ -53,7 +53,7 @@ function Transcript({
 }: {
   conversationId: ConversationId
   transcript: LoadedTranscript
-  list: Ref<ListHandle>
+  list: Ref<TranscriptListHandle>
   onFarFromEnd: (far: boolean) => void
 }) {
   const { messages, loadOlder } = transcript
@@ -69,12 +69,11 @@ function Transcript({
   )
   return (
     // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
-    <List
+    <TranscriptList
       data={messages}
       keyExtractor={messageKey}
       onRowMenu={openRowMenu}
       handle={list}
-      startsAtEnd
       onStartReached={loadOlder}
       onFarFromEnd={onFarFromEnd}
       // TODO: enter on the oldest unread message once the bridge carries libsession's
@@ -99,7 +98,7 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const showLoading = useShowAfter(!ready)
   const actions = useSessionActions()
   const reducedMotion = useReducedMotion()
-  const list = useRef<ListHandle | null>(null)
+  const list = useRef<TranscriptListHandle | null>(null)
   const [farFromEnd, setFarFromEnd] = useState(false)
   const staging = useStaging((file) => actions.attachmentSendPlan(file.path, file.contentType))
   const [dropping, setDropping] = useState(false)
