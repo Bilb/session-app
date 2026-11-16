@@ -13,7 +13,7 @@ export interface FlowPathInput {
   countries: readonly (string | null)[]
 }
 
-export interface FlowBar {
+interface FlowBar {
   column: number
   /** The country code, `?` where unknown. */
   country: string
@@ -33,7 +33,7 @@ export interface FlowLayout {
   points: ReadonlyMap<string, readonly (readonly [number, number])[]>
 }
 
-export const FLOW_COLUMNS = 5
+const FLOW_COLUMNS = 5
 const BAR_WIDTH = 5
 /** The drawing's margin at both sides, outside your bar and the destination's alike. */
 export const FLOW_SIDE = 14

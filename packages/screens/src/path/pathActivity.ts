@@ -21,7 +21,7 @@ const MAX_PER_POLL = 4
  * request this recently, and while this many requests went anywhere in that time, only on your
  * own swarm's paths.
  */
-export const PING_QUIET_MS = 5_000
+const PING_QUIET_MS = 5_000
 export const BUSY_REQUESTS = 4
 
 /**
@@ -50,7 +50,7 @@ export interface TrackedPath {
 }
 
 /** A request the client sent, or one of the router's pings, which say only that a path is alive. */
-export type SeenKind = 'request' | 'ping'
+type SeenKind = 'request' | 'ping'
 
 export interface SeenRequest {
   id: string
@@ -333,7 +333,7 @@ export function expectedPathCount(conversations: readonly { kind: ConversationKi
  * 150-600 ms, too quick to follow, so they are slowed by a fixed factor that keeps a slow path
  * visibly slower than a fast one, and clamped so neither is a blur nor a crawl.
  */
-export const SLOWDOWN = 6
+const SLOWDOWN = 6
 const MIN_HOP_MS = 140
 const MAX_HOP_MS = 700
 const UNTIMED_HOP_MS = 320

@@ -10,14 +10,14 @@
 /** A node taking off its layer, or putting one on, before the request moves on. */
 export const NODE_HOLD_MS = 160
 /** The destination reading the request bare, before it wraps the answer. */
-export const READ_MS = 170
+const READ_MS = 170
 /** How long a ring is drawn round a node as a layer comes off or goes on. */
 export const RING_MS = 300
 /** After the answer is wrapped, before it sets off: the ring can be seen closing first. */
 const SETTLE_MS = 140
 
 /** What happens to a layer at a node: off on the way out, on on the way back, all off at home. */
-export type RingKind = 'peel' | 'wrap' | 'open'
+type RingKind = 'peel' | 'wrap' | 'open'
 
 export interface JourneyRing {
   atMs: number
