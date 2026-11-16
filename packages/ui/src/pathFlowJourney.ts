@@ -42,11 +42,17 @@ export interface Journey {
 }
 
 /**
- * The legs of one request's trip. `links` is how many layers it leaves with: four to a storage
- * node, three to the file server, whose last column lies past the relay that reaches it. Without
- * `onion` it goes out and back without pausing, as a ping is drawn.
+ * How a trip is drawn: a request, stopping at every node while its layers come off and go on; a
+ * ping, wrapped and unwrapped just the same but not stopping, and turning back at the path's last
+ * relay, which is what answers it; or plain, out and back with no layers at all.
  */
-export function journeyOf(hopMs: number, links: number, onion: boolean): Journey {
+export type JourneyStyle = 'request' | 'ping' | 'plain'
+
+/**
+ * The legs of one trip. `links` is how many layers a request leaves with: four to a storage node,
+ * three to the file server, whose last column lies past the relay that reaches it.
+ */
+export function journeyOf(hopMs: number, links: number, style: JourneyStyle): Journey {
   const legs: Leg[] = []
   const rings: JourneyRing[] = []
   let t = 0
@@ -66,9 +72,16 @@ export function journeyOf(hopMs: number, links: number, onion: boolean): Journey
     t += ms
   }
 
-  if (!onion) {
+  if (style === 'plain') {
     for (let n = 1; n <= 4; n += 1) move(n - 1, n, 0)
     for (let n = 3; n >= 0; n -= 1) move(n + 1, n, 0)
+    return { legs, rings, totalMs: t }
+  }
+  if (style === 'ping') {
+    // A layer per relay out, the last relay reads it and answers wrapped once, and each relay on
+    // the way back adds one more.
+    for (let n = 1; n <= links; n += 1) move(n - 1, n, links - (n - 1))
+    for (let n = links - 1; n >= 0; n -= 1) move(n + 1, n, links - n)
     return { legs, rings, totalMs: t }
   }
 

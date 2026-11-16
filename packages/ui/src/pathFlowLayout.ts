@@ -35,16 +35,11 @@ export interface FlowLayout {
 
 export const FLOW_COLUMNS = 5
 const BAR_WIDTH = 5
-/** The drawing's margin at both sides: your bar starts it, the destination's title ends it. */
+/** The drawing's margin at both sides, outside your bar and the destination's alike. */
 export const FLOW_SIDE = 14
 /** Below the column titles. */
 const TOP = 40
 const BOTTOM = 14
-/**
- * The least room kept from the destination's bar to the right edge, for its labels. Its title ends
- * at the edge, so a wider title moves the bar left to sit under the title's start.
- */
-const MIN_LAST_ROOM = 66
 /**
  * The most height one path is given in a bar, so a few paths sit together in the middle of the
  * drawing rather than each taking a third of the column.
@@ -80,17 +75,13 @@ export function pathFlowHeight(width: number, pathCount: number): number {
   return Math.round(width * (pathCount <= 6 ? 0.5 : 0.95))
 }
 
-/**
- * `lastTitleWidth` is how wide the destination's title is drawn: the columns between are spread
- * evenly from your bar to the destination's, so each relay's bar can sit under its title's middle.
- */
+/** Your bar and the destination's sit at the margins, and the relays' evenly between them. */
 export function layoutPathFlow(
   paths: readonly FlowPathInput[],
   width: number,
   height: number,
-  lastTitleWidth = 0,
 ): FlowLayout {
-  const lastX = width - FLOW_SIDE - Math.max(lastTitleWidth, MIN_LAST_ROOM)
+  const lastX = width - FLOW_SIDE - BAR_WIDTH
   const step = Math.max(0, lastX - FLOW_SIDE) / (FLOW_COLUMNS - 1)
   const columnX = Array.from({ length: FLOW_COLUMNS }, (_, k) => FLOW_SIDE + k * step)
   const avail = Math.max(1, height - TOP - BOTTOM)

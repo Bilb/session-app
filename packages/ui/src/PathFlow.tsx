@@ -113,7 +113,7 @@ function linksOf(kind: PathFlowKind): number {
 
 /** How long a request to this kind of path takes, there and back, pauses included. */
 export function pathFlowTripMs(hopMs: number, kind: PathFlowKind, onionLayers: boolean): number {
-  return journeyOf(hopMs, linksOf(kind), onionLayers).totalMs
+  return journeyOf(hopMs, linksOf(kind), onionLayers ? 'request' : 'plain').totalMs
 }
 
 /**
@@ -127,6 +127,23 @@ function textWidth(text: string): number {
 /** The same for a column title, in capitals, which run wider. */
 function titleWidth(text: string): number {
   return text.length * 6.6
+}
+
+/** The least space between two titles before they are drawn smaller. */
+const TITLE_GAP = 8
+/** Titles are never drawn smaller than this. */
+const MIN_TITLE_PX = 8
+
+/**
+ * The size titles are drawn at: the page's, unless the destination's, ending at the right margin,
+ * would run into the last relay's, centred over its bar. A narrow phone, or a long translation of
+ * "Destination", shrinks them all alike rather than letting the two overlap.
+ */
+function titlePx(layout: FlowLayout, columnTitles: PathFlowProps['columnTitles']): number {
+  const relayMiddle = (layout.columnX[3] ?? 0) + layout.barWidth / 2
+  const room = layout.width - FLOW_SIDE - relayMiddle
+  const needed = titleWidth(columnTitles[3]) / 2 + TITLE_GAP + titleWidth(columnTitles[4])
+  return Math.max(MIN_TITLE_PX, Math.min(TEXT_PX, (TEXT_PX * room) / Math.max(1, needed)))
 }
 
 /** Where a title is drawn: your column's from the left margin, the destination's to the right. */
@@ -170,19 +187,12 @@ interface StaticLayerProps {
 
 function barLabel(
   layout: FlowLayout,
-  column: number,
   country: string,
   count: number,
   labelFor: PathFlowProps['labelFor'],
 ): string {
-  const x0 = layout.columnX[0] ?? 0
-  const x1 = layout.columnX[1] ?? 0
-  const xLast = layout.columnX[layout.columnX.length - 1] ?? 0
-  const room =
-    column === layout.columnX.length - 1
-      ? // The destination's labels may run into half the margin: nothing lies past them.
-        layout.width - FLOW_SIDE / 2 - xLast - layout.barWidth - 5
-      : x1 - x0 - layout.barWidth - 12
+  // Between this bar and the one before: the columns are evenly spaced, so the same everywhere.
+  const room = (layout.columnX[1] ?? 0) - (layout.columnX[0] ?? 0) - layout.barWidth - 12
   // Every path there ends at the same server, so a count would only crowd its name out.
   const suffix = count > 1 && country !== 'FS' ? ` ${count}` : ''
   const full = `${labelFor(country)}${suffix}`
@@ -202,6 +212,7 @@ function Titles({
     <G>
       {columnTitles.map((title, k) => {
         const place = titlePlace(layout, k)
+        const fontSize = titlePx(layout, columnTitles)
         return (
           <SvgText
             key={title + k}
@@ -210,6 +221,7 @@ function Titles({
             y={TITLE_Y}
             fill={color}
             {...SVG_FONT}
+            fontSize={fontSize}
           >
             {title.toUpperCase()}
           </SvgText>
@@ -267,20 +279,29 @@ const StaticLayer = memo(function StaticLayer({
       {layout.bars
         .filter((bar) => bar.column > 0 && bar.height >= LABEL_MIN_BAR)
         .map((bar) => {
-          const x = (layout.columnX[bar.column] ?? 0) + layout.barWidth + 5
-          const text = barLabel(layout, bar.column, bar.country, bar.count, labelFor)
+          // To the left of its bar: the destination's sits at the right margin, so every label goes
+          // on the side where there is room for the destination's.
+          const x = (layout.columnX[bar.column] ?? 0) - 5
+          const text = barLabel(layout, bar.country, bar.count, labelFor)
           const y = bar.y + bar.height / 2
           return (
             <G key={`label-${bar.column}-${bar.country}`}>
               <Rect
-                x={x - 2}
+                x={x - textWidth(text) - 2}
                 y={y - 7}
                 width={textWidth(text) + 4}
                 height={13}
                 fill={plateColor}
                 fillOpacity={0.8}
               />
-              <SvgText x={x} y={y + 3.5} fill={labelColor} fillOpacity={0.85} {...SVG_FONT}>
+              <SvgText
+                x={x}
+                y={y + 3.5}
+                textAnchor="end"
+                fill={labelColor}
+                fillOpacity={0.85}
+                {...SVG_FONT}
+              >
                 {text}
               </SvgText>
             </G>
@@ -321,8 +342,8 @@ function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }:
       const kind = kinds.get(packet.pathKey)
       if (!kind) continue
       const links = linksOf(kind)
-      const onion = onionLayers && packet.quiet !== true
-      list.push({ packet, kind, links, journey: journeyOf(packet.hopMs, links, onion) })
+      const style = !onionLayers ? 'plain' : packet.quiet === true ? 'ping' : 'request'
+      list.push({ packet, kind, links, journey: journeyOf(packet.hopMs, links, style) })
     }
     return list
   }, [paths, packets, onionLayers])
@@ -367,7 +388,7 @@ function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }:
               )
             })}
             <Circle cx={x} cy={y} r={quiet ? 6 : onionLayers ? 10 : 11} fill={fill} />
-            {quiet || !onionLayers
+            {!onionLayers
               ? null
               : Array.from({ length: state.layers }, (_, k) => (
                   <Circle
@@ -558,16 +579,14 @@ export function PathFlow({
   const building = paths.length === 0
   // Building takes the room one path would, so the page does not move when the first arrives.
   const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(1, paths.length)) : 0
-  const lastTitleWidth = titleWidth(columnTitles[4])
   const layout = useMemo(
     () =>
       layoutPathFlow(
         building ? BUILDING_PATH : paths.map((p) => ({ key: p.key, countries: p.countries })),
         widthPx,
         heightPx,
-        lastTitleWidth,
       ),
-    [building, paths, widthPx, heightPx, lastTitleWidth],
+    [building, paths, widthPx, heightPx],
   )
   const glowId = (kind: PathFlowKind) => `pathflow${idBase}${kind}`
   return (
