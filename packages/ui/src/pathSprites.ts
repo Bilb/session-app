@@ -42,9 +42,9 @@ export interface PathSpritesProps {
 
 /**
  * What moves the requests on the path screen where the platform can run their animation itself,
- * off the app's threads: injected because a native view may only be reached from the app. Without
- * one, React Native's native driver moves them, which costs a props update per request every
- * frame.
+ * off the app's threads: injected on a phone because a native view may only be reached from the
+ * app. Without one the web has Web Animations of its own (`PathSpritesHost`), and a phone falls
+ * back to React Native's native driver, which costs a props update per request every frame.
  */
 export type PathSprites = ComponentType<PathSpritesProps>
 
@@ -52,7 +52,7 @@ const PathSpritesContext = createContext<PathSprites | null>(null)
 
 export const PathSpritesProvider = PathSpritesContext.Provider
 
-/** Null where the app injects none (desktop). */
+/** The animator the app injected, or null where it injects none (desktop). */
 export function usePathSprites(): PathSprites | null {
   return useContext(PathSpritesContext)
 }

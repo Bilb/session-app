@@ -22,6 +22,7 @@ import {
   type PathSpriteLayer,
   type PathSprites,
 } from './pathSprites'
+import { defaultPathSprites } from './PathSpritesHost'
 import { Text } from './Text'
 import { useReducedMotion } from './useReducedMotion'
 import { useTokenColor } from './useTokenColor'
@@ -1200,7 +1201,7 @@ export function PathFlow({
   const [widthPx, setWidthPx] = useState(0)
   const barColor = useTokenColor('$textPrimary')
   const ringColor = useTokenColor('$textPrimary')
-  const spritesHost = usePathSprites()
+  const spritesHost = usePathSprites() ?? defaultPathSprites
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
   // A still for the catalog is drawn as given; a busy live flow redraws its paths only now and
