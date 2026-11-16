@@ -89,6 +89,7 @@ export { type Haptics, HapticsProvider } from './haptics'
 export { replyAction } from './replyAction'
 export { SwipeToReply, type SwipeToReplyProps } from './SwipeToReply'
 export { ScrollToLatest, type ScrollToLatestProps } from './ScrollToLatest'
+export { useReducedMotion } from './useReducedMotion'
 export { MessageQuote, type MessageQuoteProps } from './MessageQuote'
 export {
   quotePreview,
