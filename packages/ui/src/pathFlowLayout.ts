@@ -131,6 +131,37 @@ export function layoutPathFlow(
   return { width, columnX, barWidth: BAR_WIDTH, bars, points }
 }
 
+/** A number in [0, 1) that depends only on `key` and `salt`: FNV-1a. */
+export function hashUnit(key: string, salt: number): number {
+  let h = 0x811c9dc5 ^ salt
+  for (let i = 0; i < key.length; i += 1) {
+    h ^= key.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  return (h >>> 0) / 0x1_0000_0000
+}
+
+/**
+ * Where a path missing from `layout` goes without moving anything already there: in each column, a
+ * slot in the bar of the country it crosses, picked by its key. Null when a column has no bar for
+ * its country: it waits for the next layout.
+ */
+export function placeInLayout(
+  layout: FlowLayout,
+  path: FlowPathInput,
+): (readonly [number, number])[] | null {
+  const pts: (readonly [number, number])[] = []
+  for (let column = 0; column < FLOW_COLUMNS; column += 1) {
+    const country = column === 0 ? 'you' : (path.countries[column - 1] ?? '?')
+    const bar = layout.bars.find((b) => b.column === column && b.country === country)
+    if (!bar) return null
+    const inset = Math.min(1.5, bar.height / 4)
+    const y = bar.y + inset + hashUnit(path.key, column) * Math.max(0, bar.height - 2 * inset)
+    pts.push([layout.columnX[column] ?? 0, y])
+  }
+  return pts
+}
+
 /**
  * The cubic between two columns' points, from the right edge of one bar to the left edge of the
  * next, which every line follows.

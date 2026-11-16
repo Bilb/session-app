@@ -21,19 +21,17 @@ import { DEFAULT_THEME, initialThemes, themeName } from './themes'
  * here exists on every platform at once.
  */
 
-/**
- * Roboto, which is the desktop client's face, shipped rather than assumed -- `tamaguiCSS.ts`
- * declares the faces on the web.
- *
- * A stack ending in a generic family, because `System` is react-native's name and not a CSS
- * one: on the web it names nothing and the engine falls back, which in Electron is a serif.
- * Android has Roboto system-wide and iOS does not, so `sans-serif` at the end is what stops an
- * unlinked font resolving to a serif there too. Exported for SVG text, which no font token reaches.
- */
-export const BODY_FONT_FAMILY = 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
-
 const bodyFont = createFont({
-  family: BODY_FONT_FAMILY,
+  /**
+   * Roboto, which is the desktop client's face, shipped rather than assumed -- `tamaguiCSS.ts`
+   * declares the faces on the web.
+   *
+   * A stack ending in a generic family, because `System` is react-native's name and not a CSS
+   * one: on the web it names nothing and the engine falls back, which in Electron is a serif.
+   * Android has Roboto system-wide and iOS does not, so `sans-serif` at the end is what stops an
+   * unlinked font resolving to a serif there too.
+   */
+  family: 'Roboto, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
   size: FONT_SIZE_SCALE,
   lineHeight: LINE_HEIGHT_SCALE,
   weight: FONT_WEIGHT_SCALE,

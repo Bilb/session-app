@@ -1,27 +1,17 @@
 import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { Platform, type LayoutChangeEvent } from 'react-native'
-import Svg, {
-  Circle,
-  Defs,
-  G,
-  Path,
-  RadialGradient,
-  Rect,
-  Stop,
-  Text as SvgText,
-} from 'react-native-svg'
+import { Animated, Platform, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
+import Svg, { Circle, Defs, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
 import { XStack, YStack } from 'tamagui'
 
 import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 
-import { BODY_FACE } from './bodyFace'
-import { BODY_FONT_FAMILY } from './config'
-import { FACE_WEIGHTS } from './faceWeights'
-import { journeyAt, journeyOf, RING_MS, ringsAt, type Journey } from './pathFlowJourney'
+import { journeyOf, RING_MS, type Journey } from './pathFlowJourney'
 import {
   FLOW_SIDE,
   flowSegment,
+  hashUnit,
   layoutPathFlow,
+  placeInLayout,
   pathFlowHeight,
   pointAlong,
   type FlowLayout,
@@ -97,12 +87,10 @@ const KINDS = Object.keys(KIND_COLOR) as PathFlowKind[]
 /** SVG units inside the drawing, sized to its bars rather than to the page's type scale. */
 const TEXT_PX = 10
 const TITLE_Y = 22
-/** No font token reaches SVG text: the web needs the family named, native draws the system's. */
-const SVG_FONT = {
-  ...(Platform.OS === 'web' ? { fontFamily: BODY_FONT_FAMILY } : {}),
-  fontSize: TEXT_PX,
-  fontWeight: FACE_WEIGHTS[BODY_FACE].semibold,
-}
+/** Line height to font size for the titles and labels. */
+const TEXT_LINE_RATIO = 1.2
+/** How far below the building line its words sit, to their baseline. */
+const BUILDING_LABEL_DROP = 34
 /** A bar shorter than this carries no label: there is no room for one beside it. */
 const LABEL_MIN_BAR = 6
 
@@ -199,12 +187,7 @@ interface LinesLayerProps {
 
 interface BarsLayerProps {
   layout: FlowLayout
-  columnTitles: PathFlowProps['columnTitles']
-  labelFor: PathFlowProps['labelFor']
   barColor: string
-  labelColor: string
-  titleColor: string
-  plateColor: string
 }
 
 function barLabel(
@@ -221,37 +204,126 @@ function barLabel(
   return textWidth(full) <= room ? full : `${country}${suffix}`
 }
 
-function Titles({
-  layout,
-  columnTitles,
-  color,
-}: {
+/** Where a native label sits whose SVG baseline would be at `baseline`, at `fontPx`. */
+function topFor(baseline: number, fontPx: number): number {
+  return baseline - fontPx
+}
+
+/** The room either side of a centred title: wider than any, so none is cut. */
+const TITLE_HALF_WIDTH = 60
+/** A bar label's plate reaches this far past its text on each side. */
+const PLATE_PAD = 2
+const PLATE_HEIGHT = 13
+
+interface FlowTextProps {
   layout: FlowLayout
   columnTitles: PathFlowProps['columnTitles']
-  color: string
-}) {
+  labelFor: PathFlowProps['labelFor']
+  /** Building, with this said beneath the line; otherwise the bars are labelled. */
+  buildingLabel: string | null
+}
+
+/**
+ * The titles and labels, as text over the drawing rather than in it: react-native-svg looks a font
+ * up again for every piece of text each time its canvas is drawn, which on an older phone cost
+ * more than every line and bar together. Not scaled with the reader's text size, as it is laid out
+ * against the bars.
+ */
+const FlowText = memo(function FlowText({
+  layout,
+  columnTitles,
+  labelFor,
+  buildingLabel,
+}: FlowTextProps) {
+  const titleFontPx = titlePx(layout, columnTitles)
+  const buildingY = layout.points.get('building')?.[0]?.[1] ?? 0
   return (
-    <G>
+    <YStack position="absolute" top={0} left={0} right={0} bottom={0} pointerEvents="none">
       {columnTitles.map((title, k) => {
         const place = titlePlace(layout, k)
-        const fontSize = titlePx(layout, columnTitles)
+        const box =
+          place.textAnchor === 'start'
+            ? { left: place.x }
+            : place.textAnchor === 'end'
+              ? { right: layout.width - place.x }
+              : { left: place.x - TITLE_HALF_WIDTH, width: TITLE_HALF_WIDTH * 2 }
         return (
-          <SvgText
+          <Text
             key={title + k}
-            x={place.x}
-            textAnchor={place.textAnchor}
-            y={TITLE_Y}
-            fill={color}
-            {...SVG_FONT}
-            fontSize={fontSize}
+            position="absolute"
+            top={topFor(TITLE_Y, titleFontPx)}
+            {...box}
+            textAlign={place.textAnchor === 'middle' ? 'center' : 'left'}
+            tone="secondary"
+            weight="semibold"
+            fontSize={titleFontPx}
+            lineHeight={Math.round(titleFontPx * TEXT_LINE_RATIO)}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1}
           >
             {title.toUpperCase()}
-          </SvgText>
+          </Text>
         )
       })}
-    </G>
+      {buildingLabel === null ? null : (
+        <Text
+          position="absolute"
+          top={topFor(buildingY + BUILDING_LABEL_DROP, TEXT_PX)}
+          left={0}
+          width={layout.width}
+          textAlign="center"
+          tone="secondary"
+          weight="semibold"
+          fontSize={TEXT_PX}
+          lineHeight={Math.round(TEXT_PX * TEXT_LINE_RATIO)}
+          maxFontSizeMultiplier={1}
+        >
+          {buildingLabel}
+        </Text>
+      )}
+      {buildingLabel !== null
+        ? null
+        : layout.bars
+            .filter((bar) => bar.column > 0 && bar.height >= LABEL_MIN_BAR)
+            .map((bar) => {
+              // To the left of its bar: the destination's sits at the right margin, so every label
+              // goes on the side where there is room for the destination's.
+              const end = (layout.columnX[bar.column] ?? 0) - 5
+              const middle = bar.y + bar.height / 2
+              return (
+                <YStack
+                  key={`label-${bar.column}-${bar.country}`}
+                  position="absolute"
+                  right={layout.width - end}
+                  top={middle - PLATE_HEIGHT / 2}
+                  height={PLATE_HEIGHT}
+                  justifyContent="center"
+                >
+                  <YStack
+                    position="absolute"
+                    top={0}
+                    bottom={0}
+                    left={-PLATE_PAD}
+                    right={-PLATE_PAD}
+                    backgroundColor="$backgroundSecondary"
+                    opacity={0.8}
+                  />
+                  <Text
+                    weight="semibold"
+                    opacity={0.85}
+                    fontSize={TEXT_PX}
+                    lineHeight={PLATE_HEIGHT}
+                    numberOfLines={1}
+                    maxFontSizeMultiplier={1}
+                  >
+                    {barLabel(layout, bar.country, bar.count, labelFor)}
+                  </Text>
+                </YStack>
+              )
+            })}
+    </YStack>
   )
-}
+})
 
 /** Every path, faint: redrawn only when the set of paths does. */
 const LinesLayer = memo(function LinesLayer({ layout, paths }: LinesLayerProps) {
@@ -301,19 +373,10 @@ const LitLayer = memo(function LitLayer({ layout, paths }: LinesLayerProps) {
   )
 })
 
-/** Titles, bars and their labels, over the lines: redrawn only when the set of paths changes. */
-const BarsLayer = memo(function BarsLayer({
-  layout,
-  columnTitles,
-  labelFor,
-  barColor,
-  labelColor,
-  titleColor,
-  plateColor,
-}: BarsLayerProps) {
+/** The bars, over the lines: redrawn only when the set of paths changes. */
+const BarsLayer = memo(function BarsLayer({ layout, barColor }: BarsLayerProps) {
   return (
     <G>
-      <Titles layout={layout} columnTitles={columnTitles} color={titleColor} />
       {layout.bars.map((bar) => (
         <Rect
           key={`${bar.column}-${bar.country}`}
@@ -326,37 +389,6 @@ const BarsLayer = memo(function BarsLayer({
           fillOpacity={0.75}
         />
       ))}
-      {layout.bars
-        .filter((bar) => bar.column > 0 && bar.height >= LABEL_MIN_BAR)
-        .map((bar) => {
-          // To the left of its bar: the destination's sits at the right margin, so every label goes
-          // on the side where there is room for the destination's.
-          const x = (layout.columnX[bar.column] ?? 0) - 5
-          const text = barLabel(layout, bar.country, bar.count, labelFor)
-          const y = bar.y + bar.height / 2
-          return (
-            <G key={`label-${bar.column}-${bar.country}`}>
-              <Rect
-                x={x - textWidth(text) - 2}
-                y={y - 7}
-                width={textWidth(text) + 4}
-                height={13}
-                fill={plateColor}
-                fillOpacity={0.8}
-              />
-              <SvgText
-                x={x}
-                y={y + 3.5}
-                textAnchor="end"
-                fill={labelColor}
-                fillOpacity={0.85}
-                {...SVG_FONT}
-              >
-                {text}
-              </SvgText>
-            </G>
-          )
-        })}
     </G>
   )
 })
@@ -397,6 +429,77 @@ function useHeldPaths(paths: readonly PathFlowPath[], holdMs: number): readonly 
   return holdMs === 0 ? paths : held.paths
 }
 
+/**
+ * The least time between two layouts of the bars. Laying them out again moves every line, which
+ * costs a redraw of each canvas and loses the reader's place, so between layouts a new path joins
+ * the bars already drawn and one gone just leaves its slot empty.
+ */
+const RELAYOUT_MS = 30_000
+
+interface SettledLayout {
+  layout: FlowLayout
+  keys: string
+  widthPx: number
+  heightPx: number
+  atMs: number
+}
+
+function settle(paths: readonly PathFlowPath[], widthPx: number, heightPx: number): SettledLayout {
+  return {
+    layout: layoutPathFlow(
+      paths.map((p) => ({ key: p.key, countries: p.countries })),
+      widthPx,
+      heightPx,
+    ),
+    keys: paths.map((p) => p.key).join(';'),
+    widthPx,
+    heightPx,
+    atMs: Date.now(),
+  }
+}
+
+/**
+ * The bars as last laid out, at most once per `relayoutMs` (at once for a new size, or with none
+ * drawn yet), and every path placed on them: where that layout put it, or for a path since, a slot
+ * in the bars it crosses. A path whose country has no bar in some column waits for the next.
+ */
+function useSettledLayout(
+  paths: readonly PathFlowPath[],
+  widthPx: number,
+  heightPx: number,
+  relayoutMs: number,
+): { base: FlowLayout; layout: FlowLayout } {
+  const [held, setHeld] = useState(() => settle(paths, widthPx, heightPx))
+  const latest = useRef({ paths, widthPx, heightPx })
+  useEffect(() => {
+    latest.current = { paths, widthPx, heightPx }
+  })
+  const keys = paths.map((p) => p.key).join(';')
+  const resized = held.widthPx !== widthPx || held.heightPx !== heightPx
+  useEffect(() => {
+    if (keys === held.keys && !resized) return
+    const now = Date.now()
+    const waitMs =
+      resized || relayoutMs === 0 || held.keys === ''
+        ? 0
+        : Math.max(0, held.atMs + relayoutMs - now)
+    const id = setTimeout(() => {
+      const { paths: p, widthPx: w, heightPx: h } = latest.current
+      setHeld(settle(p, w, h))
+    }, waitMs)
+    return () => clearTimeout(id)
+  }, [keys, held, resized, relayoutMs])
+  const layout = useMemo(() => {
+    const points = new Map<string, readonly (readonly [number, number])[]>()
+    for (const p of paths) {
+      const pts = held.layout.points.get(p.key) ?? placeInLayout(held.layout, p)
+      if (pts) points.set(p.key, pts)
+    }
+    return { ...held.layout, points }
+  }, [held, paths])
+  return { base: held.layout, layout }
+}
+
 /** The same array while its contents are: a caller's inline list would redraw a memoised layer. */
 function useSameStrings<T extends readonly string[]>(value: T): T {
   const [same, setSame] = useState(value)
@@ -410,141 +513,331 @@ function layerRadius(ring: number, quiet = false): number {
   return quiet ? 3.5 + (ring - 1) * 1.75 : 4.5 + (ring - 1) * 2.75
 }
 
-interface PacketLayerProps {
-  /** Drawn at this moment and never moved on: a still for the catalog. */
-  stillAtMs?: number | undefined
+/** Points sampled along each moving leg: the curve between two columns, as straight runs. */
+const LEG_SAMPLES = 5
+/** Keyframes may not share a time; one this much later stands for "at once". */
+const STEP_MS = 0.01
+/** The browser has no native driver: there the same interpolations run in JavaScript. */
+const NATIVE_DRIVER = Platform.OS !== 'web'
+/** The most layers a request carries at once, and so the rings drawn round it. */
+const MOST_LAYERS = 4
+
+interface PacketSpritesProps {
   layout: FlowLayout
   paths: readonly PathFlowPath[]
   packets: readonly PathFlowPacket[]
   onionLayers: boolean
   ringColor: string
-  glowId: (kind: PathFlowKind) => string
+  /** Drawn at this moment and never moved on: a still for the catalog. */
+  stillAtMs?: number | undefined
 }
 
-interface Flight {
+/** A trip as keyframes: where the request and each copy in its trail are, and its layers. */
+interface Keyframes {
+  times: number[]
+  /** Index 0 the request itself, then each copy in its trail. */
+  xs: number[][]
+  ys: number[][]
+  layers: number[]
+}
+
+function keyframesOf(
+  journey: Journey,
+  pts: readonly (readonly [number, number])[],
+  barWidth: number,
+  trail: number,
+): Keyframes {
+  const frames: Keyframes = {
+    times: [],
+    xs: Array.from({ length: trail + 1 }, () => []),
+    ys: Array.from({ length: trail + 1 }, () => []),
+    layers: [],
+  }
+  const push = (atMs: number, h: number, back: boolean, layers: number) => {
+    const last = frames.times[frames.times.length - 1]
+    frames.times.push(last === undefined ? atMs : Math.max(atMs, last + STEP_MS))
+    frames.layers.push(layers)
+    for (let j = 0; j <= trail; j += 1) {
+      const [x, y] = pointAlong(pts, back ? h + j * TRAIL_STEP : h - j * TRAIL_STEP, barWidth)
+      frames.xs[j]?.push(x)
+      frames.ys[j]?.push(y)
+    }
+  }
+  let back = false
+  for (const leg of journey.legs) {
+    if (leg.toHop < leg.fromHop) back = true
+    if (leg.toHop === leg.fromHop) {
+      push(leg.startMs, leg.fromHop, back, leg.layers)
+      if (leg.wrapAtMs !== undefined) {
+        push(leg.wrapAtMs, leg.fromHop, back, leg.layers)
+        push(leg.wrapAtMs, leg.fromHop, back, leg.layers + 1)
+      }
+      push(leg.endMs, leg.fromHop, back, leg.layers + (leg.wrapAtMs === undefined ? 0 : 1))
+      continue
+    }
+    for (let i = 0; i <= LEG_SAMPLES; i += 1) {
+      const f = i / LEG_SAMPLES
+      const h = leg.fromHop + (leg.toHop - leg.fromHop) * f
+      push(leg.startMs + (leg.endMs - leg.startMs) * f, h, back, leg.layers)
+    }
+  }
+  return frames
+}
+
+/** A circle of radius `r` centred `around` from the top left of its parent. */
+function circle(r: number, around = r) {
+  return {
+    position: 'absolute',
+    left: around - r,
+    top: around - r,
+    width: r * 2,
+    height: r * 2,
+    borderRadius: r,
+  } as const
+}
+
+/**
+ * A request's glow as plain round views rather than a gradient, which would need a canvas of its
+ * own: a faint halo of its path's colour, the colour, and a white heart.
+ */
+function GlowDot({ kind, r, heart }: { kind: PathFlowKind; r: number; heart: boolean }) {
+  const color = KIND_COLOR[kind]
+  return (
+    <>
+      <View style={[circle(r), { backgroundColor: color, opacity: 0.3 }]} />
+      <View style={[circle(r * 0.6, r), { backgroundColor: color }]} />
+      {heart ? <View style={[circle(r * 0.25, r), { backgroundColor: COLORS.WHITE }]} /> : null}
+    </>
+  )
+}
+
+interface PacketSpriteProps {
   packet: PathFlowPacket
   kind: PathFlowKind
-  links: number
-  journey: Journey
+  pts: readonly (readonly [number, number])[]
+  barWidth: number
+  onionLayers: boolean
+  ringColor: string
+  stillAtMs: number | undefined
 }
 
-/** The requests in flight, redrawn every frame while there are any. */
-function PacketLayer({
+function samePoints(
+  a: readonly (readonly [number, number])[],
+  b: readonly (readonly [number, number])[],
+): boolean {
+  return a.length === b.length && a.every((p, i) => p[0] === b[i]?.[0] && p[1] === b[i]?.[1])
+}
+
+/**
+ * One request and its trail, rings and the layers coming off and going on at each node, moved by
+ * the native driver from one clock: nothing about it is drawn again or rendered while it travels.
+ */
+const PacketSprite = memo(
+  function PacketSprite({
+    packet,
+    kind,
+    pts,
+    barWidth,
+    onionLayers,
+    ringColor,
+    stillAtMs,
+  }: PacketSpriteProps) {
+    const quiet = packet.quiet === true
+    const links = linksOf(kind)
+    const journey = useMemo(
+      () => journeyOf(packet.hopMs, links, !onionLayers ? 'plain' : quiet ? 'ping' : 'request'),
+      [packet.hopMs, links, onionLayers, quiet],
+    )
+    const trail = quiet ? 2 : TRAIL
+    const [clock] = useState(() => new Animated.Value(0))
+    useEffect(() => {
+      if (stillAtMs !== undefined) {
+        clock.setValue(stillAtMs - packet.startMs)
+        return
+      }
+      // Until the last ring has faded too.
+      const endMs = journey.totalMs + RING_MS
+      const fromMs = Date.now() - packet.startMs
+      clock.setValue(fromMs)
+      if (fromMs >= endMs) return
+      const run = Animated.timing(clock, {
+        toValue: endMs,
+        duration: endMs - fromMs,
+        easing: (t) => t,
+        useNativeDriver: NATIVE_DRIVER,
+      })
+      run.start()
+      return () => run.stop()
+    }, [clock, journey, packet.startMs, stillAtMs])
+
+    const sprites = useMemo(() => {
+      const frames = keyframesOf(journey, pts, barWidth, trail)
+      const total = journey.totalMs
+      const track = (values: readonly number[], offset: number) =>
+        clock.interpolate({
+          inputRange: frames.times,
+          outputRange: values.map((v) => v - offset),
+          extrapolate: 'clamp',
+        })
+      // The whole request, trail and rings: hidden before it sets off and once it is home.
+      const visible = clock.interpolate({
+        inputRange: [-STEP_MS, 0, total, total + STEP_MS],
+        outputRange: [0, 1, 1, 0],
+        extrapolate: 'clamp',
+      })
+      const dot = (j: number, r: number) => ({
+        r,
+        opacity: j === 0 ? 1 : 0.5 - j * 0.09,
+        transform: [
+          { translateX: track(frames.xs[j] ?? [], r) },
+          { translateY: track(frames.ys[j] ?? [], r) },
+        ],
+      })
+      const trailDots = Array.from({ length: trail }, (_, i) => {
+        const j = trail - i
+        return dot(j, (quiet ? 8 - j : 14 - j * 2) / 2)
+      })
+      const core = dot(0, quiet ? QUIET_CORE : onionLayers ? 10 : 11)
+      // Round the request, so they move with it: only whether each shows is animated.
+      const layers = !onionLayers
+        ? []
+        : Array.from({ length: MOST_LAYERS }, (_, k) => ({
+            r: layerRadius(k + 1, quiet),
+            opacity: clock.interpolate({
+              inputRange: frames.times,
+              outputRange: frames.layers.map((n) => (n > k ? 0.9 - k * 0.12 : 0)),
+              extrapolate: 'clamp',
+            }),
+          }))
+      // A layer coming off swells and fades; one going on closes onto the request; at home every
+      // layer comes off at once.
+      const bursts =
+        !onionLayers || quiet
+          ? []
+          : journey.rings.map((ring) => {
+              const [x, y] = pointAlong(pts, ring.hop, barWidth)
+              const base = layerRadius(ring.kind === 'open' ? links : links + 1 - ring.hop)
+              const [r0, r1] =
+                ring.kind === 'wrap'
+                  ? [base + 8, base]
+                  : ring.kind === 'open'
+                    ? [6, 17]
+                    : [base, base + 9]
+              const r = Math.max(r0, r1)
+              const span = [ring.atMs, ring.atMs + RING_MS]
+              return {
+                key: `${ring.kind}-${ring.hop}-${ring.atMs}`,
+                r,
+                opacity: clock.interpolate({
+                  inputRange: [ring.atMs - STEP_MS, ...span],
+                  outputRange: [0, 0.9, 0],
+                  extrapolate: 'clamp',
+                }),
+                transform: [
+                  { translateX: x - r },
+                  { translateY: y - r },
+                  {
+                    scale: clock.interpolate({
+                      inputRange: span,
+                      outputRange: [r0 / r, r1 / r],
+                      extrapolate: 'clamp',
+                    }),
+                  },
+                ],
+              }
+            })
+      return { visible, trailDots, core, layers, bursts }
+    }, [clock, journey, pts, barWidth, trail, quiet, onionLayers, links])
+
+    const { core } = sprites
+    return (
+      <View style={[StyleSheet.absoluteFill, quiet ? QUIET_STYLE : null]} pointerEvents="none">
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: sprites.visible }]}>
+          {sprites.trailDots.map((d, i) => (
+            <Animated.View
+              key={`d${i}`}
+              style={[SPRITE, { opacity: d.opacity, transform: d.transform }]}
+            >
+              <GlowDot kind={kind} r={d.r} heart={false} />
+            </Animated.View>
+          ))}
+          <Animated.View style={[SPRITE, { transform: core.transform }]}>
+            <GlowDot kind={kind} r={core.r} heart />
+            {sprites.layers.map((l, k) => (
+              <Animated.View
+                key={`l${k}`}
+                style={[circle(l.r, core.r), ringBorder(1, ringColor), { opacity: l.opacity }]}
+              />
+            ))}
+          </Animated.View>
+        </Animated.View>
+        {sprites.bursts.map((b) => (
+          <Animated.View
+            key={b.key}
+            style={[
+              SPRITE,
+              circle(b.r),
+              ringBorder(2, ringColor),
+              { opacity: b.opacity, transform: b.transform },
+            ]}
+          />
+        ))}
+      </View>
+    )
+  },
+  (a, b) =>
+    a.packet === b.packet &&
+    a.kind === b.kind &&
+    a.barWidth === b.barWidth &&
+    a.onionLayers === b.onionLayers &&
+    a.ringColor === b.ringColor &&
+    a.stillAtMs === b.stillAtMs &&
+    samePoints(a.pts, b.pts),
+)
+
+const SPRITE = { position: 'absolute', left: 0, top: 0 } as const
+const QUIET_STYLE = { opacity: QUIET_OPACITY } as const
+
+function ringBorder(width: number, color: string) {
+  return { borderWidth: width, borderColor: color }
+}
+
+/** The requests in flight, over the drawing: moved by the native driver, never redrawn. */
+const PacketSprites = memo(function PacketSprites({
   layout,
   paths,
   packets,
   onionLayers,
   ringColor,
-  glowId,
   stillAtMs,
-}: PacketLayerProps) {
-  const [ticked, setNow] = useState(() => Date.now())
-  const now = stillAtMs ?? ticked
-  const flights = useMemo(() => {
-    const kinds = new Map(paths.map((p) => [p.key, p.kind]))
-    const list: Flight[] = []
-    for (const packet of packets) {
-      const kind = kinds.get(packet.pathKey)
-      if (!kind) continue
-      const links = linksOf(kind)
-      const style = !onionLayers ? 'plain' : packet.quiet === true ? 'ping' : 'request'
-      list.push({ packet, kind, links, journey: journeyOf(packet.hopMs, links, style) })
-    }
-    return list
-  }, [paths, packets, onionLayers])
-  // Until the last ring has faded too: stopping with the request leaves the ring drawn.
-  const live =
-    stillAtMs === undefined &&
-    flights.some((f) => now < f.packet.startMs + f.journey.totalMs + RING_MS)
-  useEffect(() => {
-    if (!live) return
-    let frame = 0
-    const tick = () => {
-      setNow(Date.now())
-      frame = requestAnimationFrame(tick)
-    }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [live])
-
+}: PacketSpritesProps) {
+  const kinds = useMemo(() => new Map(paths.map((p) => [p.key, p.kind])), [paths])
+  // Re-rendered with each snapshot, about once a second: a request home since then goes.
+  const nowMs = stillAtMs ?? Date.now()
   return (
-    <G>
-      {flights.map(({ packet, kind, journey }) => {
-        const state = journeyAt(journey, now - packet.startMs)
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {packets.map((packet) => {
+        const kind = kinds.get(packet.pathKey)
         const pts = layout.points.get(packet.pathKey)
-        if (!state || !pts) return null
-        const quiet = packet.quiet === true
-        const at = (h: number) => pointAlong(pts, h, layout.barWidth)
-        const [x, y] = at(state.h)
-        const fill = `url(#${glowId(kind)})`
-        const trail = quiet ? 2 : TRAIL
+        if (!kind || !pts) return null
+        const tripMs = pathFlowTripMs(packet.hopMs, kind, onionLayers && packet.quiet !== true)
+        if (stillAtMs === undefined && nowMs - packet.startMs > tripMs + RING_MS) return null
         return (
-          <G key={packet.id} opacity={quiet ? QUIET_OPACITY : 1}>
-            {Array.from({ length: trail }, (_, i) => {
-              const j = trail - i
-              const [tx, ty] = at(state.back ? state.h + j * TRAIL_STEP : state.h - j * TRAIL_STEP)
-              return (
-                <Circle
-                  key={`t${j}`}
-                  cx={tx}
-                  cy={ty}
-                  r={(quiet ? 8 - j : 14 - j * 2) / 2}
-                  fill={fill}
-                  opacity={0.5 - j * 0.09}
-                />
-              )
-            })}
-            <Circle cx={x} cy={y} r={quiet ? QUIET_CORE : onionLayers ? 10 : 11} fill={fill} />
-            {!onionLayers
-              ? null
-              : Array.from({ length: state.layers }, (_, k) => (
-                  <Circle
-                    key={`l${k}`}
-                    cx={x}
-                    cy={y}
-                    r={layerRadius(k + 1, quiet)}
-                    stroke={ringColor}
-                    strokeOpacity={0.9 - k * 0.12}
-                    strokeWidth={1}
-                    fill="none"
-                  />
-                ))}
-          </G>
+          <PacketSprite
+            key={packet.id}
+            packet={packet}
+            kind={kind}
+            pts={pts}
+            barWidth={layout.barWidth}
+            onionLayers={onionLayers}
+            ringColor={ringColor}
+            stillAtMs={stillAtMs}
+          />
         )
       })}
-      {onionLayers
-        ? flights.flatMap(({ packet, links, journey }) => {
-            const pts = layout.points.get(packet.pathKey)
-            if (!pts || packet.quiet === true) return []
-            return ringsAt(journey, now - packet.startMs).map(({ ring, age }) => {
-              const [x, y] = pointAlong(pts, ring.hop, layout.barWidth)
-              const base = layerRadius(ring.kind === 'open' ? links : links + 1 - ring.hop)
-              // A layer coming off swells and fades; one going on closes onto the request; at
-              // home every layer comes off at once.
-              const r =
-                ring.kind === 'wrap'
-                  ? base + (1 - age) * 8
-                  : ring.kind === 'open'
-                    ? 6 + age * 11
-                    : base + age * 9
-              return (
-                <Circle
-                  key={`${packet.id}-${ring.kind}-${ring.hop}-${ring.atMs}`}
-                  cx={x}
-                  cy={y}
-                  r={r}
-                  stroke={ringColor}
-                  strokeOpacity={(1 - age) * 0.9}
-                  strokeWidth={2}
-                  fill="none"
-                />
-              )
-            })
-          })
-        : null}
-    </G>
+    </View>
   )
-}
+})
 
 /** One pass of the building drawing: the line reaching the destination, then a pause. */
 const BUILD_CYCLE_MS = 2_800
@@ -556,10 +849,7 @@ const BUILDING_PATH = [{ key: 'building', countries: [null, null, null, null] }]
 
 interface BuildingLayerProps {
   layout: FlowLayout
-  columnTitles: PathFlowProps['columnTitles']
-  label: string
   barColor: string
-  titleColor: string
   glowId: string
   still: boolean
 }
@@ -568,15 +858,7 @@ interface BuildingLayerProps {
  * No path yet: a line being drawn from you to the destination, a column at a time, over and over,
  * with what is happening said beneath it. Still, the line is drawn whole and faint.
  */
-function BuildingLayer({
-  layout,
-  columnTitles,
-  label,
-  barColor,
-  titleColor,
-  glowId,
-  still,
-}: BuildingLayerProps) {
+function BuildingLayer({ layout, barColor, glowId, still }: BuildingLayerProps) {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     if (still) return
@@ -600,7 +882,6 @@ function BuildingLayer({
   const y = pts[0]?.[1] ?? 0
   return (
     <G>
-      <Titles layout={layout} columnTitles={columnTitles} color={titleColor} />
       <Path
         d={drawn.map(([x, py], i) => `${i === 0 ? 'M' : 'L'}${x},${py}`).join(' ')}
         stroke={KIND_COLOR.swarm}
@@ -622,9 +903,6 @@ function BuildingLayer({
         />
       ))}
       {still ? null : <Circle cx={hx} cy={hy} r={8} fill={`url(#${glowId})`} />}
-      <SvgText x={layout.width / 2} y={y + 34} textAnchor="middle" fill={titleColor} {...SVG_FONT}>
-        {label}
-      </SvgText>
     </G>
   )
 }
@@ -665,6 +943,22 @@ function Legend({
  * Motion stops under the system's reduced-motion setting: the lines and highlights stay, the
  * travelling requests do not.
  */
+/**
+ * The faint lines' canvases, bottom to top: communities, whose sessions come and go every few
+ * seconds, split over two by key; then contacts and groups; then your swarm and the file server,
+ * which change least and matter most, drawn over the rest. A path added or dropped redraws only
+ * its own canvas, which on an older phone is what a hundred lines on one canvas cost.
+ */
+function groupLines(paths: readonly PathFlowPath[]): PathFlowPath[][] {
+  const groups: PathFlowPath[][] = [[], [], [], []]
+  for (const p of paths) {
+    const k =
+      p.kind === 'community' ? Math.floor(hashUnit(p.key, 2) * 2) : p.kind === 'node' ? 2 : 3
+    groups[k]?.push(p)
+  }
+  return groups
+}
+
 /** The moving canvas, laid exactly over the still one. */
 const OVERLAY = { position: 'absolute', top: 0, left: 0 } as const
 
@@ -683,9 +977,7 @@ export function PathFlow({
   const still = useReducedMotion()
   const [widthPx, setWidthPx] = useState(0)
   const barColor = useTokenColor('$textPrimary')
-  const labelColor = useTokenColor('$textPrimary')
-  const titleColor = useTokenColor('$textSecondary')
-  const plateColor = useTokenColor('$backgroundSecondary')
+  const ringColor = useTokenColor('$textPrimary')
   // An id per drawing, as a gradient's id is global to the page and two flows could share one.
   const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
   // A still for the catalog is drawn as given; a live flow redraws its paths only now and then.
@@ -698,15 +990,18 @@ export function PathFlow({
   const [mostPaths, setMostPaths] = useState(Math.max(1, drawn.length, expectedPaths ?? 0))
   if (drawn.length > mostPaths) setMostPaths(drawn.length)
   const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(mostPaths, drawn.length)) : 0
-  const layout = useMemo(
-    () =>
-      layoutPathFlow(
-        building ? BUILDING_PATH : drawn.map((p) => ({ key: p.key, countries: p.countries })),
-        widthPx,
-        heightPx,
-      ),
-    [building, drawn, widthPx, heightPx],
+  const { base, layout: settled } = useSettledLayout(
+    drawn,
+    widthPx,
+    heightPx,
+    stillAtMs === undefined ? RELAYOUT_MS : 0,
   )
+  const buildingLayout = useMemo(
+    () => layoutPathFlow(BUILDING_PATH, widthPx, heightPx),
+    [widthPx, heightPx],
+  )
+  const layout = building ? buildingLayout : settled
+  const barsLayout = building ? buildingLayout : base
   const litKeys = paths
     .filter((p) => p.lit)
     .map((p) => p.key)
@@ -716,10 +1011,12 @@ export function PathFlow({
     return drawn.filter((p) => keys.has(p.key))
   }, [drawn, litKeys])
   const glowId = (kind: PathFlowKind) => `pathflow${idBase}${kind}`
+  const lineGroups = useMemo(() => groupLines(drawn), [drawn])
   return (
     <YStack alignSelf="stretch" gap="$xs">
       <YStack
         alignSelf="stretch"
+        position="relative"
         minHeight={heightPx}
         borderRadius="$lg"
         overflow="hidden"
@@ -731,61 +1028,60 @@ export function PathFlow({
           <>
             {/* react-native-svg redraws a whole canvas on the UI thread when any part of it
                 changes, so each part sits on a canvas of its own, stacked in drawing order: the
-                faint lines and the bars change only with the paths, the lit lines as requests
-                start and finish, and the requests every frame. */}
-            <Svg width={widthPx} height={heightPx}>
-              {building ? null : <LinesLayer layout={layout} paths={drawn} />}
-            </Svg>
+                faint lines and the bars change only with the paths, and the lit lines as requests
+                start and finish. The words are text over them, and the requests are views moved
+                over everything by the native driver, so nothing is drawn again as they travel. */}
+            {lineGroups.map((group, k) => (
+              <Svg
+                key={k}
+                width={widthPx}
+                height={heightPx}
+                style={k === 0 ? undefined : OVERLAY}
+                pointerEvents="none"
+              >
+                {building ? null : <LinesLayer layout={layout} paths={group} />}
+              </Svg>
+            ))}
             <Svg width={widthPx} height={heightPx} style={OVERLAY} pointerEvents="none">
               {building ? null : <LitLayer layout={layout} paths={lit} />}
             </Svg>
             <Svg width={widthPx} height={heightPx} style={OVERLAY} pointerEvents="none">
-              {building ? null : (
-                <BarsLayer
-                  layout={layout}
-                  columnTitles={titles}
-                  labelFor={labelFor}
-                  barColor={barColor}
-                  labelColor={labelColor}
-                  titleColor={titleColor}
-                  plateColor={plateColor}
-                />
-              )}
+              {building ? null : <BarsLayer layout={barsLayout} barColor={barColor} />}
             </Svg>
-            <Svg width={widthPx} height={heightPx} style={OVERLAY} pointerEvents="none">
-              <Defs>
-                {KINDS.map((kind) => (
-                  // A request's glow: white at its heart, its path's colour, then nothing.
-                  <RadialGradient key={kind} id={glowId(kind)} cx="50%" cy="50%" r="50%">
+            <FlowText
+              layout={barsLayout}
+              columnTitles={titles}
+              labelFor={labelFor}
+              buildingLabel={building ? buildingLabel : null}
+            />
+            {building ? (
+              <Svg width={widthPx} height={heightPx} style={OVERLAY} pointerEvents="none">
+                <Defs>
+                  {/* The building line's leading glow, as a request's. */}
+                  <RadialGradient id={glowId('swarm')} cx="50%" cy="50%" r="50%">
                     <Stop offset="0" stopColor={COLORS.WHITE} stopOpacity={1} />
-                    <Stop offset="0.18" stopColor={KIND_COLOR[kind]} stopOpacity={1} />
-                    <Stop offset="1" stopColor={KIND_COLOR[kind]} stopOpacity={0} />
+                    <Stop offset="0.18" stopColor={KIND_COLOR.swarm} stopOpacity={1} />
+                    <Stop offset="1" stopColor={KIND_COLOR.swarm} stopOpacity={0} />
                   </RadialGradient>
-                ))}
-              </Defs>
-              {building ? (
+                </Defs>
                 <BuildingLayer
                   layout={layout}
-                  columnTitles={columnTitles}
-                  label={buildingLabel}
                   barColor={barColor}
-                  titleColor={titleColor}
                   glowId={glowId('swarm')}
                   still={still}
                 />
-              ) : null}
-              {building || (still && stillAtMs === undefined) ? null : (
-                <PacketLayer
-                  layout={layout}
-                  paths={drawn}
-                  packets={packets}
-                  onionLayers={onionLayers}
-                  ringColor={labelColor}
-                  glowId={glowId}
-                  stillAtMs={stillAtMs}
-                />
-              )}
-            </Svg>
+              </Svg>
+            ) : null}
+            {building || (still && stillAtMs === undefined) ? null : (
+              <PacketSprites
+                layout={layout}
+                paths={drawn}
+                packets={packets}
+                onionLayers={onionLayers}
+                ringColor={ringColor}
+                stillAtMs={stillAtMs}
+              />
+            )}
           </>
         ) : null}
       </YStack>
