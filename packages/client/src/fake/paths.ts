@@ -116,6 +116,7 @@ function pathOf(
     jitterMs: 4 + ((base * 11) % 30),
     requestsSent,
     proxiedRequestsSent: spec.proxied ? requestsSent : 0,
+    ...(requestsSent > 0 ? { msSinceLastRequest: elapsedMs % spec.everyMs } : {}),
     pingsAnswered: Math.floor((elapsedMs - build * spec.rebuildMs) / PING_EVERY_MS),
   }
 }
@@ -159,6 +160,14 @@ const BUSY_SPECS: readonly FakePathSpec[] = [
   })),
 ] // prettier-ignore
 
+/** A current path's totals, with how long ago the last request went where there was one. */
+function withRequests(path: NetworkPath, requestsSent: number, sinceMs: number): NetworkPath {
+  const { msSinceLastRequest: _, ...rest } = path
+  return requestsSent > 0
+    ? { ...rest, requestsSent, msSinceLastRequest: sinceMs }
+    : { ...rest, requestsSent }
+}
+
 /** Its two paths, for a spec whose requests are spread through the period by its place in line. */
 function busyPair(spec: FakePathSpec, index: number, elapsedMs: number): NetworkPath[] {
   // Staggered, as the legacy client's pollers were: not every group probed in the same second.
@@ -167,7 +176,11 @@ function busyPair(spec: FakePathSpec, index: number, elapsedMs: number): Network
     const path = pathOf(spec, index, elapsedMs, standby)
     return standby
       ? path
-      : { ...path, requestsSent: Math.floor((elapsedMs + phase) / spec.everyMs) }
+      : withRequests(
+          path,
+          Math.floor((elapsedMs + phase) / spec.everyMs),
+          (elapsedMs + phase) % spec.everyMs,
+        )
   })
 }
 
@@ -191,6 +204,7 @@ function proxySessions(elapsedMs: number): NetworkPath[] {
           jitterMs: 4 + ((base * 11) % 30),
           requestsSent: standby ? 0 : 1,
           proxiedRequestsSent: standby ? 0 : 1,
+          ...(standby ? {} : { msSinceLastRequest: elapsedMs - openedMs }),
           pingsAnswered: Math.floor((elapsedMs - openedMs) / PING_EVERY_MS),
         })
       }

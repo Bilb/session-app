@@ -787,6 +787,8 @@ struct Codec<::session_bridge::NetworkPath> {
         obj.Set("jitterMs", Codec<double>::to(env, value.jitter_ms));
         obj.Set("requestsSent", Codec<double>::to(env, value.requests_sent));
         obj.Set("proxiedRequestsSent", Codec<double>::to(env, value.proxied_requests_sent));
+        if (value.ms_since_last_request)
+            obj.Set("msSinceLastRequest", Codec<double>::to(env, *value.ms_since_last_request));
         obj.Set("pingsAnswered", Codec<double>::to(env, value.pings_answered));
         return obj;
     }
@@ -801,6 +803,7 @@ struct Codec<::session_bridge::NetworkPath> {
                 Codec<double>::from(obj.Get("jitterMs"), "NetworkPath.jitterMs"),
                 Codec<double>::from(obj.Get("requestsSent"), "NetworkPath.requestsSent"),
                 Codec<double>::from(obj.Get("proxiedRequestsSent"), "NetworkPath.proxiedRequestsSent"),
+                optional<double>(obj.Get("msSinceLastRequest"), "NetworkPath.msSinceLastRequest"),
                 Codec<double>::from(obj.Get("pingsAnswered"), "NetworkPath.pingsAnswered"));
     }
 };

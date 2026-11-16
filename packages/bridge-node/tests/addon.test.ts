@@ -688,6 +688,8 @@ describeEcho('the generated converters', () => {
               jitterMs: 12.5,
               requestsSent: 9_007_199_254_740_991,
               proxiedRequestsSent: 0,
+              // Present on one path only: absent is its own case, a remote nothing went to.
+              ...(i === 0 ? { msSinceLastRequest: 1_234 } : {}),
               pingsAnswered: 2_147_483_647,
             })),
             countryAttribution: 'IP Geolocation by DB-IP (https://db-ip.com)',

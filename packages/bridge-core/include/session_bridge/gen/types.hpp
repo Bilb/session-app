@@ -697,12 +697,15 @@ struct NetworkPath {
     /// that two snapshots tell how many went in between; they carry over when the path is replaced.
     double requests_sent;
     double proxied_requests_sent;
+    /// How long ago the last of `requestsSent` went, so one snapshot tells which paths are in use.
+    /// Absent on a standby path and for a remote nothing has been sent to.
+    std::optional<double> ms_since_last_request;
     /// The router's pings answered along it since it was built. A total that starts again from zero
     /// when the path is replaced, which a change in `hops` tells.
     double pings_answered;
 
-    NetworkPath(std::string remote_hex_, ::session_bridge::PathDestination destination_, bool standby_, std::vector<::session_bridge::PathHop> hops_, double latency_ms_, double jitter_ms_, double requests_sent_, double proxied_requests_sent_, double pings_answered_) :
-            remote_hex{std::move(remote_hex_)}, destination{std::move(destination_)}, standby{std::move(standby_)}, hops{std::move(hops_)}, latency_ms{std::move(latency_ms_)}, jitter_ms{std::move(jitter_ms_)}, requests_sent{std::move(requests_sent_)}, proxied_requests_sent{std::move(proxied_requests_sent_)}, pings_answered{std::move(pings_answered_)} {}
+    NetworkPath(std::string remote_hex_, ::session_bridge::PathDestination destination_, bool standby_, std::vector<::session_bridge::PathHop> hops_, double latency_ms_, double jitter_ms_, double requests_sent_, double proxied_requests_sent_, std::optional<double> ms_since_last_request_, double pings_answered_) :
+            remote_hex{std::move(remote_hex_)}, destination{std::move(destination_)}, standby{std::move(standby_)}, hops{std::move(hops_)}, latency_ms{std::move(latency_ms_)}, jitter_ms{std::move(jitter_ms_)}, requests_sent{std::move(requests_sent_)}, proxied_requests_sent{std::move(proxied_requests_sent_)}, ms_since_last_request{std::move(ms_since_last_request_)}, pings_answered{std::move(pings_answered_)} {}
 };
 
 /// Every path the client is holding open, for the path screen.

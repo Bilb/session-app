@@ -531,6 +531,11 @@ export interface NetworkPath {
   requestsSent: number
   proxiedRequestsSent: number
   /**
+   * How long ago the last of `requestsSent` went, so one snapshot tells which paths are in use.
+   * Absent on a standby path and for a remote nothing has been sent to.
+   */
+  msSinceLastRequest?: number
+  /**
    * The router's pings answered along it since it was built. A total that starts again from zero
    * when the path is replaced, which a change in `hops` tells.
    */

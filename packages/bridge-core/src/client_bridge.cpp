@@ -1418,6 +1418,10 @@ struct ClientBridge::Impl {
                         static_cast<double>(open.performance.jitter.count()) / 1000.0,
                         static_cast<double>(open.requests_sent),
                         static_cast<double>(open.proxied_requests_sent),
+                        open.since_last_request
+                                ? std::optional<double>{static_cast<double>(
+                                          open.since_last_request->count())}
+                                : std::nullopt,
                         static_cast<double>(open.performance.ping_responses));
             }
         }
