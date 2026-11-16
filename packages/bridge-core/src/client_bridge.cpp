@@ -374,6 +374,14 @@ struct ClientBridge::Impl {
     /// Where staged thumbnails are made. Shared, so a callback on Core's loop can reach it
     /// without reaching back through `this`.
     std::shared_ptr<StagedThumbnails> staged = std::make_shared<StagedThumbnails>(make_staged);
+    /// Your swarm's members, for telling which of the router's paths reach it: every member can
+    /// carry your traffic, and Core names the one it polls only once that one has answered. Filled
+    /// by the network's swarm lookup, which answers on its own loop, so shared and locked.
+    struct OwnSwarm {
+        std::mutex lock;
+        std::vector<::session::network::ed25519_pubkey> members;
+    };
+    std::shared_ptr<OwnSwarm> own_swarm = std::make_shared<OwnSwarm>();
     /// Held while a network status is read and emitted, by the network's hook and by
     /// `getNetworkStatus` alike, so the two reach the stream in the order the status changed: an
     /// answer read before a change is emitted before that change's event, never after it.
@@ -1367,7 +1375,28 @@ struct ClientBridge::Impl {
         std::vector<NetworkPath> paths;
         if (auto* net = client->core.network()) {
             // On Core's loop, which is where the subscription moves it.
-            auto own = client->core.loop().call_get([&] { return client->core.swarm_node(); });
+            auto [own, pubkey] = client->core.loop().call_get([&] {
+                return std::pair{client->core.swarm_node(), client->core.globals.pubkey_x25519()};
+            });
+            // From the node cache once the swarm is known, so this answers a poll or two late
+            // at most, and only the first time.
+            net->get_swarm(pubkey, false, [cache = own_swarm](auto, auto swarm) {
+                if (swarm.empty())
+                    return;
+                std::lock_guard l{cache->lock};
+                cache->members.clear();
+                for (const auto& node : swarm)
+                    cache->members.push_back(node.remote_pubkey);
+            });
+            std::vector<::session::network::ed25519_pubkey> members;
+            {
+                std::lock_guard l{own_swarm->lock};
+                members = own_swarm->members;
+            }
+            auto in_own_swarm = [&](const ::session::network::ed25519_pubkey& remote) {
+                return (own && own->remote_pubkey == remote) ||
+                       std::ranges::find(members, remote) != members.end();
+            };
             for (auto& open : net->get_open_paths()) {
                 std::vector<PathHop> hops;
                 hops.reserve(open.path.hops.size());
@@ -1377,10 +1406,9 @@ struct ClientBridge::Impl {
                             hop.pubkey.hex(),
                             country ? std::optional<std::string>{*country} : std::nullopt);
                 }
-                auto destination = open.remote_is_client ? PathDestination::file_server
-                                 : own && own->remote_pubkey == open.remote
-                                         ? PathDestination::own_swarm
-                                         : PathDestination::storage_node;
+                auto destination = open.remote_is_client      ? PathDestination::file_server
+                                 : in_own_swarm(open.remote) ? PathDestination::own_swarm
+                                                             : PathDestination::storage_node;
                 paths.emplace_back(
                         open.remote.hex(),
                         destination,
