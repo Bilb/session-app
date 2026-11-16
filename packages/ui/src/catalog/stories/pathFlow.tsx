@@ -1,4 +1,4 @@
-import { PathFlow, type PathFlowKind, type PathFlowPath } from '../../PathFlow'
+import { PathFlow, type PathFlowKind, type PathFlowPacket, type PathFlowPath } from '../../PathFlow'
 import { defineStory } from '../story'
 
 const TITLES = ['You', 'Entry', 'Relay', 'Relay', 'Destination'] as const
@@ -43,6 +43,32 @@ const BUSY: PathFlowPath[] = [
   { key: 'g5', kind: 'node', countries: ['DE', 'US', 'FI', 'FI'], lit: false },
 ]
 
+/** The moment the still is drawn at, and one link's time: what the packets below are timed by. */
+const STILL_AT_MS = 10_000
+const HOP_MS = 320
+
+/**
+ * A request held at the second relay as its layer comes off (out one link, held, out another, then
+ * 60 ms into the hold), a ping halfway along its second link, and one just leaving for the file
+ * server's pivot.
+ */
+const PACKETS: PathFlowPacket[] = [
+  {
+    id: 'request',
+    pathKey: 'swarm',
+    startMs: STILL_AT_MS - (2 * HOP_MS + 160 + 60),
+    hopMs: HOP_MS,
+  },
+  {
+    id: 'ping',
+    pathKey: 'swarm~1',
+    startMs: STILL_AT_MS - 1.5 * HOP_MS,
+    hopMs: HOP_MS,
+    quiet: true,
+  },
+  { id: 'ping-fs', pathKey: 'f1', startMs: STILL_AT_MS - 0.6 * HOP_MS, hopMs: HOP_MS, quiet: true },
+]
+
 /** A hop whose address is not in the country table, and a build that carries none. */
 const UNKNOWN: PathFlowPath[] = [
   { key: 'swarm', kind: 'swarm', countries: ['DE', null, 'FI', 'DE'], lit: true },
@@ -52,9 +78,12 @@ const UNKNOWN: PathFlowPath[] = [
 /**
  * The country flow, still: the requests that travel it are motion, which a capture cannot hold.
  * Lit lines against faint ones, a dashed standby, every kind's colour with its legend, a bar for an
- * unknown country, and the drawing before any path is built.
+ * unknown country, the drawing before any path is built, and a request and pings caught still.
  */
-export const pathFlow = defineStory<{ paths: PathFlowPath[] }>({
+export const pathFlow = defineStory<{
+  paths: PathFlowPath[]
+  packets?: PathFlowPacket[] | undefined
+}>({
   component: 'pathFlow',
   story: 'countries',
   width: 390,
@@ -62,13 +91,15 @@ export const pathFlow = defineStory<{ paths: PathFlowPath[] }>({
   variants: {
     building: { paths: [] },
     quiet: { paths: QUIET },
+    requests: { paths: QUIET, packets: PACKETS },
     busy: { paths: BUSY },
     unknown: { paths: UNKNOWN },
   },
-  render: ({ paths }) => (
+  render: ({ paths, packets }) => (
     <PathFlow
       paths={paths}
-      packets={[]}
+      packets={packets ?? []}
+      stillAtMs={packets === undefined ? undefined : STILL_AT_MS}
       onionLayers
       columnTitles={TITLES}
       labelFor={labelFor}

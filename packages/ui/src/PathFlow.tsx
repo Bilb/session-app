@@ -73,6 +73,11 @@ export interface PathFlowProps {
   kindLabels: Readonly<Record<PathFlowKind, string>>
   /** Shown while there is no path yet, over a drawing of one being built. */
   buildingLabel: string
+  /**
+   * Draws the requests as they are at this moment, still, and under reduced motion too: for the
+   * catalog, which cannot capture motion but should show what a request and a ping look like.
+   */
+  stillAtMs?: number | undefined
   testID?: string | undefined
 }
 
@@ -100,7 +105,9 @@ const LABEL_MIN_BAR = 6
 const TRAIL = 4
 const TRAIL_STEP = 0.05
 /** A ping beside a request: smaller and fainter, yet seen against a line of its own colour. */
-const QUIET_OPACITY = 0.7
+const QUIET_OPACITY = 0.55
+/** A ping's core, and its rings a pixel smaller and a pixel closer than a request's. */
+const QUIET_CORE = 5
 
 export function pathFlowColor(kind: PathFlowKind): string {
   return KIND_COLOR[kind]
@@ -311,12 +318,14 @@ const StaticLayer = memo(function StaticLayer({
   )
 })
 
-/** The radius of a request's `ring`th layer, counting out from its core. */
-function layerRadius(ring: number): number {
-  return 4.5 + (ring - 1) * 2.75
+/** The radius of a request's `ring`th layer, counting out from its core; a ping's are tighter. */
+function layerRadius(ring: number, quiet = false): number {
+  return quiet ? 3.5 + (ring - 1) * 1.75 : 4.5 + (ring - 1) * 2.75
 }
 
 interface PacketLayerProps {
+  /** Drawn at this moment and never moved on: a still for the catalog. */
+  stillAtMs?: number | undefined
   layout: FlowLayout
   paths: readonly PathFlowPath[]
   packets: readonly PathFlowPacket[]
@@ -333,8 +342,17 @@ interface Flight {
 }
 
 /** The requests in flight, redrawn every frame while there are any. */
-function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }: PacketLayerProps) {
-  const [now, setNow] = useState(() => Date.now())
+function PacketLayer({
+  layout,
+  paths,
+  packets,
+  onionLayers,
+  ringColor,
+  glowId,
+  stillAtMs,
+}: PacketLayerProps) {
+  const [ticked, setNow] = useState(() => Date.now())
+  const now = stillAtMs ?? ticked
   const flights = useMemo(() => {
     const kinds = new Map(paths.map((p) => [p.key, p.kind]))
     const list: Flight[] = []
@@ -348,7 +366,9 @@ function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }:
     return list
   }, [paths, packets, onionLayers])
   // Until the last ring has faded too: stopping with the request leaves the ring drawn.
-  const live = flights.some((f) => now < f.packet.startMs + f.journey.totalMs + RING_MS)
+  const live =
+    stillAtMs === undefined &&
+    flights.some((f) => now < f.packet.startMs + f.journey.totalMs + RING_MS)
   useEffect(() => {
     if (!live) return
     let frame = 0
@@ -387,7 +407,7 @@ function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }:
                 />
               )
             })}
-            <Circle cx={x} cy={y} r={quiet ? 6 : onionLayers ? 10 : 11} fill={fill} />
+            <Circle cx={x} cy={y} r={quiet ? QUIET_CORE : onionLayers ? 10 : 11} fill={fill} />
             {!onionLayers
               ? null
               : Array.from({ length: state.layers }, (_, k) => (
@@ -395,7 +415,7 @@ function PacketLayer({ layout, paths, packets, onionLayers, ringColor, glowId }:
                     key={`l${k}`}
                     cx={x}
                     cy={y}
-                    r={layerRadius(k + 1)}
+                    r={layerRadius(k + 1, quiet)}
                     stroke={ringColor}
                     strokeOpacity={0.9 - k * 0.12}
                     strokeWidth={1}
@@ -566,6 +586,7 @@ export function PathFlow({
   labelFor,
   kindLabels,
   buildingLabel,
+  stillAtMs,
   testID,
 }: PathFlowProps) {
   const still = useReducedMotion()
@@ -635,7 +656,7 @@ export function PathFlow({
                 plateColor={plateColor}
               />
             )}
-            {still || building ? null : (
+            {building || (still && stillAtMs === undefined) ? null : (
               <PacketLayer
                 layout={layout}
                 paths={paths}
@@ -643,6 +664,7 @@ export function PathFlow({
                 onionLayers={onionLayers}
                 ringColor={labelColor}
                 glowId={glowId}
+                stillAtMs={stillAtMs}
               />
             )}
           </Svg>
