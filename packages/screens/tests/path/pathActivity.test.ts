@@ -204,7 +204,7 @@ describe('pings', () => {
 })
 
 describe('pathStats', () => {
-  it('summarises the paths in use, and entry nodes across every open path', () => {
+  it('summarises the paths in use, entry nodes included, leaving out paths not drawn', () => {
     const { tracker } = seen(
       snap(
         path({ remoteHex: 'a', requestsSent: 1, latencyMs: 200, jitterMs: 10 }),
@@ -215,7 +215,8 @@ describe('pathStats', () => {
     expect(pathStats(tracker, 0)).toEqual({
       pathsInUse: 2,
       countriesCrossed: 3,
-      entryNodes: 2,
+      // a and b share e1; the idle path's e9 is not drawn, so not counted.
+      entryNodes: 1,
       rebuilt: 0,
       averageMs: 300,
       fastestMs: 200,

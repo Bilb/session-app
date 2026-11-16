@@ -15,7 +15,7 @@ import {
   type PathFlowPacket,
   type PathFlowPath,
 } from '@session/ui'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   EMPTY_TRACKER,
@@ -53,19 +53,12 @@ function kindLabels(): Record<PathKind, string> {
   }
 }
 
-/** A country's name in the app's language where the platform knows it, else its code. */
-function makeLabeller(): (country: string) => string {
-  let names: Intl.DisplayNames | null = null
-  try {
-    names = new Intl.DisplayNames(undefined, { type: 'region' })
-  } catch {
-    names = null
-  }
-  return (country) => {
-    if (country === '?') return tr('onionRoutingPathUnknownCountry')
-    if (country === 'FS') return PENDING_COPY.onionRoutingPathFileServer
-    return names?.of(country) ?? country
-  }
+/**
+ * A bar's label: the country's code on every platform, which fits every column at every width, and
+ * the file server by name. An unknown country is its `?`.
+ */
+function labelFor(country: string): string {
+  return country === 'FS' ? PENDING_COPY.onionRoutingPathFileServer : country
 }
 
 function ms(value: number | null, copy: string): string {
@@ -185,7 +178,6 @@ export function PathPage() {
   const [highlight, setHighlight] = useState<Highlight>('busy')
   const [nowMs, setNowMs] = useState(() => Date.now())
   const trackerRef = useRef(tracker)
-  const labelFor = useMemo(makeLabeller, [])
 
   useEffect(() => {
     let live = true

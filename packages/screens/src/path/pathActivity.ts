@@ -249,8 +249,8 @@ export function pathStats(tracker: PathTracker, nowMs: number): PathStats {
   const countries = new Set<string>()
   for (const p of used)
     for (const cc of p.countries) if (cc !== null && cc !== 'FS') countries.add(cc)
-  // Entry nodes across every open path: they are shared, at most four per client.
-  const entries = new Set(tracker.paths.map((p) => p.entryHex).filter((e) => e !== null))
+  // The paths drawn: a count over every open path would name entry nodes no line on screen uses.
+  const entries = new Set(used.map((p) => p.entryHex).filter((e) => e !== null))
   const timed = used.filter((p) => p.latencyMs > 0)
   const latencies = timed.map((p) => p.latencyMs)
   const mean = (xs: number[]) =>
