@@ -87,7 +87,7 @@ jobs:
       # A capture that stopped part way still goes up, but one that wrote no screenshot would
       # upload an empty build, which Argos reads as every page removed.
       - id: captured
-        if: success() || failure()
+        if: (success() || failure()) && steps.capture.outcome != 'skipped'
         run: |
           if compgen -G "$CATALOG_OUT/*.png" >/dev/null; then
             echo "any=true" >> "$GITHUB_OUTPUT"

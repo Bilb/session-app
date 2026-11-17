@@ -15,11 +15,11 @@ repo=$(cd "$here/../../.." && pwd)
 out=${CATALOG_OUT:-$repo/test-results/catalog}
 media=${SESSION_FAKE_MEDIA_DIR:-$HOME/.cache/session-app/dev-media}
 
-# A tag of its own, removed on exit: under the containerd image store, two builds of the same
-# Dockerfile get different IDs, and an ID whose tag a concurrent build takes is deleted at once.
+# A tag of its own: a concurrent job's build can take a shared tag, and the ID it named can vanish
+# before docker run. --force: a cancelled job's container can outlive this script and hold it.
 image=session-catalog:$$-$RANDOM
 docker build --quiet --tag "$image" "$here" >/dev/null
-trap 'docker image rm "$image" >/dev/null' EXIT
+trap 'docker image rm --force "$image" >/dev/null || true' EXIT
 # Made here, so the container's user owns nothing the host cannot clean up.
 mkdir -p "$out"
 
