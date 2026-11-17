@@ -15,9 +15,11 @@ repo=$(cd "$here/../../.." && pwd)
 out=${CATALOG_OUT:-$repo/test-results/catalog}
 media=${SESSION_FAKE_MEDIA_DIR:-$HOME/.cache/session-app/dev-media}
 
-# Run by the ID this build printed: another job on this host's daemon can retag session-catalog
-# from its own Dockerfile in between.
-image=$(docker build --quiet --tag session-catalog "$here")
+# A tag of its own, removed on exit: under the containerd image store, two builds of the same
+# Dockerfile get different IDs, and an ID whose tag a concurrent build takes is deleted at once.
+image=session-catalog:$$-$RANDOM
+docker build --quiet --tag "$image" "$here" >/dev/null
+trap 'docker image rm "$image" >/dev/null' EXIT
 # Made here, so the container's user owns nothing the host cannot clean up.
 mkdir -p "$out"
 

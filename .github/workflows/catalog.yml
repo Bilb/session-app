@@ -84,9 +84,21 @@ jobs:
       - id: capture
         run: pnpm --filter @session/e2e test:catalog
 
+      # A capture that stopped part way still goes up, but one that wrote no screenshot would
+      # upload an empty build, which Argos reads as every page removed.
+      - id: captured
+        if: success() || failure()
+        run: |
+          if compgen -G "$CATALOG_OUT/*.png" >/dev/null; then
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::The capture wrote no screenshot to $CATALOG_OUT, so nothing goes to Argos"
+            exit 1
+          fi
+
       # Argos compares with the build of main's head or of the pull request below, which another
       # runner can still be capturing.
-      - if: github.event_name == 'pull_request' && (success() || failure())
+      - if: github.event_name == 'pull_request' && (success() || failure()) && steps.captured.outputs.any == 'true'
         run: tests/e2e/catalog/argos-base.sh await
         env:
           GH_TOKEN: ${{ github.token }}
@@ -94,7 +106,7 @@ jobs:
       # The captures go up even when the audit fails: the two are read separately.
       # A tier is its own build name, so a nightly build is never compared with a pr one. Skipped
       # where the token is not given: a fork's pull request, or a repository with no Argos yet.
-      - if: success() || failure()
+      - if: (success() || failure()) && steps.captured.outputs.any == 'true'
         run: |
           if [ -z "$ARGOS_TOKEN" ]; then echo "No ARGOS_TOKEN: captures not uploaded"; exit 0; fi
           set -o pipefail
@@ -106,7 +118,7 @@ jobs:
           # 250ms away times out on every one, so allow longer.
           NODE_OPTIONS: --network-family-autoselection-attempt-timeout=2000
 
-      - if: github.event_name == 'pull_request' && (success() || failure())
+      - if: github.event_name == 'pull_request' && (success() || failure()) && steps.captured.outputs.any == 'true'
         run: tests/e2e/catalog/argos-base.sh check
         env:
           GH_TOKEN: ${{ github.token }}
