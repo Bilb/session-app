@@ -5,9 +5,9 @@ import type { ConversationKind, NetworkPath, NetworkPaths } from '@session/clien
  * and pings set off since the last look, how often paths were rebuilt, and the figures in its
  * stats.
  *
- * libsession reports totals rather than events, so a request is "seen" when a path's total goes
- * up between two snapshots. When is known to within one poll, which is why the requests found in
- * one are spread across the interval rather than all starting together.
+ * libsession reports totals rather than events, so a request is "seen" when a remote's total has
+ * gone up since the last snapshot that had it. When is known to within one poll, which is why the
+ * requests found in one are spread across the interval rather than all starting together.
  */
 
 /** A path counts as in use for this long after its last request. */
@@ -125,7 +125,9 @@ export function trackSnapshot(
   // in use.
   const first = tracker.lastPollMs === null || nowMs - tracker.lastPollMs > STALE_POLLS * pollMs
   const previous = new Map(tracker.paths.map((p) => [p.key, p]))
-  const totals = new Map<string, number>()
+  // Kept for remotes missing from this snapshot: a remote's count never resets, so one that comes
+  // back, between builds or with a new session, is compared with where it left off.
+  const totals = new Map(tracker.totals)
   const pingTotals = new Map<string, number>()
   const hopSignatures = new Map<string, string>()
   const requests: SeenRequest[] = []
@@ -178,7 +180,14 @@ export function trackSnapshot(
         ? (previous.get(key)?.lastRequestAtMs ?? null)
         : nowMs - path.msSinceLastRequest
     if (!first) {
-      const added = path.requestsSent - (was ?? 0)
+      // A remote not seen since the screen opened brings a total from before it: a baseline, as
+      // the first snapshot's are, with one request drawn only if its last went during this poll.
+      const added =
+        was !== undefined
+          ? path.requestsSent - was
+          : path.msSinceLastRequest !== undefined && path.msSinceLastRequest < pollMs
+            ? 1
+            : 0
       if (added > 0) {
         const shown = Math.min(added, MAX_PER_POLL)
         for (let i = 0; i < shown; i += 1) {

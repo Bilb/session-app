@@ -169,6 +169,44 @@ describe('when paths were last used', () => {
   })
 })
 
+describe('a remote missing from a snapshot', () => {
+  const requestsOn = (requests: readonly { kind: string; pathKey: string }[]) =>
+    requests.filter((r) => r.kind === 'request').map((r) => r.pathKey)
+
+  it('draws only what its total grew by when it comes back, not its whole total', () => {
+    const open = trackSnapshot(
+      EMPTY_TRACKER,
+      snap(path({ remoteHex: 'a', requestsSent: 40 })),
+      0,
+      1_000,
+    ).tracker
+    const between = trackSnapshot(open, snap(), 1_000, 1_000).tracker
+    const back = trackSnapshot(
+      between,
+      snap(path({ remoteHex: 'a', requestsSent: 41 })),
+      2_000,
+      1_000,
+    )
+    expect(requestsOn(back.requests)).toEqual(['a'])
+  })
+
+  it('takes a remote first seen after opening as a baseline, unless it sent during the poll', () => {
+    const open = trackSnapshot(EMPTY_TRACKER, snap(path({ remoteHex: 'a' })), 0, 1_000).tracker
+    const later = (msSinceLastRequest: number) =>
+      trackSnapshot(
+        open,
+        snap(
+          path({ remoteHex: 'a' }),
+          path({ remoteHex: 'b', requestsSent: 40, msSinceLastRequest }),
+        ),
+        1_000,
+        1_000,
+      ).requests
+    expect(requestsOn(later(30_000))).toEqual([])
+    expect(requestsOn(later(200))).toEqual(['b'])
+  })
+})
+
 describe('standby paths', () => {
   const spare = (over: Partial<NetworkPath> & { remoteHex: string }) =>
     path({ standby: true, hops: [{ pubkeyHex: 'e7', country: 'SG' }], ...over })
