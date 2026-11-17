@@ -41,8 +41,11 @@ const LEARN_MORE_URL = `${URLS.faq}/#onion-routing`
 /** How often the screen asks for a fresh snapshot while it is showing. */
 const POLL_MS = 1_000
 
-/** Anything that set off this long ago is home, however slow its path. */
-const PACKET_LIFE_MS = 30_000
+/**
+ * Anything that set off this long ago is home, however slow its path: longer than a path can wait
+ * to be drawn (a layout, at most every 30 s) plus the slowest trip, since a request waits with it.
+ */
+const PACKET_LIFE_MS = 60_000
 
 /** What each colour of path is for, worded on each render so a language change reaches it. */
 function kindLabels(): Record<PathKind, string> {

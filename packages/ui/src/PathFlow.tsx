@@ -1203,6 +1203,28 @@ function useDrawnSince(layout: FlowLayout): ReadonlyMap<string, number> {
   return next
 }
 
+/**
+ * The paths a request is still travelling, as drawn: one started late because its path was drawn
+ * late finishes later than its caller reckons, and must not be left running along a line already
+ * gone dim. Pings, which never light a path, are left out.
+ */
+export function travellingPaths(
+  packets: readonly PathFlowPacket[],
+  paths: readonly PathFlowPath[],
+  onionLayers: boolean,
+  nowMs: number,
+): ReadonlySet<string> {
+  const kinds = new Map(paths.map((p) => [p.key, p.kind]))
+  const keys = new Set<string>()
+  for (const packet of packets) {
+    const kind = kinds.get(packet.pathKey)
+    if (packet.quiet === true || kind === undefined) continue
+    if (nowMs < packet.startMs + pathFlowTripMs(packet.hopMs, kind, onionLayers))
+      keys.add(packet.pathKey)
+  }
+  return keys
+}
+
 /** The narrowest the drawing is laid out: about a phone's card, which still holds its words. */
 const MIN_FLOW_WIDTH_PX = 280
 
@@ -1268,8 +1290,10 @@ export function PathFlow({
   const since = useDrawnSince(layout)
   const shownPackets = useMemo(() => retime(packets, since), [packets, since])
   const barsLayout = building ? buildingLayout : base
+  // Lit by the caller, or while a request this draws is still on its way.
+  const travelling = travellingPaths(shownPackets, paths, onionLayers, Date.now())
   const litKeys = paths
-    .filter((p) => p.lit)
+    .filter((p) => p.lit || travelling.has(p.key))
     .map((p) => p.key)
     .join(';')
   const lit = useMemo(() => {
