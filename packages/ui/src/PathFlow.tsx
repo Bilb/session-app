@@ -5,6 +5,7 @@ import { XStack, YStack } from 'tamagui'
 
 import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
 
+import { LABEL_MAX_SCALE } from './fontScaleCaps'
 import { journeyOf, retime, RING_MS, type Journey } from './pathFlowJourney'
 import {
   FLOW_SIDE,
@@ -271,7 +272,7 @@ const FlowText = memo(function FlowText({
             fontSize={titleFontPx}
             lineHeight={Math.round(titleFontPx * TEXT_LINE_RATIO)}
             numberOfLines={1}
-            maxFontSizeMultiplier={1}
+            allowFontScaling={false}
           >
             {title.toUpperCase()}
           </Text>
@@ -288,7 +289,7 @@ const FlowText = memo(function FlowText({
           weight="semibold"
           fontSize={TEXT_PX}
           lineHeight={Math.round(TEXT_PX * TEXT_LINE_RATIO)}
-          maxFontSizeMultiplier={1}
+          allowFontScaling={false}
         >
           {buildingLabel}
         </Text>
@@ -326,7 +327,7 @@ const FlowText = memo(function FlowText({
                     fontSize={TEXT_PX}
                     lineHeight={PLATE_HEIGHT}
                     numberOfLines={1}
-                    maxFontSizeMultiplier={1}
+                    allowFontScaling={false}
                   >
                     {barLabel(layout, bar.country, bar.count, labelFor)}
                   </Text>
@@ -1156,7 +1157,7 @@ function Legend({
             borderRadius="$full"
             backgroundColor={KIND_COLOR[kind]}
           />
-          <Text size="$label" tone="secondary">
+          <Text size="$label" tone="secondary" maxFontSizeMultiplier={LABEL_MAX_SCALE}>
             {kindLabels[kind]}
           </Text>
         </XStack>

@@ -3,12 +3,15 @@ import { PENDING_COPY, tr } from '@session/localization'
 import { useConversations, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
+  GLYPH_MAX_SCALE,
   Icon,
+  LABEL_MAX_SCALE,
   PathFlow,
   pathFlowTripMs,
   SettingsGroup,
   SettingsRow,
   Text,
+  useFontScale,
   useModals,
   XStack,
   YStack,
@@ -64,38 +67,114 @@ function ms(value: number | null, copy: string): string {
   return value === null ? '-' : copy.replace('{ms}', String(Math.round(value)))
 }
 
-/** A figure over what it counts, a quarter of the card wide. */
-function Stat({
-  label,
-  value,
-  name,
-  timing,
-}: {
+/** A figure over what it counts, a quarter of the card wide, or half past XXX Large. */
+interface StatProps {
   label: string
   value: string
   name: string
   timing: boolean
-}) {
+}
+
+function Stat({ label, value, name, timing }: StatProps) {
   return (
     <YStack flex={1} flexBasis={0} minWidth={0} testID={ELEMENT.settings.pathStat(name)}>
       {timing ? (
-        <Text size="$body" weight="semibold" fontFamily="$mono" numberOfLines={1}>
+        <Text
+          size="$body"
+          weight="semibold"
+          fontFamily="$mono"
+          numberOfLines={1}
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
+        >
           {value}
         </Text>
       ) : (
-        <Text size="$title" weight="bold" numberOfLines={1}>
+        <Text size="$title" weight="bold" numberOfLines={1} maxFontSizeMultiplier={LABEL_MAX_SCALE}>
           {value}
         </Text>
       )}
-      <Text size="$caption" tone="secondary">
+      <Text size="$caption" tone="secondary" maxFontSizeMultiplier={LABEL_MAX_SCALE}>
         {label}
       </Text>
     </YStack>
   )
 }
 
-/** Two rows of four: what is in use, then how quickly it answers, under a rule. */
+/** The figures in rows of `perRow`. */
+function StatRows({ stats, perRow }: { stats: readonly StatProps[]; perRow: number }) {
+  const rows: StatProps[][] = []
+  for (let i = 0; i < stats.length; i += perRow) rows.push(stats.slice(i, i + perRow))
+  return (
+    <YStack gap="$xs">
+      {rows.map((row) => (
+        <XStack key={row[0]?.name} gap="$2xs">
+          {row.map((stat) => (
+            <Stat key={stat.name} {...stat} />
+          ))}
+        </XStack>
+      ))}
+    </YStack>
+  )
+}
+
+/**
+ * What is in use, then how quickly it answers, under a rule: four to a row, or two past XXX Large,
+ * where a quarter of the card is narrower than a label's longest word and a figure's unit.
+ */
 function StatsCard({ stats }: { stats: PathStats }) {
+  const perRow = useFontScale() > GLYPH_MAX_SCALE ? 2 : 4
+  const counts: StatProps[] = [
+    {
+      name: 'in-use',
+      label: PENDING_COPY.onionRoutingPathsInUse,
+      value: String(stats.pathsInUse),
+      timing: false,
+    },
+    {
+      name: 'countries',
+      label: PENDING_COPY.onionRoutingPathCountries,
+      value: String(stats.countriesCrossed),
+      timing: false,
+    },
+    {
+      name: 'entry',
+      label: PENDING_COPY.onionRoutingPathEntryNodes,
+      value: String(stats.entryNodes),
+      timing: false,
+    },
+    {
+      name: 'rebuilt',
+      label: PENDING_COPY.onionRoutingPathRebuilt,
+      value: String(stats.rebuilt),
+      timing: false,
+    },
+  ]
+  const timings: StatProps[] = [
+    {
+      name: 'average',
+      label: PENDING_COPY.onionRoutingPathAverage,
+      value: ms(stats.averageMs, PENDING_COPY.onionRoutingPathMilliseconds),
+      timing: true,
+    },
+    {
+      name: 'fastest',
+      label: PENDING_COPY.onionRoutingPathFastest,
+      value: ms(stats.fastestMs, PENDING_COPY.onionRoutingPathMilliseconds),
+      timing: true,
+    },
+    {
+      name: 'slowest',
+      label: PENDING_COPY.onionRoutingPathSlowest,
+      value: ms(stats.slowestMs, PENDING_COPY.onionRoutingPathMilliseconds),
+      timing: true,
+    },
+    {
+      name: 'jitter',
+      label: PENDING_COPY.onionRoutingPathJitter,
+      value: ms(stats.jitterMs, PENDING_COPY.onionRoutingPathJitterMilliseconds),
+      timing: true,
+    },
+  ]
   return (
     <YStack
       gap="$xs"
@@ -104,58 +183,10 @@ function StatsCard({ stats }: { stats: PathStats }) {
       borderRadius="$md"
       backgroundColor="$backgroundSecondary"
     >
-      <XStack gap="$2xs">
-        <Stat
-          name="in-use"
-          label={PENDING_COPY.onionRoutingPathsInUse}
-          value={String(stats.pathsInUse)}
-          timing={false}
-        />
-        <Stat
-          name="countries"
-          label={PENDING_COPY.onionRoutingPathCountries}
-          value={String(stats.countriesCrossed)}
-          timing={false}
-        />
-        <Stat
-          name="entry"
-          label={PENDING_COPY.onionRoutingPathEntryNodes}
-          value={String(stats.entryNodes)}
-          timing={false}
-        />
-        <Stat
-          name="rebuilt"
-          label={PENDING_COPY.onionRoutingPathRebuilt}
-          value={String(stats.rebuilt)}
-          timing={false}
-        />
-      </XStack>
-      <XStack gap="$2xs" borderTopWidth={1} borderColor="$separatorColor" paddingTop="$xs">
-        <Stat
-          name="average"
-          label={PENDING_COPY.onionRoutingPathAverage}
-          value={ms(stats.averageMs, PENDING_COPY.onionRoutingPathMilliseconds)}
-          timing
-        />
-        <Stat
-          name="fastest"
-          label={PENDING_COPY.onionRoutingPathFastest}
-          value={ms(stats.fastestMs, PENDING_COPY.onionRoutingPathMilliseconds)}
-          timing
-        />
-        <Stat
-          name="slowest"
-          label={PENDING_COPY.onionRoutingPathSlowest}
-          value={ms(stats.slowestMs, PENDING_COPY.onionRoutingPathMilliseconds)}
-          timing
-        />
-        <Stat
-          name="jitter"
-          label={PENDING_COPY.onionRoutingPathJitter}
-          value={ms(stats.jitterMs, PENDING_COPY.onionRoutingPathJitterMilliseconds)}
-          timing
-        />
-      </XStack>
+      <StatRows stats={counts} perRow={perRow} />
+      <YStack borderTopWidth={1} borderColor="$separatorColor" paddingTop="$xs">
+        <StatRows stats={timings} perRow={perRow} />
+      </YStack>
     </YStack>
   )
 }
@@ -273,7 +304,7 @@ export function PathPage() {
         />
       </SettingsGroup>
       {tracker.attribution.length === 0 ? null : (
-        <Text size="$caption" tone="secondary">
+        <Text size="$caption" tone="secondary" maxFontSizeMultiplier={LABEL_MAX_SCALE}>
           {tracker.attribution}
         </Text>
       )}
