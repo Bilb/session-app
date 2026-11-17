@@ -37,8 +37,9 @@ jobs:
       (github.event_name != 'pull_request' ||
        github.event.pull_request.head.repo.full_name == github.repository) &&
       (github.event_name != 'workflow_dispatch' || inputs.platform != 'ios')
-    # The catalog's runner on session-qa-2, which has KVM and the Android SDK.
-    runs-on: [self-hosted, linux, x64, session-catalog]
+    # One runner on session-qa-2 carries this label: the emulators, adb server and Metro take fixed
+    # ports, so two device jobs on the host would take each other's.
+    runs-on: [self-hosted, linux, x64, session-devices]
     timeout-minutes: 120
     env:
       ANDROID_HOME: /opt/android
@@ -203,20 +204,22 @@ jobs:
 
   # Only the scheduled run: a dispatched one has someone watching it, and a pull request shows its
   # own checks.
-  notify:
-    needs: [android, ios]
-    if: >-
-      always() && github.event_name == 'schedule' &&
-      (needs.android.result != 'success' || needs.ios.result != 'success')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Post the failure to Discord
-        env:
-          WEBHOOK: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}
-          ANDROID: ${{ needs.android.result }}
-          IOS: ${{ needs.ios.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          [ -n "$WEBHOOK" ] || { echo "No ALERT_DISCORD_WEBHOOK_URL: not posted"; exit 0; }
-          jq -n --arg c "devices nightly: android $ANDROID, ios $IOS. $RUN_URL" '{content: $c}' |
-            curl -fsS -H 'Content-Type: application/json' -d @- "$WEBHOOK"
+  notify-android:
+    needs: android
+    if: always() && github.event_name == 'schedule' && needs.android.result != 'success'
+    uses: ./.github/workflows/alert-discord.yml
+    with:
+      name: devices android nightly
+      result: ${{ needs.android.result }}
+    secrets:
+      webhook: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}
+
+  notify-ios:
+    needs: ios
+    if: always() && github.event_name == 'schedule' && needs.ios.result != 'success'
+    uses: ./.github/workflows/alert-discord.yml
+    with:
+      name: devices ios nightly
+      result: ${{ needs.ios.result }}
+    secrets:
+      webhook: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}

@@ -15,7 +15,8 @@ START_TIMEOUT_S=60
 driver_for() {
   case $1 in
     android) echo uiautomator2@8.7.0 ;;
-    ios) echo xcuitest@10.43.1 ;;
+    # Xcode 27 has no Simulator.app; 12.22.8 is the first driver that opens DeviceHub instead.
+    ios) echo xcuitest@12.22.8 ;;
     *) echo "appium.sh: no driver for '$1'" >&2; exit 2 ;;
   esac
 }
@@ -26,11 +27,12 @@ install() {
     mkdir -p "$ROOT"
     npm install --prefix "$ROOT" --no-audit --no-fund "appium@$APPIUM_VERSION" >/dev/null
   fi
-  local name=${driver%@*}
-  if ! "$ROOT/node_modules/.bin/appium" driver list --installed --json 2>/dev/null |
-    grep -q "\"$name\""; then
-    "$ROOT/node_modules/.bin/appium" driver install "$driver" >/dev/null
-  fi
+  local name=${driver%@*} version=${driver#*@} installed
+  installed=$("$ROOT/node_modules/.bin/appium" driver list --installed --json 2>/dev/null |
+    node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s||"{}")[process.argv[1]]?.version??""))' "$name" || true)
+  [ "$installed" = "$version" ] && return
+  [ -z "$installed" ] || "$ROOT/node_modules/.bin/appium" driver uninstall "$name" >/dev/null
+  "$ROOT/node_modules/.bin/appium" driver install "$driver" >/dev/null
 }
 
 up() {

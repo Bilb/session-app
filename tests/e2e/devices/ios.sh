@@ -5,7 +5,7 @@
 set -euo pipefail
 
 STATE=${SESSION_E2E_DEVICES_DIR:-$HOME/.session-e2e}/ios
-RUNTIME=com.apple.CoreSimulator.SimRuntime.iOS-26-2
+RUNTIME=com.apple.CoreSimulator.SimRuntime.iOS-27-2
 FORMS="phone tablet"
 BOOT_TIMEOUT_S=240
 
