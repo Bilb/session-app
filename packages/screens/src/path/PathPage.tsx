@@ -3,7 +3,6 @@ import { PENDING_COPY, tr } from '@session/localization'
 import { useConversations, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
-  GLYPH_MAX_SCALE,
   Icon,
   LABEL_MAX_SCALE,
   PathFlow,
@@ -67,7 +66,7 @@ function ms(value: number | null, copy: string): string {
   return value === null ? '-' : copy.replace('{ms}', String(Math.round(value)))
 }
 
-/** A figure over what it counts, a quarter of the card wide, or half past XXX Large. */
+/** A figure over what it counts, a quarter of the card wide, or half where that is too narrow. */
 interface StatProps {
   label: string
   value: string
@@ -118,11 +117,20 @@ function StatRows({ stats, perRow }: { stats: readonly StatProps[]; perRow: numb
 }
 
 /**
- * What is in use, then how quickly it answers, under a rule: four to a row, or two past XXX Large,
- * where a quarter of the card is narrower than a label's longest word and a figure's unit.
+ * The narrowest a figure's column can be at the default text size: room for a label's longest word
+ * ("countries") and a timing with its unit ("304 ms"). It grows with the text, as far as the text
+ * itself is allowed to.
+ */
+const STAT_MIN_PX = 60
+
+/**
+ * What is in use, then how quickly it answers, under a rule: four to a row, or two where a quarter
+ * of the card is narrower than a figure needs, which large text and a zoomed desktop both reach.
  */
 function StatsCard({ stats }: { stats: PathStats }) {
-  const perRow = useFontScale() > GLYPH_MAX_SCALE ? 2 : 4
+  const [widthPx, setWidthPx] = useState<number | null>(null)
+  const textScale = Math.min(Math.max(useFontScale(), 1), LABEL_MAX_SCALE)
+  const perRow = widthPx !== null && widthPx / 4 < STAT_MIN_PX * textScale ? 2 : 4
   const counts: StatProps[] = [
     {
       name: 'in-use',
@@ -182,6 +190,9 @@ function StatsCard({ stats }: { stats: PathStats }) {
       paddingHorizontal="$sm"
       borderRadius="$md"
       backgroundColor="$backgroundSecondary"
+      onLayout={(event) => {
+        setWidthPx(event.nativeEvent.layout.width)
+      }}
     >
       <StatRows stats={counts} perRow={perRow} />
       <YStack borderTopWidth={1} borderColor="$separatorColor" paddingTop="$xs">

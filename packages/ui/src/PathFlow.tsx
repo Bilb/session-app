@@ -1203,6 +1203,9 @@ function useDrawnSince(layout: FlowLayout): ReadonlyMap<string, number> {
   return next
 }
 
+/** The narrowest the drawing is laid out: about a phone's card, which still holds its words. */
+const MIN_FLOW_WIDTH_PX = 280
+
 /** The moving canvas, laid exactly over the still one. */
 const OVERLAY = { position: 'absolute', top: 0, left: 0 } as const
 
@@ -1220,7 +1223,11 @@ export function PathFlow({
   testID,
 }: PathFlowProps) {
   const still = useReducedMotion()
-  const [widthPx, setWidthPx] = useState(0)
+  const [cardWidthPx, setCardWidthPx] = useState(0)
+  // Laid out no narrower than a phone's card and drawn smaller to fit a narrower one, which a
+  // zoomed desktop window reaches: below that the titles and labels run into each other.
+  const widthPx = cardWidthPx > 0 ? Math.max(cardWidthPx, MIN_FLOW_WIDTH_PX) : 0
+  const fit = widthPx > 0 ? cardWidthPx / widthPx : 1
   const barColor = useTokenColor('$textPrimary')
   const ringColor = useTokenColor('$textPrimary')
   const spritesHost = usePathSprites() ?? defaultPathSprites
@@ -1275,15 +1282,23 @@ export function PathFlow({
       <YStack
         alignSelf="stretch"
         position="relative"
-        minHeight={heightPx}
+        minHeight={heightPx * fit}
         borderRadius="$lg"
         overflow="hidden"
         backgroundColor="$backgroundSecondary"
-        onLayout={(event: LayoutChangeEvent) => setWidthPx(event.nativeEvent.layout.width)}
+        onLayout={(event: LayoutChangeEvent) => setCardWidthPx(event.nativeEvent.layout.width)}
         testID={testID}
       >
         {widthPx > 0 ? (
-          <>
+          <YStack
+            width={widthPx}
+            height={heightPx}
+            style={
+              fit < 1
+                ? { ...OVERLAY, transform: [{ scale: fit }], transformOrigin: '0 0' }
+                : undefined
+            }
+          >
             {/* react-native-svg redraws a whole canvas on the UI thread when any part of it
                 changes, so each part sits on a canvas of its own, stacked in drawing order: the
                 faint lines and the bars change only with the paths, and the lit lines as requests
@@ -1353,7 +1368,7 @@ export function PathFlow({
                 stillAtMs={stillAtMs}
               />
             )}
-          </>
+          </YStack>
         ) : null}
       </YStack>
       <Legend paths={paths} kindLabels={kindLabels} />
