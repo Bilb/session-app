@@ -35,7 +35,7 @@ export interface PathFlowPath {
   kind: PathFlowKind
   /** A country code per column after "you": entry, relay, relay, destination. Null if unknown. */
   countries: readonly (string | null)[]
-  /** Drawn bright: a request is moving along it, or it carried the latest one. */
+  /** Drawn bright: a request is moving along it. */
   lit: boolean
   /** A spare held ready for the same destination, carrying only pings: drawn dashed. */
   standby?: boolean | undefined

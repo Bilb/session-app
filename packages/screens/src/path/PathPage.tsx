@@ -174,7 +174,6 @@ export function PathPage() {
   const modals = useModals()
   const [tracker, setTracker] = useState<PathTracker>(EMPTY_TRACKER)
   const [packets, setPackets] = useState<PathFlowPacket[]>([])
-  const [latestKey, setLatestKey] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
   const trackerRef = useRef(tracker)
 
@@ -188,8 +187,6 @@ export function PathPage() {
       trackerRef.current = next
       setTracker(next)
       setNowMs(now)
-      const latest = requests.filter((r) => r.kind === 'request').at(-1)
-      if (latest) setLatestKey(latest.pathKey)
       if (requests.length > 0) {
         const latency = new Map(next.paths.map((p) => [p.key, p.latencyMs]))
         setPackets((was) => [
@@ -232,7 +229,7 @@ export function PathPage() {
     kind: p.kind,
     countries: p.countries,
     standby: p.standby,
-    lit: busy.has(p.key) || p.key === latestKey,
+    lit: busy.has(p.key),
   }))
   const stats = pathStats(tracker, nowMs)
 
