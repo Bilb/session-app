@@ -9,17 +9,8 @@ const COUNTRY_ORDER = [
   'BG', 'JP', 'CZ', 'AE', 'IE', 'TH', 'IN', 'MY', 'KR', 'IT', 'RO', 'TR',
 ] as const // prettier-ignore
 
-const NAMES: Record<string, string> = {
-  DE: 'Germany',
-  US: 'United States',
-  FI: 'Finland',
-  NL: 'Netherlands',
-  CA: 'Canada',
-  FS: 'File server',
-  '?': 'Unknown Country',
-}
-
-const labelFor = (country: string) => NAMES[country] ?? country
+/** As the path screen labels its bars: the country's code, and the file server by name. */
+const labelFor = (country: string) => (country === 'FS' ? 'File server' : country)
 
 const KIND_LABELS: Record<PathFlowKind, string> = {
   swarm: 'Your messages',
