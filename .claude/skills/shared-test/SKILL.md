@@ -62,5 +62,5 @@ pnpm --filter @session/desktop build
 xvfb-run -a pnpm --filter @session/e2e test:e2e:fast
 ```
 
-`e2e-fast` and `e2e-full` are started by hand. `devices` runs the `android` project on pull
-requests that touch a phone, and both mobile projects nightly.
+`e2e-fast` and `e2e-full` are started by hand. `devices` runs the `android` and `ios` projects
+nightly on main, or by dispatch.

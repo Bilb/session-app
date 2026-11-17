@@ -1,20 +1,11 @@
 name: devices
 
 # The android and ios projects: the shared and native specs on an emulator and a simulator, phone
-# and tablet each. Android on pull requests that can change what a phone draws, both nightly.
+# and tablet each, nightly on main: a run takes about 25 minutes on the one runner it has, which
+# would hold pull requests up behind each other.
 on:
   schedule:
     - cron: '0 16 * * *' # 02:00 Sydney (AEST), 03:00 (AEDT): after nightly-native
-  pull_request:
-    paths:
-      - apps/mobile/**
-      - packages/ui/**
-      - packages/screens/**
-      - packages/bridge-*/**
-      - packages/client/**
-      - libsession-util
-      - tests/e2e/**
-      - .github/workflows/devices.yml
   workflow_dispatch:
     inputs:
       platform:
@@ -23,20 +14,13 @@ on:
         options: [both, android, ios]
         default: both
 
-concurrency:
-  group: devices-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 env:
   # Apart from a developer's Metro (8081) and adb server (5037) on the same host.
   SESSION_E2E_METRO_PORT: '8191'
 
 jobs:
   android:
-    if: >-
-      (github.event_name != 'pull_request' ||
-       github.event.pull_request.head.repo.full_name == github.repository) &&
-      (github.event_name != 'workflow_dispatch' || inputs.platform != 'ios')
+    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'ios'
     # One runner on session-qa-2 carries this label: the emulators, adb server and Metro take fixed
     # ports, so two device jobs on the host would take each other's.
     runs-on: [self-hosted, linux, x64, session-devices]
@@ -202,8 +186,7 @@ jobs:
             test-results/
             ${{ env.SESSION_E2E_DEVICES_DIR }}/**/*.log
 
-  # Only the scheduled run: a dispatched one has someone watching it, and a pull request shows its
-  # own checks.
+  # Only the scheduled run: a dispatched one has someone watching it.
   notify-android:
     needs: android
     if: always() && github.event_name == 'schedule' && needs.android.result != 'success'

@@ -108,7 +108,7 @@ a time, via the `port-feature` skill.
   Android what `performAccessibilityAudit` gives iOS.
 - **The native audit covers one screen.** `showcase-audit.spec.ts` audits the showcase
   conversation only; settings, onboarding and the rest are audited on desktop alone.
-- **iOS runs only nightly.** `devices` runs Android on every pull request that touches a phone,
-  but iOS only once a night, so an iOS-only regression shows up the next morning.
+- **Phones are tested only nightly.** `devices` runs on main once a night, never on a pull
+  request, so a regression only a phone shows turns up the next morning, after it has merged.
 - **Contrast is checked on desktop only.** The catalog draws through react-native-web, so a colour
   only the native views draw is never measured.

@@ -275,14 +275,14 @@ arriving from a message body is the unencoded form, which is the case that matte
 
 ## Testing
 
-| tier     | what                                                               | when                                                       |
-| -------- | ------------------------------------------------------------------ | ---------------------------------------------------------- |
-| unit     | `*.test.ts`: projections, route contracts, the generator, fake     | every push                                                 |
-| render   | `*.test.tsx`: components drawn through react-native-web, happy-dom | every push                                                 |
-| fast e2e | the Electron app on the fake, no network                           | `e2e-fast` workflow, by hand                               |
-| device   | the same specs on an Android emulator and an iOS simulator, Appium | `devices`: Android on PRs that touch a phone, both nightly |
-| catalog  | every catalog page captured and audited, uploaded to Argos         | `catalog`, every PR and main                               |
-| full e2e | real bindings, devnet, device pool                                 | `e2e-full` workflow, by hand                               |
+| tier     | what                                                               | when                         |
+| -------- | ------------------------------------------------------------------ | ---------------------------- |
+| unit     | `*.test.ts`: projections, route contracts, the generator, fake     | every push                   |
+| render   | `*.test.tsx`: components drawn through react-native-web, happy-dom | every push                   |
+| fast e2e | the Electron app on the fake, no network                           | `e2e-fast` workflow, by hand |
+| device   | the same specs on an Android emulator and an iOS simulator, Appium | `devices`, nightly on main   |
+| catalog  | every catalog page captured and audited, uploaded to Argos         | `catalog`, every PR and main |
+| full e2e | real bindings, devnet, device pool                                 | `e2e-full` workflow, by hand |
 
 A package with render tests runs vitest as two projects, `unit` and `render`
 (`@session/render-tier/vitest`).
@@ -972,6 +972,6 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   the runner labelled `session-devices` and fresh simulators on the one labelled `session-ios`,
   each with an adb server, Metro port and Appium of its own beside a developer's on the same host.
   The label holds one runner, so device jobs on a host never run side by side: their ports are
-  fixed. Android runs on every pull request that can change what a phone draws; iOS only nightly,
-  because the Mac is shared and its builds are long. This supersedes the 2026-09-04 entry for the
-  device tier; the full tier stays manual.
+  fixed. Both run nightly on main and by dispatch, never on a pull request: an Android run takes
+  about 25 minutes on its one runner, and the Mac is shared. This supersedes the 2026-09-04 entry
+  for the device tier; the full tier stays manual.
