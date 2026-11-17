@@ -14,8 +14,23 @@
  * component. It is never a reason to reach for an xpath.
  */
 export const ELEMENT = {
+  /** The column down the side of a wide layout, beside the conversation list. */
+  rail: {
+    screen: 'rail',
+    settings: 'rail-settings',
+    pathStatus: 'rail-path-status',
+    update: 'rail-update',
+    themeToggle: 'rail-theme-toggle',
+    /**
+     * A rail item's tooltip, by the item's own name: `settings`, `update`, `path-status`,
+     * `theme-toggle`.
+     */
+    tooltip: (item: string) => `rail-tooltip-${item}` as const,
+  },
   conversationList: {
+    /** The account's avatar on one pane, which opens settings; a wide layout has the rail's. */
     settings: 'conversation-list-settings',
+    settingsPathStatus: 'conversation-list-settings-path-status',
     newConversation: 'conversation-list-new',
     screen: 'conversation-list',
     row: (index: number) => `conversation-row-${index}` as const,
@@ -33,11 +48,17 @@ export const ELEMENT = {
     screen: 'conversation',
     header: 'conversation-header',
     headerName: 'conversation-header-name',
+    headerAvatar: 'conversation-header-avatar',
     back: 'conversation-back',
     messageRow: (index: number) => `message-row-${index}` as const,
+    dateHeader: 'conversation-date-header',
     messageBody: 'message-body',
     messageState: 'message-state',
     messageRetry: 'message-retry',
+    messageQuote: 'message-quote',
+    messageQuoteThumbnail: 'message-quote-thumbnail',
+    messageHighlight: 'message-highlight',
+    scrollToLatest: 'conversation-scroll-to-latest',
     attachment: 'message-attachment',
     attachmentTile: 'message-attachment-tile',
     attachmentLead: 'message-attachment-lead',
@@ -47,7 +68,8 @@ export const ELEMENT = {
     attachmentProgress: 'message-attachment-progress',
     attachmentDownload: 'message-attachment-download',
     attachmentExport: 'message-attachment-export',
-    attachmentPill: 'message-attachment-pill',
+    attachmentRetry: 'message-attachment-retry',
+    attachmentShowAllFailed: 'message-attachment-show-all-failed',
     attachmentFetch: 'message-attachment-fetch',
     attachmentFooter: 'message-attachment-footer',
     attachmentAction: 'message-attachment-action',
@@ -64,6 +86,7 @@ export const ELEMENT = {
     mediaViewerImage: 'media-viewer-image',
     mediaViewerPrevious: 'media-viewer-previous',
     mediaViewerNext: 'media-viewer-next',
+    mediaViewerPreparing: 'media-viewer-preparing',
     exportAccessDialog: 'export-access-dialog',
     exportAccessSettings: 'export-access-settings',
     exportAccessCancel: 'export-access-cancel',
@@ -74,6 +97,24 @@ export const ELEMENT = {
     autoDownloadOption: (mode: string) => `auto-download-${mode}` as const,
     composerInput: 'message-composer',
     sendButton: 'send-button',
+    attachButton: 'composer-attach',
+    attachMenu: 'composer-attach-menu',
+    attachMenuClose: 'composer-attach-menu-close',
+    attachMenuScrim: 'composer-attach-menu-scrim',
+    attachMedia: 'composer-attach-media',
+    attachDocument: 'composer-attach-document',
+    stagedTray: 'composer-staged',
+    stagedTile: (index: number) => `composer-staged-${index}` as const,
+    stagedRemove: (index: number) => `composer-staged-remove-${index}` as const,
+    stagedPreview: (index: number) => `composer-staged-preview-${index}` as const,
+    stagedClear: 'composer-staged-clear',
+    stagedAdd: 'composer-staged-add',
+    composerNotice: (kind: string) => `composer-notice-${kind}` as const,
+    composerReply: 'composer-reply',
+    composerReplyClose: 'composer-reply-close',
+    composerReplyThumbnail: 'composer-reply-thumbnail',
+    composerNoticeDismiss: (kind: string) => `composer-notice-dismiss-${kind}` as const,
+    dropOverlay: 'conversation-drop-overlay',
   },
   requests: {
     screen: 'requests',
@@ -89,11 +130,20 @@ export const ELEMENT = {
     themeOption: (name: string) => `settings-theme-${name}` as const,
     accentOption: (name: string) => `settings-accent-${name}` as const,
     displayName: 'settings-display-name',
+    /** The account's display picture, which enlarges in place when pressed. */
+    avatar: 'settings-avatar',
+    /** The badge on the display picture that puts the account's QR code in its place. */
+    qrToggle: 'settings-qr-toggle',
+    /** The badge on the QR code that brings the display picture back. */
+    qrBack: 'settings-qr-back',
+    accountQr: 'settings-account-qr',
+    accountQrFullScreen: 'settings-account-qr-full-screen',
     accountId: 'settings-account-id',
     copyAccountId: 'settings-copy-account-id',
     shareAccountId: 'settings-share-account-id',
     tokenLogo: 'settings-token-logo',
     networkStatus: 'settings-network-status',
+    pathStatus: 'settings-path-status',
     clearData: 'settings-clear-data',
     confirmClearData: 'settings-confirm-clear-data',
     confirmClearDataButton: 'settings-confirm-clear-data-button',
@@ -114,6 +164,29 @@ export const ELEMENT = {
     reportABug: 'help-report-a-bug',
     exportLogs: 'help-export-logs',
     link: (name: string) => `help-link-${name}` as const,
+    keyboardShortcuts: 'help-keyboard-shortcuts',
+  },
+  keyboardShortcuts: {
+    page: 'keyboard-shortcuts',
+    /** A shortcut's row, by what it does; see `keyboardShortcuts` in the screens package. */
+    row: (name: string) => `keyboard-shortcut-${name}` as const,
+    /** One of a row's key combinations, in the order drawn. */
+    combo: (name: string, index: number) => `keyboard-shortcut-${name}-${String(index)}` as const,
+  },
+  recoveryPassword: {
+    words: 'recovery-password-words',
+    copy: 'recovery-password-copy',
+    viewQr: 'recovery-password-view-qr',
+    viewWords: 'recovery-password-view-words',
+    qr: 'recovery-password-qr',
+    qrFullScreen: 'recovery-password-qr-full-screen',
+    hideRow: 'recovery-password-hide-row',
+    hide: 'recovery-password-hide',
+    hideConfirm: 'recovery-password-hide-confirm',
+    hideContinue: 'recovery-password-hide-continue',
+    hideYes: 'recovery-password-hide-yes',
+    hideCancel: 'recovery-password-hide-cancel',
+    loadError: 'recovery-password-load-error',
   },
   toast: {
     item: 'toast',
@@ -139,6 +212,7 @@ export const ELEMENT = {
 
   startupFailed: {
     screen: 'startup-failed',
+    explanation: 'startup-failed-explanation',
     reason: 'startup-failed-reason',
     copyReason: 'startup-failed-copy-reason',
     exportLogs: 'startup-failed-export-logs',
@@ -184,6 +258,7 @@ export const ELEMENT = {
     recoveryPhraseReveal: 'onboarding-recovery-phrase-reveal',
     recoveryPhraseError: 'onboarding-recovery-phrase-error',
     recoveryPhraseTab: 'onboarding-recovery-phrase-tab',
+    exportLogs: 'onboarding-export-logs',
     scanQrTab: 'onboarding-scan-qr-tab',
     scanQrPane: 'onboarding-scan-qr-pane',
     scanQrPreview: 'onboarding-scan-qr-preview',
@@ -196,6 +271,20 @@ export const ELEMENT = {
     notificationsOption: (mode: string) => `onboarding-notifications-${mode}` as const,
 
     loadingScreen: 'onboarding-loading-screen',
+  },
+  /** Whichever context menu is open: only one ever is. */
+  contextMenu: {
+    menu: 'context-menu',
+    submenu: 'context-menu-submenu',
+    back: 'context-menu-back',
+    /** A row, by its entry's id: `reply`, `copy`, `delete`. */
+    item: (id: string) => `context-menu-item-${id}` as const,
+  },
+  /** Whichever full-screen QR code is open: only one ever is. */
+  qrViewer: {
+    close: 'qr-viewer-close',
+    /** The button under the code that hands it to the share sheet, on the phones. */
+    share: 'qr-viewer-share',
   },
   catalog: {
     page: 'catalog-page',

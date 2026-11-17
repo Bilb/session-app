@@ -16,6 +16,8 @@ export interface PressAreaProps {
   /** Takes an equal share of the row it is in, so a dialog's actions can share their width. */
   fill?: boolean
   accessibilityLabel?: string
+  /** Already worded, for what a press does, said after the name. */
+  accessibilityHint?: string | undefined
   /**
    * `switch` for a control that flips between two values, announced with `checked` as its state.
    * A button otherwise.
@@ -29,6 +31,11 @@ export interface PressAreaProps {
   ring?: FocusRingShape | undefined
   /** Announced as busy, for a control whose action is running. */
   busy?: boolean
+  /**
+   * Takes the keyboard's focus when it appears. Web only, for a control that replaces the one just
+   * pressed: that one unmounted with the focus, which would otherwise fall back to the page.
+   */
+  focusOnMount?: boolean | undefined
   testID?: string
   /**
    * The control, told whether it is currently pressed and whether a pointer is over it.

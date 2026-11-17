@@ -32,7 +32,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ccache ninja-build
+      # A hosted runner now and then fails to resolve the Ubuntu mirrors for a minute. The loop
+      # wraps both commands because apt-get update exits 0 when its index fetches fail.
+      - name: Install ccache, ninja and nasm
+        run: |
+          for attempt in 1 2 3 4 5; do
+            sudo apt-get update && sudo apt-get install -y --no-install-recommends ccache ninja-build nasm && exit 0
+            sleep $((attempt * 15))
+          done
+          exit 1
 
       # libvips' glib builds with meson >= 1.4, newer than the runner's apt carries.
       - run: pipx install 'meson>=1.4'
@@ -40,8 +48,8 @@ jobs:
       - id: libsession
         run: echo "sha=$(git rev-parse HEAD:libsession-util)" >> "$GITHUB_OUTPUT"
 
-      # libsession and its static deps compile on every run: a checkout is newer than any cached
-      # object, and ninja reruns any step its .ninja_log lacks. ccache is what makes that cheap.
+      # libsession and its static deps compile on every run: the per-machine libsession cache
+      # starts empty on a fresh runner. ccache is what makes that cheap.
       - uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/ccache
@@ -57,7 +65,6 @@ jobs:
           CCACHE_MAXSIZE: 1G
           CMAKE_C_COMPILER_LAUNCHER: ccache
           CMAKE_CXX_COMPILER_LAUNCHER: ccache
-          SESSION_BRIDGE_DEPS_MIRROR: https://oxen.rocks/deps
 
       - run: ccache --show-stats
         env:
@@ -65,23 +72,14 @@ jobs:
 
       - run: pnpm --filter @session/bridge-node test
 
-  # A job of its own rather than a step, and any result but success, so a timeout or a
-  # cancellation is reported too. Only the scheduled run: a dispatched one has someone watching it.
+  # Any result but success, so a timeout or a cancellation is reported too. Only the scheduled run:
+  # a dispatched one has someone watching it.
   notify:
     needs: addon
     if: always() && github.event_name == 'schedule' && needs.addon.result != 'success'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Post the failure to Discord
-        env:
-          WEBHOOK: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}
-          RESULT: ${{ needs.addon.result }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          if [ -z "$WEBHOOK" ]; then
-            echo "::warning::ALERT_DISCORD_WEBHOOK_URL is not set, so the failure is not reported."
-            exit 0
-          fi
-          jq -n --arg content "❌ **${GITHUB_REPOSITORY#*/} nightly-native** ended in \`${RESULT}\` on \`${GITHUB_REF_NAME}\`."$'\n'"$RUN_URL" \
-            '{content: $content, allowed_mentions: {parse: []}}' |
-            curl --fail-with-body -sS -H 'Content-Type: application/json' --data-binary @- "$WEBHOOK"
+    uses: ./.github/workflows/alert-discord.yml
+    with:
+      name: nightly-native
+      result: ${{ needs.addon.result }}
+    secrets:
+      webhook: ${{ secrets.ALERT_DISCORD_WEBHOOK_URL }}

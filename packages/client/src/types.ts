@@ -22,10 +22,13 @@ import type {
   Frame,
   Message,
   MessageCursor,
+  NetworkStatus,
+  OutgoingAttachment,
   PixelSize,
   Request,
   RouterKind,
   SeedNode,
+  SendPlan,
   SessionEvent,
 } from '@session/bridge-types'
 
@@ -46,6 +49,8 @@ export type MessagePage = { messages: Message[] }
 export interface OutgoingMessage {
   body: string
   replyTo?: number
+  /** In the order the recipient sees them. */
+  attachments?: OutgoingAttachment[] | undefined
 }
 
 export interface SessionClient {
@@ -77,8 +82,24 @@ export interface SessionClient {
    * throws it away — so this is what turns "an account was made" into "an account was kept".
    */
   keepAccount(): Promise<void>
-  /** libsession owns the word list, so onboarding needs no mnemonic library of its own. */
-  getSeedMnemonic(language?: string): Promise<string[]>
+  /**
+   * The recovery password's words; libsession owns the word list, so onboarding needs no mnemonic
+   * library of its own. Null once the recovery password is hidden (`hideRecoveryPassword`).
+   */
+  getSeedMnemonic(language?: string): Promise<string[] | null>
+  /**
+   * The seed as lowercase hex, for a recovery password's QR code: 16 bytes when that is the whole
+   * seed, as for every account the 13 words describe, and 32 otherwise. `restoreAccount` takes
+   * either length back. Null once the recovery password is hidden.
+   */
+  getSeedHex(): Promise<string | null>
+  /**
+   * Hides the recovery password on this device for good: both seed reads answer null from then on.
+   * Resolves once it is stored.
+   */
+  hideRecoveryPassword(): Promise<void>
+  /** Whether the recovery password has been hidden on this device. */
+  getRecoveryPasswordHidden(): Promise<boolean>
   setDisplayName(name: string): Promise<void>
   /**
    * Attach a network, or replace the one attached. Refused whole: a network that will not build
@@ -96,6 +117,11 @@ export interface SessionClient {
    * network configured, an account already there to use one, or a warm already running.
    */
   warmNetworkCache(): Promise<boolean>
+  /**
+   * Whether the attached network can carry traffic now: `disconnected` with none attached. Each
+   * change after this arrives as `network-status-changed`.
+   */
+  getNetworkStatus(): Promise<NetworkStatus>
   /**
    * How often libsession polls the swarm. Its default of 20 seconds is about right for a
    * person and far too long for a test; a positive number of milliseconds is the only valid
@@ -127,11 +153,21 @@ export interface SessionClient {
   ): Promise<MessagePage>
   /**
    * Resolves as soon as libsession has stored the row, which is before it is sent. The states
-   * that follow arrive as message-updated.
+   * that follow arrive as message-updated, and each file's upload as attachment-progress of
+   * transfer `upload`, none of them before this resolves.
    */
   sendMessage(id: ConversationId, message: OutgoingMessage): Promise<number>
-  /** Resumes a send that failed, and answers whether there was anything left to resume. */
+  /**
+   * Resumes a send that failed, and answers whether there was anything left to resume. The files
+   * it uploads report as `sendMessage`'s do.
+   */
   retrySend(messageId: number): Promise<boolean>
+  /**
+   * Stores, on this device, whether a message is shown as a gallery, announced as messages-updated
+   * when it changes. False, changing nothing, for a missing message or for a gallery its
+   * `galleryViewable` refuses.
+   */
+  setGallery(messageId: number, gallery: boolean): Promise<boolean>
   deleteMessage(messageId: number, scope: Deletion): Promise<void>
 
   /**
@@ -150,6 +186,17 @@ export interface SessionClient {
     destination: string,
     options?: ExportAttachmentOptions,
   ): Promise<string>
+  /**
+   * What sending the file at `path` would do with it, decided from its header as the send decides
+   * it, under the file server's limit. `contentType` is inferred from the extension when unset.
+   * Answers `missing` rather than failing for a path with no file.
+   */
+  attachmentSendPlan(path: string, contentType?: string): Promise<SendPlan>
+  /**
+   * The most the file server takes in one upload, counted encrypted and padded, so a file must be
+   * somewhat smaller to fit. Changes only with `attachNetwork`.
+   */
+  getAttachmentUploadLimit(): Promise<number>
   /** Also records that the question was asked, which is why `none` is worth sending. */
   setAutoDownload(id: ConversationId, mode: AutoDownload): Promise<void>
   /** Where libsession caches downloads. Empty when the bridge was opened without one. */
@@ -164,7 +211,7 @@ export interface SessionClient {
   /** How much disk the cached attachments occupy now, measured as the limit is. */
   getAttachmentCacheSize(): Promise<number>
   /**
-   * The side of the square thumbnails libsession makes, in device pixels, clamped to 64 to 1024.
+   * The height of the thumbnails libsession makes, in device pixels, clamped to 64 to 1024.
    * Kept on this device, and undefined forgets it, back to the edge the bridge was opened with.
    * Thumbnails already made keep the size they were made at.
    */
@@ -194,6 +241,26 @@ export interface AttachmentMedia {
 }
 
 /**
+ * How a loader is to draw an original or a rendition, from its header alone: the shim's
+ * `decode_plan`, which Android applies and desktop main serves by.
+ */
+export interface DecodePlan {
+  /** The longest edge to decode at, or 0 to decode it whole. */
+  edgePx: number
+  /** Whether to draw it still, as its first frame: anything past the budget. */
+  firstFrameOnly: boolean
+  /** Whether it is a GIF or PNG too large for a decoder that holds those whole to decode at all. */
+  exceedsWholeDecodeCeiling: boolean
+  /** Whether its size was read; one that was not is planned as the largest square, still. */
+  measured: boolean
+}
+
+/** What desktop main asks before it hands Chromium an original, which no `<img>` can bound. */
+export interface DecodePlanner {
+  planDecode(bytes: Uint8Array): DecodePlan
+}
+
+/**
  * A decoded ThumbHash: RGBA8, row-major, not alpha-premultiplied, `width * height * 4` long.
  *
  * Raw pixels rather than an encoded image, because the bridge is not the right place to pick a
@@ -213,8 +280,19 @@ export interface MediaSource {
   fetchMedia(ref: AttachmentRef): Promise<AttachmentMedia>
   fetchThumbhash(ref: AttachmentRef): Promise<AttachmentThumbhash>
   /**
-   * The attachment's thumbnail, a JPEG, from libsession's cache only: never a download. Refused
+   * The attachment's thumbnail, a JPEG, made locally by libsession: never a download. Refused
    * while `Attachment.hasThumbnail` is false.
    */
   fetchThumbnail(ref: AttachmentRef): Promise<Uint8Array>
+  /**
+   * The attachment's rendition, from libsession's cache only: never a download. Typed by what the
+   * bytes are, `image/jpeg` or `image/webp`. Refused while `Attachment.hasRendition` is false.
+   */
+  fetchRendition(ref: AttachmentRef): Promise<AttachmentMedia>
+  /**
+   * libsession's thumbnail of a local file staged to send, a JPEG at the edge it will make the sent
+   * file's at. Refused for a path `isStagedPath` refuses, a file that cannot be read, and anything
+   * that is not a picture.
+   */
+  fetchStagedThumbnail(path: string): Promise<Uint8Array>
 }

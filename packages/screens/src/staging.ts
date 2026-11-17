@@ -1,0 +1,223 @@
+import type { FilesPort, PickedFile } from '@session/app'
+import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import type { OutgoingAttachment, SendPlan } from '@session/client'
+
+/** What the last refused send held: files, or only text. */
+export type SendRefusal = 'none' | 'text' | 'files'
+
+/** What the composer turned away: what a pick or a drop left out, or a send. */
+export interface StagingRefusal {
+  /** Over the file server's limit, and not a picture re-encoding could shrink. */
+  tooLarge: PickedFile[]
+  /** A picture past libsession's decode limits. */
+  tooLargeToDecode: PickedFile[]
+  /** Gone since it was picked, or a picture whose header is damaged. */
+  unopenable: PickedFile[]
+  /** How many were left out because the message was full. */
+  overLimit: number
+  /** How many could not be read at all: a drop with no file on disk, or a picker that failed. */
+  unreadable: number
+  /** Whether libsession refused the last send, whose text and files are still in the composer. */
+  sendRefused: SendRefusal
+}
+
+export interface Staging {
+  files: PickedFile[]
+  refused: StagingRefusal
+  /**
+   * Picks that will not be staged, for their copy to go. A pick at a staged path is here only
+   * when it is refused, its staged entry with it.
+   */
+  unused: PickedFile[]
+  /**
+   * Staged entries a re-pick of their path replaced, or removed once it grew past the limit:
+   * their previews go. A replaced one's file stays; a removed one's goes with the pick in `unused`.
+   */
+  replaced: PickedFile[]
+}
+
+/** Whether libsession will refuse to send a file it planned this for. */
+function isRefusedPlan(plan: SendPlan): boolean {
+  switch (plan) {
+    case 'too-large-to-decode':
+    case 'too-large-for-server':
+    case 'unreadable':
+    case 'missing':
+      return true
+    case 'reencoded':
+    case 'as-is':
+    case 'original-cannot-decode':
+    case 'original-animated-png':
+      return false
+  }
+}
+
+export interface StagingOptions {
+  /** libsession's answer for each picked file, asked before it is staged. */
+  planOf: (file: PickedFile) => SendPlan
+  /**
+   * Whether every pick is a fresh copy, as on mobile, where the same photo picked twice never
+   * shares a path. Only then do a name and size say two picks are one file.
+   */
+  picksAreCopies: boolean
+}
+
+/** The refusals that name the files they turned away, one list per notice. */
+type NamedRefusals = Pick<StagingRefusal, 'tooLarge' | 'tooLargeToDecode' | 'unopenable'>
+
+function refusalOf(refused: NamedRefusals, plan: SendPlan): PickedFile[] {
+  if (plan === 'too-large-for-server') return refused.tooLarge
+  if (plan === 'too-large-to-decode') return refused.tooLargeToDecode
+  return refused.unopenable
+}
+
+/** What asking each staged file's plan again found: the files it can no longer send, by reason. */
+export interface Rechecked {
+  refused: Pick<StagingRefusal, 'tooLarge' | 'tooLargeToDecode' | 'unopenable'>
+  /** Every file named in `refused`, for the tray to drop. */
+  gone: PickedFile[]
+}
+
+/**
+ * Which staged files their plan now refuses, after libsession refused a send: a file deleted, moved
+ * or grown since it was staged, named as staging names it, so the tray stops holding it.
+ */
+export function recheck(answers: readonly (readonly [PickedFile, SendPlan])[]): Rechecked {
+  const refused: NamedRefusals = { tooLarge: [], tooLargeToDecode: [], unopenable: [] }
+  const gone: PickedFile[] = []
+  for (const [file, plan] of answers) {
+    if (!isRefusedPlan(plan)) continue
+    refusalOf(refused, plan).push(file)
+    gone.push(file)
+  }
+  return { refused, gone }
+}
+
+/**
+ * The file a staged entry already holds, unchanged since: at the same path, with the same size and
+ * modification time, both known. Never for picks that are copies, whose path is new every time.
+ */
+export function unchangedRepick(
+  staged: readonly PickedFile[],
+  file: PickedFile,
+  { picksAreCopies }: Pick<StagingOptions, 'picksAreCopies'>,
+): boolean {
+  if (picksAreCopies || file.size === undefined || file.modifiedMs === undefined) return false
+  return staged.some(
+    (entry) =>
+      entry.path === file.path && entry.size === file.size && entry.modifiedMs === file.modifiedMs,
+  )
+}
+
+function sameFile(
+  a: PickedFile,
+  b: PickedFile,
+  { picksAreCopies }: Pick<StagingOptions, 'picksAreCopies'>,
+): boolean {
+  if (a.path === b.path) return true
+  return picksAreCopies && a.size !== undefined && a.size === b.size && a.name === b.name
+}
+
+/**
+ * Adds what was picked or dropped to what is already staged, refusing what cannot be sent.
+ *
+ * In the order given, so the tray and the message read in the order somebody chose. A file already
+ * staged is not refused: choosing it twice is not a mistake worth a notice. One picked again at
+ * its path replaces the staged entry, so a file edited since is drawn as it is now; one unchanged
+ * never gets here, kept as staged before its plan is asked (`unchangedRepick`). What may be
+ * staged at all is libsession's send plan to say.
+ */
+export function stage(
+  staged: readonly PickedFile[],
+  picked: readonly PickedFile[],
+  options: StagingOptions,
+): Staging {
+  const files = [...staged]
+  const refused: NamedRefusals = {
+    tooLarge: [],
+    tooLargeToDecode: [],
+    unopenable: [],
+  }
+  const unused: PickedFile[] = []
+  const replaced: PickedFile[] = []
+  let overLimit = 0
+
+  for (const file of picked) {
+    const at = files.findIndex((staged) => sameFile(staged, file, options))
+    const already = files[at]
+    const plan = options.planOf(file)
+    const sendable = !isRefusedPlan(plan)
+    if (already !== undefined && already.path !== file.path) {
+      unused.push(file)
+      continue
+    }
+    if (already !== undefined) {
+      replaced.push(already)
+      if (sendable) {
+        files[at] = file
+        continue
+      }
+      // Changed since it was staged so that it cannot be sent: refused now, not at the upload.
+      files.splice(at, 1)
+    }
+    if (!sendable) {
+      refusalOf(refused, plan).push(file)
+      unused.push(file)
+      continue
+    }
+    if (files.length >= MAX_ATTACHMENTS_PER_MESSAGE) {
+      overLimit += 1
+      unused.push(file)
+      continue
+    }
+    files.push(file)
+  }
+
+  return {
+    files,
+    refused: { ...refused, overLimit, unreadable: 0, sendRefused: 'none' },
+    unused,
+    replaced,
+  }
+}
+
+export function sizeOf(file: PickedFile): string | undefined {
+  return file.size === undefined ? undefined : formatBytes(file.size)
+}
+
+export function unstage(staged: readonly PickedFile[], path: string): PickedFile[] {
+  return staged.filter((file) => file.path !== path)
+}
+
+export function isFull(staged: readonly PickedFile[]): boolean {
+  return staged.length >= MAX_ATTACHMENTS_PER_MESSAGE
+}
+
+/** What a send hands libsession for a staged pick: a copy the app made is given to it outright. */
+export function outgoingAttachment(
+  file: PickedFile,
+  { picksAreCopies }: Pick<StagingOptions, 'picksAreCopies'>,
+): OutgoingAttachment {
+  return {
+    path: file.path,
+    // A mobile copy's own name is prefixed to keep it apart from the others.
+    filename: file.name,
+    ...(file.contentType === undefined ? {} : { contentType: file.contentType }),
+    ...(picksAreCopies ? { takeFile: true } : {}),
+  }
+}
+
+/**
+ * Lets go of picks leaving the tray: every one's preview, and, unless a message being sent took
+ * them, the copy the app made.
+ */
+export function letGo(
+  port: Pick<FilesPort, 'discardPicked' | 'releasePreview'>,
+  files: readonly PickedFile[],
+  { sent }: { sent: boolean },
+): void {
+  for (const file of files) {
+    port.releasePreview(file)
+    if (!sent) port.discardPicked(file)
+  }
+}

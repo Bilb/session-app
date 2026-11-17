@@ -1,9 +1,11 @@
-import { useContext } from 'react'
+import { useContext, useEffect, useRef } from 'react'
 import { YStack } from 'tamagui'
 
 import { InteractionOverride, useForcedFocus } from './interactionOverride'
 
 import { focusRing, keyboardPress, type FocusRingShape } from './keyboardPress'
+import { pressHint } from './pressHint'
+import { useListTabIndex } from './listFocus'
 import type { PressAreaProps } from './PressArea.types'
 
 export type { PressAreaProps }
@@ -32,18 +34,28 @@ export function PressArea({
   disabled = false,
   fill = false,
   accessibilityLabel,
+  accessibilityHint,
   role = 'button',
   checked,
   ring = PAGE_RING,
   busy = false,
+  focusOnMount = false,
   testID,
   children,
 }: PressAreaProps) {
   const press = disabled ? undefined : onPress
   const forced = useContext(InteractionOverride)
   const forcedFocus = useForcedFocus()
+  const tabIndex = useListTabIndex()
+  const element = useRef<HTMLElement | null>(null)
+  useEffect(() => {
+    // Without scrolling: the control can arrive in a box that is still opening, clipped, and the
+    // browser would scroll that box to show it, sliding the content up under its top edge.
+    if (focusOnMount) element.current?.focus({ preventScroll: true })
+  }, [focusOnMount])
   return (
     <YStack
+      ref={element as never}
       {...(fill ? { flex: 1 } : {})}
       role={role}
       {...(checked === undefined ? {} : { 'aria-checked': checked })}
@@ -51,9 +63,10 @@ export function PressArea({
       userSelect="none"
       disabled={disabled}
       onPress={press}
-      {...keyboardPress(press, focusRing(ring))}
+      {...keyboardPress(press, focusRing(ring), tabIndex)}
       {...(press === undefined ? {} : forcedFocus)}
       aria-label={accessibilityLabel}
+      {...pressHint(accessibilityHint)}
       aria-busy={busy}
       testID={testID}
     >

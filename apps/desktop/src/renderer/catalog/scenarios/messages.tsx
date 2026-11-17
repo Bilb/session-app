@@ -1,4 +1,4 @@
-import { MessageRow } from '@session/screens'
+import { MessageRow, TranscriptWidth } from '@session/screens'
 import { defineStory, type AnyStory } from '@session/ui/catalog'
 
 import { useScenario } from './ScenarioProvider'
@@ -12,7 +12,13 @@ function ScenarioMessage({ body }: ScenarioRow) {
   const scenario = useScenario()
   const messageId = scenario?.messageIds.get(body)
   if (scenario === null || messageId === undefined) return null
-  return <MessageRow conversationId={scenario.conversationId} messageId={messageId} index={0} />
+  // Measured as the conversation measures its transcript, so an album shrinks to fit a narrow cell
+  // rather than drawing at its narrowest wherever it is.
+  return (
+    <TranscriptWidth>
+      <MessageRow conversationId={scenario.conversationId} messageId={messageId} index={0} />
+    </TranscriptWidth>
+  )
 }
 
 const MESSAGE_WIDTH = 420
@@ -32,7 +38,7 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
     'albumShapes',
     [
       'One picture',
-      'Three: one big, two stacked',
+      'Three: one above two',
       'Twelve, so seven are behind the count',
       'Three with no hash to draw',
       'Five with no hash to draw',
@@ -41,8 +47,43 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
   ),
   message(
     'albumStates',
-    ['Two, as halves', 'Four, an even grid', 'Five: one big beside a quad', 'Thirty-two'],
+    ['Two, one above the other', 'Four in two rows', 'Five: two above three', 'Thirty-two'],
     {},
+  ),
+  // The footer's ring in the verb's place, at each reading, on a bubble received and on ours. The
+  // capture asks for reduced motion, so the 0 of 0 ring's arc is held at the top of its closed
+  // track.
+  message(
+    'albumDownloading',
+    [
+      'A pair for the ring at 0 of 0',
+      'A pair for the ring at 40%',
+      'A pair for the ring at 95%',
+      'Ours from another device, for the ring at 0 of 0',
+      'Ours from another device, for the ring at 40%',
+      'Ours from another device, for the ring at 95%',
+    ],
+    { rtl: true },
+  ),
+  // The ring in every accent, on one received pair and one of ours: all six in every accent is a
+  // page past the capture's height.
+  message(
+    'albumDownloadingAccent',
+    ['A pair for the ring at 40%', 'Ours from another device, for the ring at 40%'],
+    { accent: true },
+  ),
+  // A message's one attachment as a list: no control on the row, the footer's verb or ring alone,
+  // ours uploading included.
+  message(
+    'loneFile',
+    [
+      'One file',
+      'One file, caught downloading',
+      'One picture as a list',
+      'One picture as a list, caught downloading',
+      'One file, caught uploading',
+    ],
+    { rtl: true },
   ),
   message(
     'files',
@@ -56,5 +97,43 @@ export const MESSAGE_SCENARIOS: readonly AnyStory[] = [
       'Four of these five are gone',
     ],
     { rtl: true },
+  ),
+  // Ours, so drawn on the accent. Uploading, the moving file's row fills its ring; the footer's
+  // ring waits while a file after it has not begun, since only then is the set's size known.
+  message(
+    'sending',
+    [
+      'Still uploading, one at a time',
+      'File 31 of 32 failed',
+      'Gallery whose 31st failed',
+      'A file of this one went missing',
+    ],
+    { accent: true, rtl: true },
+  ),
+  // The footer's ring at a reading, once the last file is moving: a list and an album. Apart from
+  // `sending`, which in every accent already fills the capture's height.
+  message('uploading', ['The last of three uploading', 'A pair, the second uploading'], {
+    rtl: true,
+  }),
+  message(
+    'sendStops',
+    [
+      'Nothing up yet, the first uploading',
+      'Failed before any file was up',
+      'Interrupted with one file up',
+      'Only text, and it failed',
+      'Pictures only, and one cannot be sent',
+    ],
+    { accent: true },
+  ),
+  message(
+    'fileForms',
+    [
+      'An animated PNG, as a file',
+      'Shown as a list by its reader',
+      'Two photos sent as the originals',
+      'A photo sent as the original, and the paperwork',
+    ],
+    {},
   ),
 ]

@@ -1,4 +1,4 @@
-import type { NetworkName, WithSpan } from '@session/basic-types'
+import type { NetworkName, QrMark, WithSpan } from '@session/basic-types'
 import type { AttachmentRef, PixelSize } from '@session/client'
 import type { BuildFacts, DiagnosticsSnapshot, ExportPart, LogFileInfo } from '@session/logging'
 /**
@@ -29,18 +29,55 @@ export interface PickedFile {
   /** A real filesystem path: libsession takes paths, not blobs. */
   path: string
   name: string
-  contentType?: string
-  size?: number
+  contentType?: string | undefined
+  size?: number | undefined
+  /**
+   * When the file was last changed, where the platform says: with its size, what tells a file
+   * picked again unchanged from one edited since.
+   */
+  modifiedMs?: number | undefined
+  /**
+   * A URL the platform can draw the file from, where it is a picture. Nothing for anything else:
+   * a video has no still yet, so it stages as a document.
+   */
+  previewUrl?: string | undefined
 }
 
 export interface FilesPort {
   pickFiles(options?: { multiple?: boolean }): Promise<PickedFile[]>
-  pickImages(options?: { multiple?: boolean }): Promise<PickedFile[]>
+  /** `limit` is how many more the message can take, which a picker that can stop at it does. */
+  pickImages(options?: { multiple?: boolean; limit?: number | undefined }): Promise<PickedFile[]>
+  /**
+   * The files behind what was dropped on the window, as `DropZone` handed them over.
+   *
+   * Only desktop takes a drop, and only it can say where a dropped file lives on disk. Anything
+   * not on disk -- a picture dragged out of a browser -- has no path and is left out.
+   */
+  droppedFiles(items: readonly unknown[]): Promise<PickedFile[]>
+  /**
+   * Whether each pick is a copy the app made, which a fresh path for the same file says nothing
+   * against. True on mobile; on desktop a pick is the person's own file at its own path.
+   */
+  picksAreCopies: boolean
+  /**
+   * Lets go of a pick that will not be sent: deletes the app's copy, where it made one.
+   *
+   * Never for a file a message has been given: a copy is then libsession's, handed over with
+   * `takeFile`, and the person's own file is not the app's to delete.
+   */
+  discardPicked(file: PickedFile): void
+  /**
+   * Lets go of what the platform holds for a pick in the tray, for every pick that leaves it, sent
+   * or not. Desktop grants the page each preview, and the right to send the file; a preview grant
+   * held for a file nobody draws pushes out one in use.
+   */
+  releasePreview(file: PickedFile): void
   /**
    * Where to export a file to; null when the person cancelled.
    *
    * `contentType` is the sender's claim, for a platform whose destination depends on the kind of
-   * file: mobile sends a picture to the photo library and anything else to a folder.
+   * file: mobile sends a picture to the photo library and anything else to a folder. Unset files
+   * it as a plain file, which is how a picture sent as its original file is exported.
    *
    * Rejects with `ExportAccessRefused` when that destination needs access that was refused.
    */
@@ -53,6 +90,13 @@ export interface FilesPort {
    * path, and neither a photo library nor a picked folder is one.
    */
   revealInFolder(path: string): Promise<void>
+  /**
+   * Saves a QR code of `value` as a PNG wherever the person chooses, with `mark` in its middle
+   * where there is one, or null where there is no file to save it to. Desktop only, as in the
+   * legacy desktop client, which offers it on the recovery password's full-screen QR. Resolves
+   * false when the person cancelled.
+   */
+  saveQrCode: ((value: string, mark: QrMark | null) => Promise<boolean>) | null
 }
 
 /**
@@ -76,11 +120,23 @@ export interface MediaPort {
    */
   thumbhashUrlFor(ref: AttachmentRef): string | null
   /**
-   * The square JPEG libsession made of a picture it holds, which is what a tile draws: a viewer
-   * draws `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail`
-   * says there is one.
+   * The JPEG libsession made of a picture it holds, in the picture's shape (`Attachment`'s
+   * `thumbnailWidthPx` by `thumbnailHeightPx`), which is what a tile draws: a viewer draws
+   * `urlFor`. Never a download, so only worth asking for when `Attachment.hasThumbnail` says there
+   * is one.
+   *
+   * TODO: an animated thumbnail for an animated GIF or WebP, so it plays in the conversation and
+   * not only in the viewer. Today this is a still of the first frame; libsession would make an
+   * animated WebP on demand, and desktop main, the iOS loader and anything wanting a still assume
+   * a JPEG.
    */
   thumbnailUrlFor(ref: AttachmentRef): string | null
+  /**
+   * The display copy libsession made of a picture it holds, which the viewer draws in place of
+   * the file. Never a download, so only worth asking for when `Attachment.hasRendition` says
+   * there is one.
+   */
+  renditionUrlFor(ref: AttachmentRef): string | null
 }
 
 export interface MediaProbePort {
@@ -139,6 +195,12 @@ export interface NotificationsPort {
 export interface ClipboardPort {
   setString(value: string): Promise<void>
   /**
+   * Copies something secret, such as the recovery password. Marked sensitive where the OS has a
+   * flag for it -- Android 13 and later, whose clipboard preview then hides it -- and copied as
+   * `setString` would anywhere else.
+   */
+  setSecret(value: string): Promise<void>
+  /**
    * Whether the OS says so itself when something is copied, so the app should not as well.
    * Android 13 and later show a clipboard preview on every copy.
    */
@@ -174,6 +236,13 @@ export interface SharePort {
    * Null rather than a no-op, so a screen leaves out what would only send through it.
    */
   shareText: ((text: string) => Promise<void>) | null
+  /**
+   * Hands a QR code of `value`, with `mark` in its middle where there is one, to the share sheet
+   * as a PNG, from which it can be saved to Files, or null where there is no sheet (the desktop
+   * saves it instead: `files.saveQrCode`). Never to the photo library, which backs itself up to
+   * the cloud.
+   */
+  shareQrCode: ((value: string, mark: QrMark | null) => Promise<void>) | null
 }
 
 export interface WindowPort {
@@ -185,8 +254,9 @@ export interface WindowPort {
    * and names have sat in JavaScript strings, which nothing can scrub, and only the end of the
    * process gives that memory back.
    *
-   * Desktop closes its window, which with one window is quitting. The phones end the process at
-   * once, without the teardown `exit()` runs -- see `modules/process-exit` in the mobile app. Null
+   * Desktop quits through main, which ends the process on macOS too, where closing the last window
+   * does not. The phones end the process at once, without the teardown `exit()` runs -- see
+   * `modules/process-exit` in the mobile app. Null
    * where a phone build predates that module, so a screen omits the control rather than offering
    * one that does nothing.
    */
@@ -200,9 +270,36 @@ export interface WindowPort {
    * so it is null there and the caller falls back to `close`.
    */
   restart: (() => void) | null
+  /**
+   * Keeps whatever is on screen out of screenshots, recordings and the recents thumbnail while
+   * `true`, or null where the platform is not asked to. Android's secure window flag; a screen
+   * that shows a secret sets it on the way in and clears it on the way out.
+   *
+   * Resolves once the window has it, for whatever then has to be drawn after. Counted: the flag
+   * clears a moment after the last `true` is matched by a `false`, so a screen that is mounted
+   * again in place never leaves a gap with it off.
+   */
+  preventScreenCapture: ((prevented: boolean) => Promise<void>) | null
   isFocused(): boolean
   /** Drives read receipts and whether a notification is worth showing. */
   onFocusChange(handler: (focused: boolean) => void): () => void
+  /**
+   * The list of keyboard shortcuts, or null where the app handles none.
+   *
+   * Null on the phones and tablets: React Native hands JavaScript no key events on iOS, so the keys
+   * the screens handle work in the desktop app only (#533).
+   */
+  keyboardShortcuts: KeyboardShortcutsPort | null
+}
+
+export interface KeyboardShortcutsPort {
+  /** Whether the keys are named as a Mac's keyboard prints them (⌘ ⇧) or as a PC's (Ctrl Shift). */
+  keyNames: 'mac' | 'pc'
+  /**
+   * Called when the person picks Help > Keyboard Shortcuts, from the menu bar or with Ctrl+/ (⌘/
+   * on a Mac).
+   */
+  onOpenList(handler: () => void): () => void
 }
 
 export interface NetworkPort {

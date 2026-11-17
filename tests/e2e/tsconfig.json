@@ -4,10 +4,13 @@
     "types": ["node"]
   },
   "include": [
+    "catalog",
     "harness",
     "scripts",
     "specs",
+    "tests",
     "playwright.config.ts",
-    "playwright.unfiltered.config.ts"
+    "playwright.unfiltered.config.ts",
+    "vitest.config.ts"
   ]
 }

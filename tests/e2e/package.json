@@ -4,21 +4,28 @@
   "private": true,
   "description": "One flow, run against every client",
   "type": "module",
+  "imports": {
+    "#catalog/*": [
+      "./catalog/*.ts"
+    ]
+  },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "node --disable-warning=ExperimentalWarning scripts/checkProjects.ts",
+    "test": "vitest run && node --disable-warning=ExperimentalWarning scripts/checkProjects.ts",
     "test:e2e:fast": "playwright test --project desktop",
     "test:e2e:android": "playwright test --project android",
     "test:e2e:ios": "playwright test --project ios",
     "test:e2e:full": "playwright test",
     "test:catalog": "catalog/capture.sh",
-    "catalog:upload": "argos upload"
+    "catalog:upload": "argos upload",
+    "catalog:compare": "node --disable-warning=ExperimentalWarning catalog/compare.ts"
   },
   "devDependencies": {
     "@argos-ci/cli": "catalog:",
     "@axe-core/playwright": "catalog:",
     "@playwright/test": "catalog:",
+    "@session/app": "workspace:*",
     "@session/eslint-config": "workspace:*",
     "@session/expectations": "workspace:*",
     "@session/localization": "workspace:*",
@@ -26,8 +33,12 @@
     "@session/theme-tokens": "workspace:*",
     "@session/typescript-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/pngjs": "catalog:",
     "eslint": "catalog:",
+    "pixelmatch": "catalog:",
+    "pngjs": "catalog:",
     "typescript": "catalog:",
+    "vitest": "catalog:",
     "webdriverio": "catalog:"
   }
 }

@@ -1,15 +1,18 @@
 import { formatBytes } from '@session/basic-types'
-import { PENDING_COPY, tr } from '@session/localization'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { useSessionActions, type CacheSettings } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import { SettingsGroup, SettingsRow, SettingsSection, Text, YStack } from '@session/ui'
 import { useEffect, useState } from 'react'
 
 function limitLabel(bytes: number | undefined): string {
-  return bytes === undefined ? PENDING_COPY.attachmentCacheNoLimit : formatBytes(bytes)
+  return bytes === undefined ? PENDING_COPY.attachmentCacheNoLimit : isolate(formatBytes(bytes))
 }
 
-/** A figure at a row's trailing side. */
+/**
+ * A figure at a row's trailing side. A size comes isolated, since on a right-to-left page its unit
+ * would otherwise come before its number.
+ */
 function Figure({ value }: { value: string }) {
   return (
     <Text size="$label" tone="secondary">
@@ -52,7 +55,9 @@ export function AttachmentCacheSection() {
         <SettingsRow
           label={PENDING_COPY.attachmentCacheUsage}
           trailing={
-            <Figure value={settings === null ? tr('loading') : formatBytes(settings.usageBytes)} />
+            <Figure
+              value={settings === null ? tr('loading') : isolate(formatBytes(settings.usageBytes))}
+            />
           }
           testID={ELEMENT.settings.cacheUsage}
         />

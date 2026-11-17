@@ -1,32 +1,38 @@
 import { requirePorts, URLS, useDebugMode, useNav, routes } from '@session/app'
-import { toPlainText, tr } from '@session/localization'
-import { useAccount, useSessionActions } from '@session/state'
+import { PENDING_COPY, toPlainText, tr } from '@session/localization'
+import {
+  useAccount,
+  useNetworkStatus,
+  useRecoveryPasswordHidden,
+  useSessionActions,
+} from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
-  Avatar,
   Button,
-  LABEL_MAX_SCALE,
   ProBadge,
   RecoveryPasswordShield,
   SessionTokenMark,
   SettingsGroup,
+  SettingsNote,
   SettingsRow,
+  StatusDot,
   Text,
   useModals,
-  XStack,
   YStack,
   type SettingsRowProps,
   type Modals,
 } from '@session/ui'
 import { useState } from 'react'
 
-import { AccountIdControls } from './AccountIdControls'
+import { AccountHeader } from './AccountHeader'
 import { confirmLink } from './confirmLink'
 import { ConversationsPage } from './ConversationsPage'
 import { HelpPage } from './HelpPage'
+import { openRecoveryPassword } from './RecoveryPasswordPage'
 import { SessionInfo } from './SessionInfo'
 import { endAfterClear } from '../endAfterClear'
 import { LocalizedText } from '../LocalizedText'
+import { pathStatusLabel, pathStatusTone } from '../pathStatus'
 
 /**
  * Off the size scale on purpose: a brand badge sized to sit level with the row's icons. At 16 its
@@ -37,12 +43,20 @@ const PRO_BADGE = 14.5
 /** One row of the root list, as `SettingsRow` takes it. */
 type RowSpec = Pick<
   SettingsRowProps,
-  'label' | 'icon' | 'onPress' | 'accentIcon' | 'destructive'
+  | 'label'
+  | 'icon'
+  | 'onPress'
+  | 'accentIcon'
+  | 'destructive'
+  | 'trailing'
+  | 'trailingYields'
+  | 'wideTrailing'
 > & {
   testID: string
 }
 
-const PROFILE_AVATAR = 90
+/** Secondary text in place of a row, which says why the row is not there. */
+type NoteSpec = { note: string; testID: string }
 
 /** Asks before deleting everything on the device, on top of the settings modal. */
 function confirmClearData(modals: Modals, clear: () => Promise<void>): void {
@@ -111,62 +125,6 @@ function ClearDataActions({
   )
 }
 
-/** "Your Account ID" in a pill between two rules. */
-function AccountIdPill() {
-  return (
-    <XStack alignSelf="stretch" alignItems="center">
-      <YStack flex={1} height={1} backgroundColor="$bordersColor" />
-      <YStack
-        paddingTop="$2xs"
-        paddingBottom="$2xs"
-        paddingHorizontal="$sm"
-        borderRadius="$full"
-        borderWidth={1}
-        borderColor="$bordersColor"
-      >
-        <Text
-          size="$body"
-          tone="secondary"
-          userSelect="none"
-          maxFontSizeMultiplier={LABEL_MAX_SCALE}
-        >
-          {tr('accountIdYours')}
-        </Text>
-      </YStack>
-      <YStack flex={1} height={1} backgroundColor="$bordersColor" />
-    </XStack>
-  )
-}
-
-/**
- * The account, above the rows. The ID is what someone needs to message this account, so it wraps
- * rather than truncates, with a copy control beside it; on desktop the ID copies when pressed too.
- */
-function AccountHeader({ sessionId, name }: { sessionId: string; name: string }) {
-  return (
-    <YStack
-      alignItems="center"
-      gap="$sm"
-      // No bottom padding: the page's gap already separates the ID from the first group.
-      paddingTop="$lg"
-    >
-      <Avatar id={sessionId} name={name} size={PROFILE_AVATAR} />
-      {name === '' ? null : (
-        <Text
-          size="$headingLarge"
-          weight="bold"
-          maxFontSizeMultiplier={LABEL_MAX_SCALE}
-          testID={ELEMENT.settings.displayName}
-        >
-          {name}
-        </Text>
-      )}
-      <AccountIdPill />
-      <AccountIdControls sessionId={sessionId} />
-    </YStack>
-  )
-}
-
 /**
  * The landing screen of the settings modal: the account, then five unheaded groups of rows.
  *
@@ -178,6 +136,7 @@ export function SettingsRootPage() {
   const actions = useSessionActions()
   const modals = useModals()
   const nav = useNav()
+  const networkStatus = useNetworkStatus()
 
   // No fallback: without an account there is no honest ID to show, so the caller is at fault.
   if (account?.sessionId === undefined)
@@ -187,10 +146,11 @@ export function SettingsRootPage() {
   const name = account.displayName ?? ''
   const shareText = requirePorts().share.shareText
   const debugMode = useDebugMode()
+  const recoveryPasswordHidden = useRecoveryPasswordHidden()
 
   const row = ELEMENT.settings.row
   // Rows without `onPress` draw disabled: their screens are not built yet.
-  const groups: RowSpec[][] = [
+  const groups: Array<Array<RowSpec | NoteSpec>> = [
     [
       {
         label: tr('upgradeSession'),
@@ -222,8 +182,25 @@ export function SettingsRootPage() {
           confirmLink(modals, URLS.donationsApp)
         },
       },
-      // The live onion-path icon and path modal both wait on the path screen.
-      { label: tr('onionRoutingPath'), icon: 'info', testID: row('onion-path') },
+      // The path's live state, as a dot named in words. TODO: open the path screen, which needs
+      // the nodes of the current path that libsession's `get_path_to` has and the bridge does not
+      // carry yet.
+      {
+        label: tr('onionRoutingPath'),
+        icon: (
+          <StatusDot tone={pathStatusTone(networkStatus)} testID={ELEMENT.settings.pathStatus} />
+        ),
+        // The state qualifies the row's name, so it is what truncates in a language where the two
+        // do not fit side by side; at the accessibility sizes it goes under the name instead.
+        trailingYields: true,
+        wideTrailing: true,
+        trailing: (
+          <Text size="$body" tone="secondary" numberOfLines={1}>
+            {pathStatusLabel(networkStatus)}
+          </Text>
+        ),
+        testID: row('onion-path'),
+      },
       { label: tr('networkName'), icon: SessionTokenMark, testID: row('network') },
     ],
     [
@@ -251,11 +228,25 @@ export function SettingsRootPage() {
       { label: tr('preferences'), icon: 'settings', testID: row('preferences') },
     ],
     [
-      {
-        label: tr('sessionRecoveryPassword'),
-        icon: RecoveryPasswordShield,
-        testID: row('recovery-password'),
-      },
+      // Gone once hidden on this device, as on every legacy client, with a line saying so in its
+      // place: people who hid it write in asking where it went.
+      ...(recoveryPasswordHidden
+        ? [
+            {
+              note: PENDING_COPY.recoveryPasswordHiddenOnDevice,
+              testID: row('recovery-password-hidden'),
+            } satisfies NoteSpec,
+          ]
+        : [
+            {
+              label: tr('sessionRecoveryPassword'),
+              icon: RecoveryPasswordShield,
+              testID: row('recovery-password'),
+              onPress: () => {
+                openRecoveryPassword(modals, actions)
+              },
+            } satisfies RowSpec,
+          ]),
       {
         label: tr('sessionHelp'),
         icon: 'circleHelp',
@@ -294,9 +285,13 @@ export function SettingsRootPage() {
       <AccountHeader sessionId={sessionId} name={name} />
       {groups.map((rows) => (
         <SettingsGroup key={rows[0]?.testID}>
-          {rows.map((spec) => (
-            <SettingsRow key={spec.testID} {...spec} disabled={spec.onPress === undefined} />
-          ))}
+          {rows.map((spec) =>
+            'note' in spec ? (
+              <SettingsNote key={spec.testID} text={spec.note} testID={spec.testID} />
+            ) : (
+              <SettingsRow key={spec.testID} {...spec} disabled={spec.onPress === undefined} />
+            ),
+          )}
         </SettingsGroup>
       ))}
 

@@ -4,9 +4,23 @@ export type { FetchLike } from './discoverSeedNodes'
 export { serveNativeMediaFrom } from './nativeMedia'
 export { createNativeBridgeTransport } from './nativeTransport'
 export { BRIDGE_UNAVAILABLE, createRefusingTransport } from './refusingTransport'
+export { createKeylessTransport } from './keylessTransport'
+export {
+  DatabaseKeyError,
+  KEY_INVALID,
+  KEY_MISSING,
+  KEY_UNAVAILABLE,
+  isDatabaseKeyCode,
+  keyInvalid,
+  keyMissing,
+  keyUnavailable,
+} from './databaseKey'
+export type { DatabaseKeyCode } from './databaseKey'
 export {
   ATTACHMENT_FILE_MISSING,
   ATTACHMENT_NOT_FOUND,
+  ATTACHMENT_TOO_LARGE,
+  ATTACHMENT_UNREADABLE,
   FILE_DOWNLOAD_CANCELLED,
   FILE_DOWNLOAD_FAILED,
   FILE_NOT_FOUND,
@@ -26,16 +40,21 @@ export type {
   Conversation,
   ConversationId,
   ConversationKind,
+  ConversationList,
   Deletion,
   ExportAttachmentOptions,
   Frame,
+  ListPlacement,
   Message,
   MessageCursor,
+  NetworkStatus,
+  OutgoingAttachment,
   PixelSize,
   Reply,
   Request,
   Response,
   Result,
+  SendPlan,
   SendState,
   SessionBridgeOptions,
   SessionEvent,
@@ -47,6 +66,8 @@ export type {
   AttachmentMedia,
   AttachmentThumbhash,
   BridgeTransport,
+  DecodePlan,
+  DecodePlanner,
   MediaSource,
   MessagePage,
   OutgoingMessage,

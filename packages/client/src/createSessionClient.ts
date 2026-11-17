@@ -8,12 +8,15 @@ import type {
   ConversationId,
   Deletion,
   Frame,
+  NetworkStatus,
   Request,
   Response,
   Result,
+  SendPlan,
   SessionEvent,
 } from '@session/bridge-types'
 
+import { isDatabaseKeyCode } from './databaseKey'
 import { BridgeClosedError, SessionClientError } from './errors'
 import { BRIDGE_UNAVAILABLE } from './refusingTransport'
 import type {
@@ -73,9 +76,10 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       if (!waiting) return
       pending.delete(response.id)
       if (response.error !== undefined) {
-        // A refusal from a bridge that could not be made is not about the command that met it.
+        // A refusal from a bridge that could not be made, for want of a key or otherwise, is not
+        // about the command that met it.
         const message =
-          response.code === BRIDGE_UNAVAILABLE
+          response.code === BRIDGE_UNAVAILABLE || isDatabaseKeyCode(response.code)
             ? response.error
             : `${waiting.command}: ${response.error}`
         waiting.reject(new SessionClientError(message, response.code))
@@ -158,12 +162,27 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       await call({ type: 'keepAccount' })
     },
 
-    async getSeedMnemonic(language): Promise<string[]> {
+    async getSeedMnemonic(language): Promise<string[] | null> {
       const response = await call({
         type: 'getSeedMnemonic',
         ...(language === undefined ? {} : { language }),
       })
+      if (response.result?.type === 'seedHidden') return null
       return resultOf(response, 'mnemonic').words
+    },
+
+    async getSeedHex(): Promise<string | null> {
+      const response = await call({ type: 'getSeedHex' })
+      if (response.result?.type === 'seedHidden') return null
+      return resultOf(response, 'hex').hex
+    },
+
+    async hideRecoveryPassword(): Promise<void> {
+      await call({ type: 'hideRecoveryPassword' })
+    },
+
+    async getRecoveryPasswordHidden(): Promise<boolean> {
+      return resultOf(await call({ type: 'getRecoveryPasswordHidden' }), 'bool').value
     },
 
     async setDisplayName(name): Promise<void> {
@@ -263,12 +282,20 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
         conversationId: id,
         body: message.body,
         ...(message.replyTo === undefined ? {} : { replyTo: message.replyTo }),
+        ...(message.attachments === undefined || message.attachments.length === 0
+          ? {}
+          : { attachments: message.attachments }),
       })
       return resultOf(response, 'messageId').messageId
     },
 
     async retrySend(messageId): Promise<boolean> {
       const response = await call({ type: 'retrySend', messageId })
+      return resultOf(response, 'bool').value
+    },
+
+    async setGallery(messageId, gallery): Promise<boolean> {
+      const response = await call({ type: 'setGallery', messageId, gallery })
       return resultOf(response, 'bool').value
     },
 
@@ -292,13 +319,35 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
       return resultOf(response, 'path').path
     },
 
+    async attachmentSendPlan(path, contentType): Promise<SendPlan> {
+      const response = await call({
+        type: 'attachmentSendPlan',
+        path,
+        ...(contentType === undefined ? {} : { contentType }),
+      })
+      return resultOf(response, 'sendPlan').plan
+    },
+
     async setAutoDownload(id, mode: AutoDownload): Promise<void> {
       await call({ type: 'setAutoDownload', conversationId: id, mode })
+    },
+
+    async getNetworkStatus(): Promise<NetworkStatus> {
+      const response = await call({ type: 'getNetworkStatus' })
+      return resultOf(response, 'networkStatus').status
     },
 
     async getCacheDir(): Promise<string> {
       const response = await call({ type: 'getCacheDir' })
       return resultOf(response, 'path').path
+    },
+
+    async getAttachmentUploadLimit(): Promise<number> {
+      const response = await call({ type: 'getAttachmentUploadLimit' })
+      const { bytes } = resultOf(response, 'byteCount')
+      if (bytes === undefined)
+        throw new SessionClientError('getAttachmentUploadLimit answered no limit')
+      return bytes
     },
 
     async getAttachmentCacheLimit(): Promise<number | undefined> {

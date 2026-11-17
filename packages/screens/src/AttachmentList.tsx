@@ -1,9 +1,10 @@
 import type { Attachment, Message } from '@session/client'
-import { tr } from '@session/localization'
+import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import { forwardChevron, Icon, inkFor, PressArea, Text, XStack, YStack } from '@session/ui'
 
 import { AttachmentRow } from './AttachmentRow'
+import { failsPast } from './uploadState'
 
 /**
  * How many rows a message draws before the rest moves into a sheet.
@@ -24,10 +25,13 @@ function ShowAll({
   count,
   onPress,
   onAccent,
+  failedHidden,
 }: {
   count: number
   onPress: () => void
   onAccent: boolean
+  /** Set when a file it hides failed to upload, which nothing in the transcript would show. */
+  failedHidden: boolean
 }) {
   return (
     <PressArea
@@ -40,6 +44,18 @@ function ShowAll({
           <Text size="$label" weight="semibold" {...inkFor('link', onAccent)} flex={1}>
             {tr('showAll')}
           </Text>
+          {failedHidden ? (
+            <XStack
+              alignItems="center"
+              gap="$3xs"
+              testID={ELEMENT.conversation.attachmentShowAllFailed}
+            >
+              <Icon name="triangleAlert" size="xs" {...inkFor('primary', onAccent)} />
+              <Text size="$label" weight="semibold" {...inkFor('primary', onAccent)}>
+                {PENDING_COPY.attachmentsFailedCount(1)}
+              </Text>
+            </XStack>
+          ) : null}
           <Text size="$label" {...inkFor('secondary', onAccent)}>
             {count}
           </Text>
@@ -57,7 +73,9 @@ function ShowAll({
  * only the documents would be the second half of a message whose first half is a gallery.
  *
  * Each row carries its own state, its own progress and its own control - which is what the album
- * cannot do, because a tile has nowhere to put one.
+ * cannot do, because a tile has nowhere to put one. **Except a message's one row**: its footer's
+ * verb is already the one control for that file, as it is under an album of one picture, so the
+ * row leaves its own out and the control stays where it was when the view switches.
  */
 export function AttachmentList({
   message,
@@ -78,6 +96,7 @@ export function AttachmentList({
   const capped =
     onShowAll === undefined ? message.attachments : message.attachments.slice(0, LIST_MAX_ROWS)
   const hidden = message.attachments.length - capped.length
+  const alone = message.attachments.length === 1
 
   return (
     <YStack>
@@ -87,10 +106,16 @@ export function AttachmentList({
           message={message}
           attachment={attachment}
           onAccent={onAccent}
+          hasControl={!alone}
         />
       ))}
       {hidden === 0 || onShowAll === undefined ? null : (
-        <ShowAll count={message.attachments.length} onPress={onShowAll} onAccent={onAccent} />
+        <ShowAll
+          count={message.attachments.length}
+          onPress={onShowAll}
+          onAccent={onAccent}
+          failedHidden={failsPast(message, LIST_MAX_ROWS)}
+        />
       )}
     </YStack>
   )

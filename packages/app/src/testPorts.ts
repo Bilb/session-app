@@ -30,12 +30,23 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     files: {
       pickFiles: () => Promise.resolve([]),
       pickImages: () => Promise.resolve([]),
+      droppedFiles: () => Promise.resolve([]),
+      picksAreCopies: false,
+      discardPicked: () => undefined,
+      releasePreview: () => undefined,
       chooseExportLocation: () => Promise.resolve(null),
       openPath: () => Promise.resolve(),
       revealInFolder: () => Promise.resolve(),
+      // Null, not a no-op: a screen offers Save only where there is somewhere to save to.
+      saveQrCode: null,
     },
     // No resolver in a test process, so callers draw the file form rather than a broken picture.
-    media: { urlFor: () => null, thumbhashUrlFor: () => null, thumbnailUrlFor: () => null },
+    media: {
+      urlFor: () => null,
+      thumbhashUrlFor: () => null,
+      thumbnailUrlFor: () => null,
+      renditionUrlFor: () => null,
+    },
     mediaProbe: {
       imageSize: () => Promise.resolve(null),
     },
@@ -58,6 +69,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     clipboard: {
       setString: () => Promise.resolve(),
+      setSecret: () => Promise.resolve(),
       confirmsCopy: false,
     },
     linking: {
@@ -70,7 +82,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
     },
     // Null, not a no-op, for the same reason as `openAppSettings`: a screen reads it to decide
     // whether to offer Share at all. The phones install their own.
-    share: { shareText: null },
+    share: { shareText: null, shareQrCode: null },
     build: {
       version: '0.0.0',
       commit: null,
@@ -83,11 +95,13 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       // this port whether to offer the door at all -- see `WindowPort` in `./ports`.
       close: null,
       restart: null,
+      preventScreenCapture: null,
       isFocused: () => true,
       onFocusChange: (handler) => {
         focusHandlers.add(handler)
         return () => focusHandlers.delete(handler)
       },
+      keyboardShortcuts: null,
     },
     // No files and no way to export: a screen offering Export Logs reads `deliver` to decide.
     logs: {

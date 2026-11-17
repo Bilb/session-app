@@ -7,17 +7,25 @@ import electron from 'electron'
 
 const { app, BrowserWindow, Menu, MessageChannelMain, clipboard, session, shell } = electron
 
-import { createRefusingTransport, type Request } from '@session/client'
+import {
+  createKeylessTransport,
+  createRefusingTransport,
+  DatabaseKeyError,
+  type Request,
+} from '@session/client'
 import { isCrowdinLocale, setLocale } from '@session/localization'
 
 import { appMenuTemplate } from './appMenu'
-import { createBridge } from './bridge'
+import { createBridge, replaceDatabaseAndCreateBridge, type Bridge } from './bridge'
+import { installDevLauncher } from './devLauncher'
 import { editMenuItems } from './editMenu'
 import { serveFiles } from './files'
+import { hiddenRun } from './hiddenRun'
 import { launchColors } from './launchColors'
 import { launchOverridesSwitch } from '../shared/launchOverrides'
 import { finishLogs, logDatabase, logLibsession, openLogs, serveLogs } from './logs'
 import { registerMediaScheme, serveMedia, stopServingMedia } from './media'
+import { PreviewGrants } from './previewGrants'
 import {
   acceptsCopy,
   applyContentProtection,
@@ -54,10 +62,25 @@ app.setName('session-app')
 placeUserData()
 void excludeUserData()
 
+/** An e2e run that must not put a window on screen; null in every other run. See hiddenRun.ts. */
+const hidden = hiddenRun({ packaged: app.isPackaged, env: process.env, platform: process.platform })
+// Before the app finishes launching: the activation policy decides whether the launch takes focus.
+if (hidden !== null) {
+  for (const [name, value] of hidden.switches) app.commandLine.appendSwitch(name, value)
+  if (hidden.accessory) app.setActivationPolicy('accessory')
+}
+
 // As early as the data directory is known, so the launch marker is the first line of the run.
 void openLogs()
 
 const here = fileURLToPath(new URL('.', import.meta.url))
+// An unpackaged run draws its S in amber, so it is never mistaken for an installed client.
+const iconPath = join(here, `../../resources/${app.isPackaged ? 'icon.png' : 'icon-dev.png'}`)
+
+// Before whenReady, the last point Electron takes a desktop name. See devLauncher.ts.
+void installDevLauncher(iconPath).then(async (failure) => {
+  if (failure !== null) (await openLogs()).logger.warn('main', failure)
+})
 
 // Before whenReady, which is the only point Electron accepts a privileged scheme.
 registerMediaScheme()
@@ -102,18 +125,68 @@ function installAppMenu(): void {
     platform: process.platform,
     dev: !app.isPackaged,
     onZoom: stepZoom,
+    onKeyboardShortcuts: (window) => {
+      if (window instanceof BrowserWindow) window.webContents.send('keyboard-shortcuts')
+    },
   })
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))
 }
 
+/**
+ * Whether the bridge in hand is one standing in for a start that failed. Nothing is worth keeping
+ * the process alive for then, and a window reopened from the dock would show the same failure from
+ * the same cached bridge, so closing the window quits on macOS too.
+ */
+let startFailed = false
+
 /** A bridge that could not be made, standing in for one: see `createRefusingTransport`. */
-function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>> {
+function refusingBridge(reason: string): Bridge {
   const refuse = () => Promise.reject(new Error(`the bridge could not start: ${reason}`))
   return {
     ...createRefusingTransport(reason),
     fetchMedia: refuse,
     fetchThumbhash: refuse,
     fetchThumbnail: refuse,
+    fetchRendition: refuse,
+    fetchStagedThumbnail: refuse,
+    planDecode: () => {
+      throw new Error(`the bridge could not start: ${reason}`)
+    },
+  }
+}
+
+/**
+ * A bridge that could not be made for want of its key, standing in for one until a confirmed clear
+ * replaces the database and opens the real one: see `createKeylessTransport`. Media is refused
+ * until then, and served from that bridge after.
+ *
+ * A wrapper rather than a swap of `bridge`: the media scheme and every window's channel hold the
+ * object they were given, and this is it.
+ */
+function keylessBridge(failure: DatabaseKeyError): Bridge {
+  let opened: Bridge | null = null
+  const transport = createKeylessTransport(failure, async () => {
+    const replaced = await replaceDatabaseAndCreateBridge()
+    opened = replaced
+    startFailed = false
+    void openLogs().then(({ logger }) => {
+      logger.marker('main', 'database replaced after a key failure')
+    })
+    return replaced
+  })
+  const refusal = () => new Error(failure.message)
+  return {
+    ...transport,
+    fetchMedia: (...args) => opened?.fetchMedia(...args) ?? Promise.reject(refusal()),
+    fetchThumbhash: (...args) => opened?.fetchThumbhash(...args) ?? Promise.reject(refusal()),
+    fetchThumbnail: (...args) => opened?.fetchThumbnail(...args) ?? Promise.reject(refusal()),
+    fetchRendition: (...args) => opened?.fetchRendition(...args) ?? Promise.reject(refusal()),
+    fetchStagedThumbnail: (...args) =>
+      opened?.fetchStagedThumbnail(...args) ?? Promise.reject(refusal()),
+    planDecode: (...args) => {
+      if (opened === null) throw refusal()
+      return opened.planDecode(...args)
+    },
   }
 }
 
@@ -131,7 +204,10 @@ function refusingBridge(reason: string): Awaited<ReturnType<typeof createBridge>
  * database there instead of carrying on with the one already open, so it is built once, every
  * window is wired to it, and it is closed when the app quits.
  */
-let bridge: Awaited<ReturnType<typeof createBridge>> | null = null
+let bridge: Bridge | null = null
+
+/** Per process, as the scheme's handler is: `protocol.handle` cannot tell windows apart. */
+const previews = new PreviewGrants()
 
 async function requireBridge(): Promise<NonNullable<typeof bridge>> {
   if (bridge === null) {
@@ -144,12 +220,14 @@ async function requireBridge(): Promise<NonNullable<typeof bridge>> {
       void openLogs().then(({ logger }) => {
         logger.error('main', 'the bridge could not start', { reason })
       })
-      return refusingBridge(reason)
+      startFailed = true
+      // A key that could not be had leaves something to clear with; anything else does not.
+      return error instanceof DatabaseKeyError ? keylessBridge(error) : refusingBridge(reason)
     })
     logDatabase('open')
     // With the bridge rather than with a window: `protocol.handle` installs one handler for the
     // whole session, and the scheme has to outlive a window for the same reason the bridge does.
-    serveMedia(bridge)
+    serveMedia(bridge, previews)
   }
   return bridge
 }
@@ -166,13 +244,14 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     // in. A floor rather than a scrolling column: a registration form that scrolls is worse than
     // one that cannot be made silly-small.
     minHeight: 380,
-    // Linux and Windows take the window icon from here; macOS ignores it and uses the bundle's,
-    // which is the packager's job rather than this file's.
-    icon: join(here, '../../resources/icon.png'),
+    // Drawn by Windows and most Linux shells. GNOME on Wayland only reads the launcher the app id
+    // names (devLauncher.ts), and macOS the bundle's, which is the packager's job.
+    icon: iconPath,
     // Shown straight away rather than on ready-to-show: that event is not dependable on a
     // headless display, and a window that never shows has no layout, which makes every element
-    // in it invisible to a test.
+    // in it invisible to a test. A hidden run is never shown and draws anyway: see hiddenRun.ts.
     show: true,
+    ...hidden?.window,
     // Electron's default is white, which is what showed until the page drew: a flash on every
     // launch, in a default theme that is black.
     backgroundColor: launchColors().background,
@@ -183,6 +262,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       preload: join(here, '../preload/index.cjs'),
       // Like the network settings, a packaged build takes no override from its environment.
       additionalArguments: app.isPackaged ? [] : [launchOverridesSwitch(process.env)],
+      ...hidden?.webPreferences,
     },
   })
 
@@ -216,7 +296,7 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
     if (typeof url === 'string' && /^https?:\/\//i.test(url)) void shell.openExternal(url)
   })
 
-  const files = serveFiles(window, appUrl)
+  const files = serveFiles(window, appUrl, previews)
   serveLogs(window, appUrl)
 
   // Rejects rather than resolving, so a refused copy is not reported to the person as done.
@@ -244,6 +324,16 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
         app.relaunch()
         app.exit(0)
       })
+  })
+
+  // The window port's `close`: the app's Quit. `app.quit` rather than closing the window, which on
+  // macOS leaves the process running with the bridge it has, and a reopen would show the same
+  // failure from the same bridge: the startup-failure screen's advice to restart has to be true.
+  // `before-quit` and `will-quit` below mark the run as ended and write out what is waiting, the
+  // renderer's last records included: it hands them over first, on this same channel.
+  ipc.on('quit', (event) => {
+    if (!isFromAppFrame(event.senderFrame, appUrl)) return
+    app.quit()
   })
 
   // The menus are drawn here, so they follow the language the person chose in the app.
@@ -316,8 +406,8 @@ async function createWindow(): Promise<Electron.BrowserWindow> {
       // Renderer input: an exception escaping here is an uncaught one in the main process.
       try {
         const request = event.data as Request
-        // The one command that names a filesystem path of its own choosing, and `save_attachment`
-        // has no containment of its own, so every request passes the gate on its way to the bridge.
+        // An export and a send name filesystem paths of the page's choosing, and libsession
+        // contains neither, so every request passes the gate on its way to the bridge.
         const admitted = files.admit(request)
         if (typeof admitted === 'string') {
           port?.postMessage({ type: 'response', response: { id: request.id, error: admitted } })
@@ -360,6 +450,11 @@ void app.whenReady().then(async () => {
   denyAllPermissions(session.defaultSession)
   zoom = readZoom(zoomFile())
   installAppMenu()
+  // An unpackaged run's bundle is Electron's own, and a hidden run has no Dock icon. A tile of its
+  // own because the round icon would fill the whole tile, where Dock icons keep a margin.
+  if (!app.isPackaged && hidden === null) {
+    app.dock?.setIcon(join(here, '../../resources/icon-dev-mac.png'))
+  }
 
   await createWindow()
 
@@ -389,7 +484,7 @@ app.on('child-process-gone', (_event, details) => {
 })
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
+  if (process.platform !== 'darwin' || startFailed) app.quit()
 })
 
 // The bridge outlives every window, so it is closed here rather than with one of them.

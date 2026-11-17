@@ -1,13 +1,14 @@
 import { isViewableImage } from '@session/basic-types'
 import { describe, expect, it } from 'vitest'
 
-import { createFakeMediaSource } from '#src/fake/media'
+import { createFakeMediaSource, type StagedHead } from '#src/fake/media'
 import { friendsWithAttachments, showcase } from '#src/fake/index'
 
 // The photo names are ASCII, so a byte per character stands in for a file's bytes.
 const readPhoto = (name: string): Promise<Uint8Array> =>
   Promise.resolve(Uint8Array.from(name, (c) => c.charCodeAt(0)))
 const asText = (bytes: Uint8Array): string => String.fromCharCode(...bytes)
+const readStaged = (): Promise<StagedHead> => Promise.reject(new Error('ENOENT'))
 
 async function showcasePhoto() {
   const { world, clients } = showcase()
@@ -24,7 +25,9 @@ async function showcasePhoto() {
 describe('the fake media source', () => {
   it('refuses a picture that is not downloaded, and downloads nothing', async () => {
     const { alice, world, ref } = await showcasePhoto()
-    await expect(createFakeMediaSource(alice, readPhoto).fetchMedia(ref)).rejects.toThrow(
+    await expect(
+      createFakeMediaSource(alice, readPhoto, readStaged).fetchMedia(ref),
+    ).rejects.toThrow(
       `attachment ${String(ref.index)} of message ${String(ref.messageId)} is not downloaded`,
     )
     world.settle()
@@ -36,7 +39,7 @@ describe('the fake media source', () => {
     const downloaded = alice.downloadAttachment(ref.messageId, ref.index)
     world.settle()
     await downloaded
-    const media = await createFakeMediaSource(alice, readPhoto).fetchMedia(ref)
+    const media = await createFakeMediaSource(alice, readPhoto, readStaged).fetchMedia(ref)
     expect(asText(media.bytes)).toBe('unsplash-01.jpg')
   })
 
@@ -51,7 +54,7 @@ describe('the fake media source', () => {
         .map((a) => ({ messageId: message.id, index: a.index })),
     )
     expect(pictures.length).toBeGreaterThan(0)
-    const source = createFakeMediaSource(alice, readPhoto)
+    const source = createFakeMediaSource(alice, readPhoto, readStaged)
     const downloaded = pictures.map((ref) => alice.downloadAttachment(ref.messageId, ref.index))
     world.settle()
     await Promise.all(downloaded)
@@ -62,7 +65,7 @@ describe('the fake media source', () => {
 
   it("answers a placeholder decoded from the photograph's real hash", async () => {
     const { alice, ref } = await showcasePhoto()
-    const thumbhash = await createFakeMediaSource(alice, readPhoto).fetchThumbhash(ref)
+    const thumbhash = await createFakeMediaSource(alice, readPhoto, readStaged).fetchThumbhash(ref)
     // The photographs are 4:3, decoded at 32x24.
     expect(thumbhash).toMatchObject({ width: 32, height: 24 })
     expect(thumbhash.rgba.length).toBe(32 * 24 * 4)
@@ -70,7 +73,7 @@ describe('the fake media source', () => {
 
   it('serves the dev thumbnail of a picture once it is downloaded, and refuses it before', async () => {
     const { alice, world, ref } = await showcasePhoto()
-    const source = createFakeMediaSource(alice, readPhoto)
+    const source = createFakeMediaSource(alice, readPhoto, readStaged)
     await expect(source.fetchThumbnail(ref)).rejects.toThrow(
       `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no thumbnail`,
     )
@@ -95,11 +98,24 @@ describe('the fake media source', () => {
     expect(
       thumbnailed.some((ref) => alice.locate(ref)?.attachment.contentType === 'image/avif'),
     ).toBe(true)
-    const source = createFakeMediaSource(alice, readPhoto)
+    const source = createFakeMediaSource(alice, readPhoto, readStaged)
     for (const thumbnail of await Promise.all(
       thumbnailed.map((ref) => source.fetchThumbnail(ref)),
     )) {
       expect(asText(thumbnail)).toMatch(/^thumbnail-\d{2}\.jpg$/)
     }
+  })
+
+  it('draws a staged dev photograph as its own thumbnail, and any other picture as one', async () => {
+    const { alice } = await showcasePhoto()
+    const head = Uint8Array.of(0xff, 0xd8, 0xff, 0xe0)
+    const jpeg = (): Promise<StagedHead> => Promise.resolve({ head, size: head.length })
+    const source = createFakeMediaSource(alice, readPhoto, jpeg)
+    expect(asText(await source.fetchStagedThumbnail('/home/a/unsplash-07.jpg'))).toBe(
+      'thumbnail-07.jpg',
+    )
+    expect(asText(await source.fetchStagedThumbnail('C:\\Users\\a\\holiday.jpg'))).toMatch(
+      /^thumbnail-\d{2}\.jpg$/,
+    )
   })
 })

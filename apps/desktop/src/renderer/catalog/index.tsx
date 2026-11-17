@@ -1,13 +1,28 @@
 import { Text, UIProvider, YStack } from '@session/ui'
-import { CatalogPage, catalogPages, cellsOn, STORIES, type CatalogTier } from '@session/ui/catalog'
+import {
+  CatalogPage,
+  catalogPages,
+  cellsOn,
+  STORIES,
+  type CatalogPageSpec,
+  type CatalogTier,
+} from '@session/ui/catalog'
 import { useSyncExternalStore } from 'react'
 
 import { RemoveLaunchScreenOnMount } from '../launchScreen'
-import { SCENARIOS, ScenarioProvider } from './scenarios'
+import { PicturesProvider, SCENARIOS, ScenarioProvider } from './scenarios'
 
 const PREFIX = '#/catalog/'
 
 const ALL_STORIES = [...STORIES, ...SCENARIOS]
+
+const TIERS: readonly CatalogTier[] = ['pr', 'nightly']
+
+// The tiers share ids (`-rtl`, `-w320`) for different pages, so an id is only looked up in its own.
+const PAGES: Record<CatalogTier, CatalogPageSpec[]> = {
+  pr: catalogPages('pr', ALL_STORIES),
+  nightly: catalogPages('nightly', ALL_STORIES),
+}
 
 declare global {
   interface Window {
@@ -26,15 +41,13 @@ interface CatalogPageSummary {
 
 window.sessionCatalog = {
   pages: (tier) =>
-    catalogPages(tier, ALL_STORIES).map((page) => ({
+    PAGES[tier].map((page) => ({
       id: page.id,
       story: `${page.story.component}.${page.story.story}`,
       rows: Object.keys(page.story.variants),
       cells: cellsOn(page),
     })),
 }
-
-const ALL_PAGES = [...catalogPages('pr', ALL_STORIES), ...catalogPages('nightly', ALL_STORIES)]
 
 function subscribe(onChange: () => void) {
   window.addEventListener('hashchange', onChange)
@@ -46,32 +59,45 @@ const readHash = () => window.location.hash
 function Index() {
   return (
     <YStack padding="$md" gap="$2xs">
-      {ALL_PAGES.map(({ id }) => (
-        <Text
-          key={id}
-          size="$label"
-          onPress={() => {
-            window.location.hash = `${PREFIX}${encodeURIComponent(id)}`
-          }}
-        >
-          {id}
-        </Text>
-      ))}
+      {TIERS.flatMap((tier) =>
+        PAGES[tier].map(({ id }) => (
+          <Text
+            key={`${tier}/${id}`}
+            size="$label"
+            onPress={() => {
+              window.location.hash = `${PREFIX}${tier}/${encodeURIComponent(id)}`
+            }}
+          >
+            {`${tier}/${id}`}
+          </Text>
+        )),
+      )}
     </YStack>
   )
+}
+
+/** `#/catalog/<tier>/<id>`: the page it names, if there is one. */
+function pageAt(hash: string): CatalogPageSpec | undefined {
+  if (!hash.startsWith(PREFIX)) return undefined
+  const [tier, id] = hash.slice(PREFIX.length).split('/')
+  if (tier !== 'pr' && tier !== 'nightly') return undefined
+  return PAGES[tier].find((candidate) => candidate.id === decodeURIComponent(id ?? ''))
 }
 
 /** The page the URL's hash names, or the list of them: the spec moves between pages by hash. */
 export default function Catalog() {
   const hash = useSyncExternalStore(subscribe, readHash)
-  const id = hash.startsWith(PREFIX) ? decodeURIComponent(hash.slice(PREFIX.length)) : null
-  const page = ALL_PAGES.find((candidate) => candidate.id === id)
+  const page = pageAt(hash)
   const drawn = page === undefined ? <Index /> : <CatalogPage key={page.id} page={page} />
   return (
     <UIProvider>
       <RemoveLaunchScreenOnMount />
-      {page !== undefined && SCENARIOS.includes(page.story) ? (
+      {page === undefined ? (
+        drawn
+      ) : SCENARIOS.includes(page.story) ? (
         <ScenarioProvider>{drawn}</ScenarioProvider>
+      ) : page.story.pictures === true ? (
+        <PicturesProvider>{drawn}</PicturesProvider>
       ) : (
         drawn
       )}

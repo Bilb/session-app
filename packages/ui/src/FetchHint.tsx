@@ -4,6 +4,7 @@ import { TILE_SCRIM } from './attachmentTileStyle'
 import { FEEDBACK_TRANSITION } from './feedbackTransition'
 import { Icon } from './Icon'
 import type { WithTestID } from './with'
+import { useMenuLongPress } from './menuLongPress'
 
 /** Below this a tile has room for the small glyph only. */
 const LARGE_TILE = 90
@@ -36,6 +37,7 @@ export function FetchHint({
   /** Already worded; what the pressable cloud is announced as on the web. */
   label?: string | undefined
 }) {
+  const menuLongPress = useMenuLongPress()
   const small = side < LARGE_TILE
   return (
     <YStack
@@ -62,12 +64,14 @@ export function FetchHint({
           ? {}
           : {
               onPress,
+              ...menuLongPress,
               '$platform-web': { cursor: 'pointer' },
               testID,
               ...(isWeb ? { role: 'button', 'aria-label': label } : { 'aria-hidden': true }),
             })}
       >
-        <Icon name="cloudDownload" size={small ? 'xs' : 'md'} color="$textPrimary" />
+        {/* Light in every theme, as the scrim it sits on is dark in every theme. */}
+        <Icon name="cloudDownload" size={small ? 'xs' : 'md'} color="$surfaceInverted" />
       </YStack>
     </YStack>
   )

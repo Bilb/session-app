@@ -17,7 +17,7 @@ describe('the attachments of a message', () => {
   const root = source.slice(source.indexOf('return (\n'))
 
   it('take the album’s width in the list as well as the gallery', () => {
-    expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*width=\{ALBUM_WIDTH\}/)
+    expect(root).toMatch(/^return \(\n(\s*\/\/.*\n)*\s*<YStack[^>]*width=\{albumWidth\}/)
   })
 
   it('shrink to the bubble’s inside where the pane is too narrow for that width', () => {

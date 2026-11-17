@@ -1,6 +1,11 @@
-import { routes, useNav } from '@session/app'
+import { requirePorts, routes, useNav } from '@session/app'
 import type { Conversation } from '@session/client'
-import { useConversations, useUnreadRequestCount } from '@session/state'
+import {
+  useAccount,
+  useConversations,
+  useNetworkStatus,
+  useUnreadRequestCount,
+} from '@session/state'
 import { formatConversationTime, tr, type ConversationTimeOptions } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 import {
@@ -12,22 +17,27 @@ import {
   List,
   logical,
   Screen,
-  Separator,
   SIZE_SCALE,
   SPACE_SCALE,
+  StatusDot,
   Text,
   textHeight,
   useFontScale,
   XStack,
   YStack,
 } from '@session/ui'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { NetworkOverlay } from './NetworkOverlay'
 import { conversationRowState, type UnreadBadge, type UnreadTone } from './conversationRowState'
-import { conversationTitle } from './conversationTitle'
+import { conversationAvatarName, conversationTitle } from './conversationTitle'
 import { useOpenSettings } from './settings/SettingsRootPage'
-import { useTopBarInsets } from './shell/pane'
-import { useFormattingLocale } from './useLocale'
+import { pathStatusTone } from './pathStatus'
+import { useBesideRail } from './shell/pane'
+import { BAR_CONTROL_SIZE_PX, PaneTitle, PaneTopBar } from './shell/PaneTopBar'
+import { useTimeFormats } from './timeFormats'
+import { useToday } from './today'
+import { useHeldSelection } from './useHeldSelection'
 
 const AVATAR_SIZE_PX = SIZE_SCALE['3xl']
 /**
@@ -46,6 +56,76 @@ const STRIP_WIDTH_PX = 4
 const MARKED_DOT = '$xxs'
 /** The least room between the end of the name's icons and the time. */
 const TIME_GAP_MIN = '$xxs'
+
+const HEADER_AVATAR_PX = SIZE_SCALE.xl
+/**
+ * The path's status on its corner: the least size its glyph reads at, cut out of the avatar by a
+ * ring of the surface rather than lit by a glow.
+ */
+const HEADER_DOT_PX = SIZE_SCALE.xs
+const HEADER_DOT_RING_PX = 2
+/**
+ * How far the dot's box hangs past the avatar's bottom and end edges: far enough that its centre is
+ * 2 px outside the avatar's circle, on the diagonal through the corner. A picture is cropped to the
+ * circle, so one with a badge drawn into it shows most of that badge cut off, where the app's own
+ * sits whole.
+ */
+const HEADER_DOT_HANG_PX =
+  (HEADER_AVATAR_PX / 2 + 2) / Math.SQRT2 +
+  HEADER_DOT_PX / 2 +
+  HEADER_DOT_RING_PX -
+  HEADER_AVATAR_PX / 2
+
+/**
+ * The account's avatar, which opens settings, with the onion path's dot on its bottom-end corner.
+ *
+ * Only on one pane: beside the rail, the rail has the avatar. The button is named for what it
+ * does; the path's state in words is on the Settings row it leads to.
+ */
+function SettingsAvatarButton({ onPress }: { onPress: () => void }) {
+  const account = useAccount()
+  const status = useNetworkStatus()
+  return (
+    // The hit area is the stack rather than the avatar: 32pt is under the 44pt a finger
+    // needs, and a target that small is one people miss rather than one they cannot see.
+    <XStack
+      width={BAR_CONTROL_SIZE_PX}
+      height={BAR_CONTROL_SIZE_PX}
+      alignItems="center"
+      justifyContent="center"
+      $platform-web={{ cursor: 'pointer' }}
+      hoverStyle={{ backgroundColor: '$hoverOverlay' }}
+      pressStyle={{ backgroundColor: '$pressedOverlay' }}
+      borderRadius="$full"
+      role="button"
+      aria-label={tr('sessionSettings')}
+      testID={ELEMENT.conversationList.settings}
+      // A modal, so closing it returns to the list.
+      onPress={onPress}
+    >
+      <YStack width={HEADER_AVATAR_PX} height={HEADER_AVATAR_PX} position="relative">
+        <Avatar
+          id={account?.sessionId ?? ''}
+          name={account?.displayName ?? ''}
+          size={HEADER_AVATAR_PX}
+        />
+        <YStack
+          position="absolute"
+          bottom={-HEADER_DOT_HANG_PX}
+          {...logical({ insetEnd: -HEADER_DOT_HANG_PX })}
+        >
+          <StatusDot
+            tone={pathStatusTone(status)}
+            sidePx={HEADER_DOT_PX}
+            glowPx={0}
+            ringPx={HEADER_DOT_RING_PX}
+            testID={ELEMENT.conversationList.settingsPathStatus}
+          />
+        </YStack>
+      </YStack>
+    </XStack>
+  )
+}
 
 /**
  * One row's size at a text size, which the list needs in order to place a scrollbar without
@@ -82,113 +162,104 @@ export function ConversationListScreen({
   /** The conversation showing beside the list, where one is: its row is drawn selected. */
   openConversationId?: string | undefined
 }) {
-  const topBarInsets = useTopBarInsets()
   const conversations = useConversations()
   const unreadRequests = useUnreadRequestCount()
   const nav = useNav()
   const openSettings = useOpenSettings()
-  const timeLocale = useFormattingLocale()
-  const layout = rowLayout(useFontScale())
+  const timeFormats = useTimeFormats()
+  const besideRail = useBesideRail()
+  const fontScale = useFontScale()
+  const layout = useMemo(() => rowLayout(fontScale), [fontScale])
+
+  const openConversation = useCallback(
+    (id: string) => {
+      // Beside the list, a conversation replaces the one already open rather than stacking on
+      // it, and the open one again changes nothing. Pushed every time, the history fills with
+      // every conversation looked at, and Android's back walks through all of them before it
+      // leaves.
+      if (id === openConversationId) return
+      const path = routes.conversation(id)
+      if (openConversationId === undefined) nav.push(path)
+      else nav.replace(path)
+    },
+    [nav, openConversationId],
+  )
+
+  // Every prop keeps its identity across a list change, so only the rows that changed, or
+  // changed index, are drawn again.
+  const renderRow = useCallback(
+    (conversation: Conversation, index: number) => (
+      <ConversationRow
+        conversation={conversation}
+        index={index}
+        layout={layout}
+        timeFormats={timeFormats}
+        open={conversation.id === openConversationId}
+        onOpen={openConversation}
+      />
+    ),
+    [layout, timeFormats, openConversationId, openConversation],
+  )
 
   return (
     <Screen testID={ELEMENT.conversationList.screen}>
-      <XStack
-        paddingHorizontal="$md"
-        paddingVertical="$sm"
-        alignItems="center"
-        justifyContent="space-between"
-        {...topBarInsets}
-      >
-        <NetworkOverlay>
-          <Text size="$title" weight="bold">
-            {tr('messages')}
-          </Text>
-        </NetworkOverlay>
-        <XStack alignItems="center" gap="$sm">
-          {unreadRequests > 0 ? (
+      <PaneTopBar
+        leading={
+          // Settings had a route and no way to reach it, which made the account ID - the one thing
+          // someone else needs in order to write to this device - unreachable too. On the leading
+          // side, before the title.
+          besideRail ? null : <SettingsAvatarButton onPress={openSettings} />
+        }
+        title={
+          <NetworkOverlay>
+            <PaneTitle>{tr('messages')}</PaneTitle>
+          </NetworkOverlay>
+        }
+        trailing={
+          <>
+            {unreadRequests > 0 ? (
+              <XStack
+                backgroundColor="$primaryColor"
+                borderRadius="$full"
+                paddingHorizontal="$xs"
+                minWidth={20}
+                height={20}
+                alignItems="center"
+                justifyContent="center"
+                testID={ELEMENT.requests.badge}
+                onPress={() => nav.push(routes.requests())}
+              >
+                <Text size="$caption" weight="bold" color="$onAccent">
+                  {unreadRequests}
+                </Text>
+              </XStack>
+            ) : null}
+
+            {/* Writing to somebody who has not written first was impossible before this: the
+              only way into a conversation was replying to a request. */}
             <XStack
-              backgroundColor="$primaryColor"
-              borderRadius="$full"
-              paddingHorizontal="$xs"
-              minWidth={20}
-              height={20}
+              width={BAR_CONTROL_SIZE_PX}
+              height={BAR_CONTROL_SIZE_PX}
               alignItems="center"
               justifyContent="center"
-              testID={ELEMENT.requests.badge}
-              onPress={() => nav.push(routes.requests())}
+              $platform-web={{ cursor: 'pointer' }}
+              hoverStyle={{ backgroundColor: '$hoverOverlay' }}
+              pressStyle={{ backgroundColor: '$pressedOverlay' }}
+              borderRadius="$full"
+              testID={ELEMENT.conversationList.newConversation}
+              onPress={() => nav.push(routes.newConversation())}
             >
-              <Text size="$caption" weight="bold" color="$onAccent">
-                {unreadRequests}
-              </Text>
+              <Icon name="plus" size="lg" color="$textSecondary" />
             </XStack>
-          ) : null}
-
-          {/* Writing to somebody who has not written first was impossible before this: the
-              only way into a conversation was replying to a request. */}
-          <XStack
-            width={44}
-            height={44}
-            alignItems="center"
-            justifyContent="center"
-            $platform-web={{ cursor: 'pointer' }}
-            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
-            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-            borderRadius="$full"
-            testID={ELEMENT.conversationList.newConversation}
-            onPress={() => nav.push(routes.newConversation())}
-          >
-            <Icon name="plus" size="lg" color="$textSecondary" />
-          </XStack>
-
-          {/* Settings had a route and no way to reach it, which made the account ID - the one
-              thing someone else needs in order to write to this device - unreachable too.
-
-              The hit area is the stack rather than the glyph: a 24pt icon is well under the
-              44pt minimum a finger needs, and a target that small is one people miss rather
-              than one they cannot see. */}
-          <XStack
-            width={44}
-            height={44}
-            alignItems="center"
-            justifyContent="center"
-            $platform-web={{ cursor: 'pointer' }}
-            hoverStyle={{ backgroundColor: '$backgroundSecondary' }}
-            pressStyle={{ backgroundColor: '$backgroundTertiary' }}
-            borderRadius="$full"
-            testID={ELEMENT.conversationList.settings}
-            // A modal, so closing it returns to the list.
-            onPress={openSettings}
-          >
-            <Icon name="settings" size="lg" color="$textSecondary" />
-          </XStack>
-        </XStack>
-      </XStack>
-
-      <Separator borderColor="$bordersColor" />
+          </>
+        }
+      />
 
       <List
         data={conversations}
         itemHeight={layout.heightPx}
-        keyExtractor={(conversation) => conversation.id}
-        renderItem={(conversation, index) => (
-          <ConversationRow
-            conversation={conversation}
-            index={index}
-            layout={layout}
-            timeLocale={timeLocale}
-            open={conversation.id === openConversationId}
-            onPress={() => {
-              // Beside the list, a conversation replaces the one already open rather than
-              // stacking on it, and the open one again changes nothing. Pushed every time, the
-              // history fills with every conversation looked at, and Android's back walks through
-              // all of them before it leaves.
-              if (conversation.id === openConversationId) return
-              const path = routes.conversation(conversation.id)
-              if (openConversationId === undefined) nav.push(path)
-              else nav.replace(path)
-            }}
-          />
-        )}
+        keyExtractor={conversationKey}
+        renderItem={renderRow}
         empty={
           <YStack flex={1} alignItems="center" justifyContent="center" padding="$xl">
             <Text tone="secondary" testID={ELEMENT.conversationList.empty}>
@@ -219,10 +290,6 @@ const PILL_COLORS: Record<
   notify: { ground: '$primaryColor', text: '$onAccent' },
   quiet: { ground: '$textSecondary', text: '$backgroundPrimary' },
 }
-
-// TODO: pass the reader's own clock and date layout once the appearance settings exist to choose
-// them; until then every row takes the system's.
-const TIME_FORMATS: ConversationTimeOptions = { timeFormat: 'system', dateFormat: 'system' }
 
 function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
   if (badge.kind === 'markedUnread')
@@ -266,32 +333,74 @@ function UnreadBadgeView({ badge }: { badge: UnreadBadge }) {
   )
 }
 
-function ConversationRow({
+function conversationKey(conversation: Conversation): string {
+  return conversation.id
+}
+
+/** setTimeout's longest delay; a longer one fires at once. */
+const LONGEST_TIMER_MS = 2 ** 31 - 1
+
+/**
+ * Draws the component again once the clock reaches `atMs`, which changes no prop of a row.
+ *
+ * Aimed again each time rather than trusted once: a timer can fire a little early, cannot wait
+ * longer than `LONGEST_TIMER_MS`, and does not run while the app is suspended, which coming back
+ * to the front makes up for.
+ */
+function useRedrawAt(atMs: number | undefined): void {
+  const [, redraw] = useState(0)
+  useEffect(() => {
+    if (atMs === undefined) return undefined
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let reached = false
+    const aim = (): void => {
+      if (reached) return
+      clearTimeout(timer)
+      const waitMs = atMs - Date.now()
+      if (waitMs > 0) {
+        timer = setTimeout(aim, Math.min(waitMs, LONGEST_TIMER_MS))
+        return
+      }
+      reached = true
+      redraw((n) => n + 1)
+    }
+    aim()
+    const stopFocus = requirePorts().window.onFocusChange((focused) => {
+      if (focused) aim()
+    })
+    return () => {
+      clearTimeout(timer)
+      stopFocus()
+    }
+  }, [atMs])
+}
+
+const ConversationRow = memo(function ConversationRow({
   conversation,
   index,
   layout,
-  timeLocale,
+  timeFormats,
   open,
-  onPress,
+  onOpen,
 }: {
   conversation: Conversation
   index: number
   layout: { heightPx: number; avatarPx: number }
-  timeLocale: string | undefined
+  timeFormats: ConversationTimeOptions
   open: boolean
-  onPress: () => void
+  onOpen: (id: string) => void
 }) {
   const title = conversationTitle(conversation)
-  // TODO: "today" is read at render, so a list left open past midnight keeps yesterday's times as
-  // today's until something redraws it; redraw the list when the day turns.
+  const selected = useHeldSelection(open)
+  // Read for its change: a row that says a weekday or the time alone is redrawn when the day turns.
+  useToday()
   const nowMs = Date.now()
   const row = conversationRowState(conversation, nowMs)
+  // The mute as this render judged it, not as the clock reads by the time the effect runs.
+  useRedrawAt(row.muted ? conversation.muteUntil : undefined)
   const time =
     conversation.lastActivity > 0
-      ? formatConversationTime(conversation.lastActivity, nowMs, {
-          ...TIME_FORMATS,
-          locale: timeLocale,
-        })
+      ? formatConversationTime(conversation.lastActivity, nowMs, timeFormats)
       : null
 
   return (
@@ -301,11 +410,16 @@ function ConversationRow({
       gap="$sm"
       alignItems="center"
       position="relative"
-      {...(open ? { backgroundColor: '$backgroundTertiary' } : {})}
-      hoverStyle={{ backgroundColor: open ? '$backgroundTertiary' : '$backgroundSecondary' }}
-      pressStyle={{ backgroundColor: '$backgroundTertiary' }}
+      // Overlays, so each state is a step from whatever the list is drawn on. The open row holds
+      // the pressed step, which hovering it does not lighten.
+      {...(selected.held ? { backgroundColor: '$pressedOverlay' } : {})}
+      hoverStyle={{ backgroundColor: selected.held ? '$pressedOverlay' : '$hoverOverlay' }}
+      pressStyle={{ backgroundColor: '$pressedOverlay' }}
       $platform-web={{ cursor: 'pointer' }}
-      onPress={onPress}
+      onPress={() => {
+        selected.hold()
+        onOpen(conversation.id)
+      }}
       aria-selected={open}
       testID={ELEMENT.conversationList.row(index)}
     >
@@ -323,7 +437,11 @@ function ConversationRow({
 
       {/* TODO: draw a group as its first two members stacked, with Avatar's `members`, once the
           bridge carries a group's member list. */}
-      <Avatar id={conversation.id} name={title} size={layout.avatarPx} />
+      <Avatar
+        id={conversation.id}
+        name={conversationAvatarName(conversation)}
+        size={layout.avatarPx}
+      />
 
       <YStack flex={1} gap="$2xs">
         <XStack minHeight={LINE_HEIGHT} alignItems="center" gap="$2xs">
@@ -423,4 +541,4 @@ function ConversationRow({
       </YStack>
     </XStack>
   )
-}
+})

@@ -1,5 +1,9 @@
+import { ELEMENT } from '@session/test-ids'
 import { LABEL_MAX_SCALE, ScrollView, Text, useMedia, XStack, YStack } from '@session/ui'
 import type { ReactNode } from 'react'
+
+import { TextButton } from '../TextButton'
+import { useExportLogs } from '../useExportLogs'
 
 import { WideBackButton } from './OnboardingBackButton'
 import { EXTRA_ACTION_INSET, OnboardingChrome } from './OnboardingChrome'
@@ -102,6 +106,29 @@ export function OnboardingStep({
   )
 }
 
+/**
+ * Export Logs, under a step's action.
+ *
+ * On every step with one, because each is somewhere onboarding can go wrong with nothing on screen
+ * that says why: a restore lands on the phrase with the account gone, on the name when its profile
+ * never came back, and the name or the notification choice is where a new account is made. Quiet,
+ * so it does not compete with the action. Left out where the build cannot export.
+ */
+function StepExportLogs() {
+  const logs = useExportLogs()
+  if (!logs.canExport) return null
+  return (
+    <TextButton
+      label={['helpReportABugExportLogs']}
+      variant="subtle"
+      size="sm"
+      loading={logs.exporting}
+      testID={ELEMENT.onboarding.exportLogs}
+      onPress={logs.start}
+    />
+  )
+}
+
 /** The title, with its mark beside it, and the explanation under it. */
 function StepHeading({
   title,
@@ -195,6 +222,13 @@ export function OnboardingStepBody({
   footerGap = false,
 }: Omit<OnboardingStepProps, 'testID' | 'barTitle' | 'banner'>) {
   const wide = useMedia().gtSm
+  const action =
+    footer === undefined ? undefined : (
+      <YStack gap="$2xs">
+        {footer}
+        <StepExportLogs />
+      </YStack>
+    )
 
   const block = (
     <>
@@ -229,7 +263,7 @@ export function OnboardingStepBody({
 
           {/* On the wide design the action stays with the content, in a column that is already a
             fixed width. The phone's lives at the bottom of the screen -- see below. */}
-          {!wide ? null : footerGap ? <YStack paddingTop="$lg">{footer}</YStack> : footer}
+          {!wide ? null : footerGap ? <YStack paddingTop="$lg">{action}</YStack> : action}
         </YStack>
       </XStack>
       {/* Twice the weight of the spacer above, which is what leaves the block above centre. */}
@@ -237,5 +271,5 @@ export function OnboardingStepBody({
     </>
   )
 
-  return wide ? block : <PhoneStepFrame footer={footer}>{block}</PhoneStepFrame>
+  return wide ? block : <PhoneStepFrame footer={action}>{block}</PhoneStepFrame>
 }

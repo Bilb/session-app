@@ -9,7 +9,7 @@ Device builds and a release-shaped xcframework are untried. Everything below has
 ## Building
 
 ```sh
-pnpm --filter @session/bridge-rn build:libsession:ios     # libsession + the shim, one slice
+pnpm --filter @session/bridge-rn build:libsession:ios     # libsession + the shim
 cd apps/mobile && npx expo prebuild --platform ios
 cd ios && pod install
 xcodebuild -workspace Session.xcworkspace -scheme Session -configuration Debug \
@@ -21,8 +21,42 @@ xcodebuild -workspace Session.xcworkspace -scheme Session -configuration Debug \
 The signing flags are not decoration - see [traps.md](traps.md). `CODE_SIGNING_ALLOWED=NO` is the
 obvious thing to pass for a simulator and it breaks the keychain.
 
-The first `build:libsession:ios` takes a long time: it cross-compiles libsession and every
-dependency. After that it is incremental and quick.
+The first `build:libsession:ios` on a given libsession takes a long time: it cross-compiles
+libsession and every dependency. Every later clone on the same libsession takes it from the
+machine-wide cache in seconds, and a libsession change rebuilds libsession alone - see
+`packages/bridge-core/README.md`.
+
+### Building without taking over the machine
+
+Lower the priority rather than the core count, so the build still uses every core nobody else
+wants:
+
+```sh
+taskpolicy -d throttle nice -n 19 pnpm --filter @session/bridge-rn build:libsession:ios
+taskpolicy -d throttle nice -n 19 xcodebuild …
+```
+
+`nice` lowers CPU priority and `-d throttle` lowers disk priority; children inherit both.
+
+**Never `taskpolicy -b`.** It confines the build to the efficiency cores, a minority of an Apple
+silicon Mac's, and a libsession build takes many times longer under it than under `nice`.
+
+To cap the cores outright, `JOBS=6` limits `build:libsession:ios` (libsession and the shim), and
+`-jobs 6` xcodebuild.
+
+### Not doing work twice
+
+- **Build one architecture.** Name a simulator in `-destination`, as above. A generic
+  destination, `generic/platform=iOS Simulator`, builds arm64 and x86_64, every file twice, and
+  nothing on an Apple silicon Mac runs the x86_64 half; if one is unavoidable, add
+  `ARCHS=arm64 ONLY_ACTIVE_ARCH=YES`.
+  The same goes for libsession: the default `both` mode, never `all`, unless an Intel Mac is the
+  target.
+- **Prebuild and `pod install` only when the native side changed**: a new native module, a config
+  plugin, `app.json`/`app.config.ts`. Both regenerate the Xcode project, and xcodebuild then
+  recompiles every pod - well over a thousand files - however little moved.
+- **Shut the simulators down when finished**, `xcrun simctl shutdown all`. Each booted one holds
+  gigabytes, and the Mac is shared: once it swaps, every build on it slows down.
 
 ## Simulators
 

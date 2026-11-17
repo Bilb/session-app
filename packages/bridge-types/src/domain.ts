@@ -41,14 +41,45 @@ export type Deletion = 'here' | 'everywhere'
 export type AutoDownload = 'none' | 'image-attachments' | 'all'
 
 /**
+ * What sending a file as an attachment will do with it, decided from its header alone as the send
+ * decides it: libsession's `image::SendPlan`.
+ *
+ * - `reencoded`: a picture libsession decodes, sent re-encoded and shrunk to fit. Only the send
+ *   tells whether its pixels decode and whether it then fits; it is refused there if not.
+ * - `as-is`: not a picture, and not labelled one, within the file server's limit.
+ * - `original-cannot-decode`: sent as it is, flagged as the original file: a picture this build
+ *   does not decode (HEIC off Apple), or a file labelled a picture that is not one libvips reads.
+ * - `original-animated-png`: sent as it is, flagged as the original file, since re-encoding would
+ *   keep only its first frame.
+ * - `too-large-to-decode`: refused, a picture past the decode limits.
+ * - `too-large-for-server`: refused, over the file server's limit and not shrinkable.
+ * - `unreadable`: refused, a picture whose header is damaged.
+ * - `missing`: refused, no regular file at the path.
+ */
+export type SendPlan =
+  | 'reencoded'
+  | 'as-is'
+  | 'original-cannot-decode'
+  | 'original-animated-png'
+  | 'too-large-to-decode'
+  | 'too-large-for-server'
+  | 'unreadable'
+  | 'missing'
+
+/**
  * Which request a progress report belongs to.
  *
  * libsession fetches a file once for every download and export of it, but reports to each request
  * separately and ends each with its own outcome, so one attachment can be downloading and exporting
  * at once. An export of a file over libsession's `requested_cache_max_size` runs a transfer of its
  * own that nothing joins; the bridge leaves that size unset.
+ *
+ * `upload` is a file of a message of ours going to the file server, reported for `sendMessage`
+ * and `retrySend` alike. libsession uploads a message's files one at a time in index order, and
+ * only those not yet up: a retry reports nothing for a file an earlier attempt finished. An upload
+ * that fails ends the message's attempt, so the files after it report nothing at all.
  */
-export type AttachmentTransfer = 'download' | 'export'
+export type AttachmentTransfer = 'download' | 'export' | 'upload'
 
 /**
  * Whether an attachment's bytes are here, on their way, or neither.
@@ -94,8 +125,23 @@ export type AttachmentError = string
 export const MESSAGE_NOT_FOUND: AttachmentError = 'message.not_found'
 /** The message exists and has no attachment at this index. */
 export const ATTACHMENT_NOT_FOUND: AttachmentError = 'attachment.not_found'
-/** The file is no longer at the path it was attached from. Reported on an upload, never a fetch. */
+/**
+ * The file was gone from the path it was attached from before libsession had its own copy. Reported
+ * on an upload, never a fetch, and leaves the message `unsendable`.
+ */
 export const ATTACHMENT_FILE_MISSING: AttachmentError = 'attachment.file_missing'
+/**
+ * Too large to send: a picture too large for the file server even re-encoded at libsession's
+ * smallest sendable edge, a file sent as it is or as its original that does not fit the file
+ * server's limit, or a picture too large to decode. Reported on an upload, and leaves the message
+ * `unsendable`: a retry would fail the same way.
+ */
+export const ATTACHMENT_TOO_LARGE: AttachmentError = 'attachment.too_large'
+/**
+ * A picture that could not be read or re-encoded for sending. Reported on an upload, and leaves
+ * the message `failed`, since a retry reads the file again.
+ */
+export const ATTACHMENT_UNREADABLE: AttachmentError = 'attachment.unreadable'
 /** The file server does not hold it. The sender's to repair by sending it again. */
 export const FILE_NOT_FOUND: AttachmentError = 'file.not_found'
 /** It arrived but could not be turned back into the file it claims to be. Not worth retrying. */
@@ -114,7 +160,7 @@ export const FILE_SAVE_FAILED: AttachmentError = 'file.save_failed'
  * several ways it failed" are different questions and only one of them has an answer to match on.
  */
 export interface AttachmentOutcome {
-  /** The bytes arrived and verified. */
+  /** The bytes arrived and verified; for an upload, the file server accepted the file. */
   ok: boolean
   /** Why it failed. Unset when `ok`. */
   error?: AttachmentError
@@ -152,18 +198,66 @@ export interface Attachment {
    */
   hasThumbhash: boolean
   /**
-   * Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
-   * to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
-   * bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
-   * reporting `cached`; false again once the cache evicts the file, which takes the thumbnail too.
+   * The ThumbHash's rough record of the picture's shape, width over height: libsession's
+   * `component_aspect_ratio`, the ratio of the hash's DCT component counts, which its encoder picks
+   * in proportion to the source. Set exactly when `hasThumbhash` is.
+   *
+   * Coarse by construction. It is one of 7/n or n/7 for n in 1 to 7 (5/n or n/5 for a hash with
+   * alpha), and saturates there: a 4:3 photo reads 7:5, and every picture wider than 7:1 reads 7.
+   * A last resort for laying a picture out where the sender gave no `width` and `height`, and
+   * never a reason to override them.
+   *
+   * libsession's header says it is not the picture's aspect ratio and must never be used to lay one
+   * out. Here it shapes only a tile with nothing else to go on, and only until the thumbnail lands,
+   * whose shape `albumAspect` takes instead: the tile moves at most once.
+   */
+  thumbhashAspect?: number
+  /**
+   * Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
+   * shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
+   * client's thumbnail edge tall and never enlarged. An album's tile takes its shape, within the
+   * same 9:21 to 21:9; a list's square thumbnail covers it and crops. Made of a displayable image
+   * whose bytes are cached, and after them, so it turns true in a later `messages-updated` than the
+   * one reporting `cached`; false again once the cache evicts the file, which takes the thumbnail
+   * too. One we send has it sooner: made from libsession's own copy before the upload, and true
+   * from then on until the cached file is evicted.
    *
    * What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
    */
   hasThumbnail: boolean
   /**
+   * The thumbnail's size, read from the JPEG libsession made, so a layout can shape a tile before
+   * loading it. Both 0 while `hasThumbnail` is false.
+   */
+  thumbnailWidthPx: number
+  thumbnailHeightPx: number
+  /**
+   * Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
+   * (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).
+   * It is re-encoded without metadata, or is the original itself when that is already an upright
+   * JPEG or WebP within the edge, metadata included. Made only once asked for: the first
+   * `fetchRendition` of a picture with none queues it and is refused, and this turns true by
+   * update when it is made. Kept, evicted and reported as `hasThumbnail` is.
+   *
+   * What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
+   */
+  hasRendition: boolean
+  /**
+   * libsession will make no rendition of this picture: past its pixel limits, a header it cannot
+   * read, or a re-encode that failed. Settled once it has read the cached file, so only ever true
+   * while `availability` is `cached`, and never together with `hasRendition`. Asking again does
+   * nothing until a libsession that decodes more replaces this one.
+   */
+  renditionRefused: boolean
+  /**
+   * The sender sent the file exactly as it was, metadata included. Offered only as a file to
+   * export, never opened in the viewer, though its thumbnail is still drawn.
+   */
+  originalFile: boolean
+  /**
    * On the file server: an outgoing attachment's upload finished, and always true for an incoming
-   * one. Deliberately not "the bytes are here" - libsession records no local path, because the
-   * application chose it and a stored copy would go stale the moment the file moved.
+   * one. Deliberately not "the bytes are here": libsession records where it reads a file to send
+   * from but exposes no path, because the application chose it and knows it.
    */
   uploaded: boolean
   /** Whether the bytes are here, coming, or neither. See `AttachmentAvailability`. */
@@ -184,6 +278,36 @@ export interface Attachment {
    * depends on the other end volunteering a notification.
    */
   savedAtMs?: number
+}
+
+/**
+ * A file to send with a message. Sending files needs `cacheDir`.
+ *
+ * Without `takeFile`, libsession copies it beneath the cache directory once the message is stored,
+ * off the calling thread, and reads only that copy from then on: `path` may change or go once the
+ * attachment reads `cached`. Until it uploads, `fetchMedia` and `exportAttachment` serve the copy.
+ * A picture libsession decodes is sent re-encoded to fit the file server, and the stored
+ * attachment then describes what was sent.
+ */
+export interface OutgoingAttachment {
+  path: string
+  /** Inferred from the filename's extension when unset. */
+  contentType?: string
+  /** What the recipient sees it called; `path`'s own filename when unset. */
+  filename?: string
+  /**
+   * Hands the file to libsession instead of having it copied, refusing a symbolic link. Only for a
+   * copy the app made: once the message is stored the file is gone from `path`, and a send
+   * that was refused leaves it there.
+   *
+   * It is hard-linked under the cache directory, or copied where it cannot be, on the calling
+   * thread during the send, so a large copy holds that call up. It waits there unencrypted.
+   *
+   * Until it uploads, the attachment is `cached`, and `fetchMedia` and `exportAttachment` serve it
+   * from that copy; `absent` if the copy has gone. libsession deletes it once it has uploaded, or
+   * its message is unsendable or deleted.
+   */
+  takeFile?: boolean
 }
 
 /**
@@ -271,6 +395,14 @@ export interface Message {
    * this client can draw them, which is the screens' decision to make.
    */
   galleryViewable: boolean
+  /**
+   * Whether this message is shown as a gallery: libsession's decision, stored on this device only
+   * and changed by `setGallery`. On by default for a `galleryViewable` message stored by this
+   * libsession; a database from earlier builds may hold such sets stored as lists. Never true when
+   * `galleryViewable` is false. A client that cannot draw every attachment as a picture shows a
+   * list regardless and leaves this alone.
+   */
+  gallery: boolean
   replyTo?: Reply
   deleted?: Deletion
 }
@@ -303,9 +435,49 @@ export interface Conversation {
   blocked: boolean
 }
 
+/**
+ * Which of the two lists a conversation sits in.
+ *
+ * `none` is an answer rather than a missing one: a hidden conversation is in neither list, and so
+ * is one the app has not been shown.
+ */
+export type ConversationList = 'none' | 'conversations' | 'requests'
+
+/**
+ * Where a conversation was, and where it belongs now: enough to apply without consulting
+ * anything, because the order is libsession's and the two lists are not sorted alike.
+ *
+ * Each one places a row next to another, so they hold only when applied in the order given and
+ * none is skipped.
+ */
+export interface ListPlacement {
+  /**
+   * The list the app was last told this row is in, which is the one to take it out of. `none`
+   * when it was told of none: a row it has not been shown, or one that was hidden.
+   */
+  from: ConversationList
+  /** Where it belongs now. `none` means neither list, which is what hiding does. */
+  to: ConversationList
+  /** The row it now follows in `to`; unset means first. Always unset when `to` is `none`. */
+  after?: ConversationId
+}
+
 export interface AccountInfo {
   haveAccount: boolean
   sessionId?: string
   displayName?: string
   networkAttached: boolean
 }
+
+/**
+ * Whether the attached network can carry traffic: libsession's `ConnectionStatus`, as
+ * `Network::on_status_changed` reports it.
+ *
+ * `connected` means both the transport and the router are up -- a path exists -- which is the
+ * readiness `AccountInfo.networkAttached` does not say: that one turns true when a network is
+ * attached, before anything has been reached through it. `disconnected` covers both a network
+ * that lost its connections and no network at all: none attached yet, a client opened to stay
+ * offline, or one torn down by a discard. `unknown` is libsession's state before either layer has
+ * reported, and also its answer when the two disagree in a way it cannot name.
+ */
+export type NetworkStatus = 'unknown' | 'connecting' | 'connected' | 'disconnected'

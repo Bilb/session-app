@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import { Modal as NativeModal } from 'react-native'
+import { useState, type ReactNode } from 'react'
 import { isWeb, XStack, YStack } from 'tamagui'
 
 import type { ElementId } from '@session/test-ids'
-import { SPACING } from '@session/theme-tokens'
 
 import { TILE_SCRIM } from './attachmentTileStyle'
 import { backChevron, forwardChevron } from './backChevron'
+import { BarButton } from './BarButton'
+import { FULL_SCREEN_BAR, FullScreenBar, FullScreenModal } from './FullScreen'
 import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import { SIZE_SCALE } from './scales'
@@ -14,11 +14,9 @@ import { Image } from './Image'
 import { SafeArea } from './SafeArea'
 import { Text } from './Text'
 import { useWindowSize } from './useWindowSize'
+import { drawnUri, type MediaViewerItem } from './viewerItem'
 
-export type MediaViewerItem = {
-  /** Null where this platform has no resolver for the bytes, which is a state, not a failure. */
-  uri: string | null
-}
+export type { MediaViewerItem }
 
 export interface MediaViewerProps {
   open: boolean
@@ -34,6 +32,8 @@ export interface MediaViewerProps {
   unavailableLabel: string
   /** Shown in place of a picture whose bytes did not load, which an image does not retry. */
   failedLabel: string
+  /** Already worded: shown while an item is `preparing`. */
+  preparingLabel: string
   closeLabel: string
   exportLabel: string
   previousLabel: string
@@ -44,11 +44,17 @@ export interface MediaViewerProps {
   previousTestID: ElementId
   nextTestID: ElementId
   imageTestID: ElementId
+  /** On the line saying an item is being prepared. */
+  preparingTestID?: ElementId | undefined
+  /** See `FullScreenModal`'s: so an export failure is seen while the picture is still up. */
+  toasts?: ReactNode | undefined
 }
 
+export type MediaViewerBodyProps = Omit<MediaViewerProps, 'open' | 'toasts'>
+
 /**
- * Grows a control drawn at `$xl` to Android's 48 target, which clears Apple's 44. Touch only, and
- * only as far as the control's parent: `HEADER_HEIGHT` is what lets the header's two reach it.
+ * Grows a chevron drawn at `$xl` to Android's 48 target, which clears Apple's 44. Touch only, and
+ * only as far as the control's parent.
  */
 const CONTROL_SLOP = (SIZE_SCALE['3xl'] - SIZE_SCALE.xl) / 2
 
@@ -86,27 +92,15 @@ function Control({
       {...(isWeb ? {} : { hitSlop: CONTROL_SLOP })}
       testID={testID}
     >
-      <Icon name={icon} size="md" color="$textPrimary" />
+      {/* Over the picture it sits on the fixed scrim, which is dark in every theme. */}
+      <Icon name={icon} size="md" color={overMedia ? '$surfaceInverted' : '$textPrimary'} />
     </YStack>
   )
 }
 
 /**
- * The chrome along the top, as a fixed height.
- *
- * A number because the picture below is measured against it, and a header that took its height
- * from its content would make that measurement a guess. On touch, the 48 a control's slop grows
- * it to, since a slop is clipped to the row; on the web, `$xl` control plus the air around it.
- */
-const HEADER_HEIGHT = isWeb ? SIZE_SCALE.xl + SPACING.sm : SIZE_SCALE['3xl']
-
-/**
- * One picture, full screen, over whatever was on screen.
- *
- * **A layer rather than a route.** It covers the conversation instead of navigating away, so
- * dismissing it restores the transcript's scroll position for nothing and anything playing above
- * it keeps going. In react-native's `Modal` for the reason `Modal` itself is: a child that
- * overflows its parent is clipped on Android, and this one is the size of the window.
+ * The viewer's chrome, picture and chevrons, filling its parent. `MediaViewer` shows it over the
+ * window; on its own it is what a page draws a viewer state in.
  *
  * Deliberately the least ambitious thing that makes a gallery mean something. **No zoom of any
  * kind** - a pinch needs a gesture arbiter between the pager and the image, and getting that wrong
@@ -116,8 +110,7 @@ const HEADER_HEIGHT = isWeb ? SIZE_SCALE.xl + SPACING.sm : SIZE_SCALE['3xl']
  * media history, and they stop at the ends rather than wrapping - wrapping hides how many there
  * are.
  */
-export function MediaViewer({
-  open,
+export function MediaViewerBody({
   items,
   index,
   onIndex,
@@ -126,6 +119,7 @@ export function MediaViewer({
   positionLabel,
   unavailableLabel,
   failedLabel,
+  preparingLabel,
   closeLabel,
   exportLabel,
   previousLabel,
@@ -136,115 +130,151 @@ export function MediaViewer({
   previousTestID,
   nextTestID,
   imageTestID,
-}: MediaViewerProps) {
+  preparingTestID,
+}: MediaViewerBodyProps) {
   const { width, height } = useWindowSize()
   // The box the picture gets, measured, since the safe area's insets are the platform's to know.
-  const [box, setBox] = useState({ width, height: Math.max(height - HEADER_HEIGHT, 0) })
+  const [box, setBox] = useState({ width, height: Math.max(height - FULL_SCREEN_BAR.height, 0) })
   const current = items[index]
   // By url, so paging to another picture is not drawn as failed, and one that is fetched again
   // under a new url is tried again.
-  const [failedUri, setFailedUri] = useState<string | null>(null)
-  const failed = current?.uri != null && current.uri === failedUri
-  const close = (): void => {
-    setFailedUri(null)
-    onClose()
-  }
-
+  const [failedUris, setFailedUris] = useState<readonly string[]>([])
+  const drawn = current === undefined ? null : drawnUri(current, failedUris)
+  const failed = current?.failed === true || (current?.uri != null && drawn === null)
   return (
-    <NativeModal visible={open} transparent={false} animationType="fade" onRequestClose={close}>
-      <YStack flex={1} backgroundColor="$backgroundPrimary" testID={testID}>
-        {/* A modal is drawn edge to edge on Android, under the status bar where nothing can be
-            tapped, so the chrome keeps clear of it like any screen. */}
-        <SafeArea>
-          <YStack position="relative" flex={1}>
-            {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb
-                rests. */}
-            <XStack height={HEADER_HEIGHT} alignItems="center" gap="$xs" paddingHorizontal="$sm">
-              <Control icon="x" label={closeLabel} onPress={close} testID={closeTestID} />
-              <Text size="$label" color="$textSecondary" flex={1}>
+    <YStack flex={1} backgroundColor="$backgroundPrimary" testID={testID}>
+      {/* A modal is drawn edge to edge on Android, under the status bar where nothing can be
+          tapped, so the chrome keeps clear of it like any screen. */}
+      <SafeArea>
+        <YStack position="relative" flex={1}>
+          {/* Along the top, and nothing along the bottom: the bottom edge is where a thumb
+              rests. */}
+          <FullScreenBar
+            onClose={onClose}
+            closeLabel={closeLabel}
+            closeTestID={closeTestID}
+            title={
+              <Text size="$label" color="$textSecondary">
                 {positionLabel}
               </Text>
-              <Control
+            }
+            trailing={
+              <BarButton
                 icon="download"
-                label={exportLabel}
+                accessibilityLabel={exportLabel}
                 onPress={onExport}
+                glassDiameter={FULL_SCREEN_BAR.glassDiameter}
                 testID={exportTestID}
               />
-            </XStack>
+            }
+          />
 
-            {/* The chevrons are laid over this box rather than the whole screen, so they centre on
-                the picture and not on a height that includes the header. */}
-            <YStack
-              position="relative"
-              flex={1}
-              alignItems="center"
-              justifyContent="center"
-              onLayout={(event) => {
-                const measured = event.nativeEvent.layout
-                setBox({ width: measured.width, height: measured.height })
-              }}
-            >
-              {current === undefined || current.uri === null || failed ? (
-                <Text size="$body" color="$textSecondary">
-                  {failed ? failedLabel : unavailableLabel}
+          {/* The chevrons are laid over this box rather than the whole screen, so they centre on
+              the picture and not on a height that includes the header. */}
+          <YStack
+            position="relative"
+            flex={1}
+            alignItems="center"
+            justifyContent="center"
+            onLayout={(event) => {
+              const measured = event.nativeEvent.layout
+              setBox({ width: measured.width, height: measured.height })
+            }}
+          >
+            {drawn === null && current?.preparing != null ? (
+              <>
+                <Text size="$body" color="$textSecondary" testID={preparingTestID}>
+                  {preparingLabel}
                 </Text>
-              ) : (
-                // The box below the header, not the window: sized to the window it overflows the
-                // column it is in, and what gets squeezed out is the chrome above it. `contain`
-                // because this is somebody being shown their own picture - a crop here would be
-                // hiding part of the thing they opened.
-                <Image
-                  uri={current.uri}
-                  width={box.width}
-                  height={box.height}
-                  fit="contain"
-                  testID={imageTestID}
-                  onError={() => {
-                    setFailedUri(current.uri)
+                {/* Out of sight: loading it is the ask, and what it draws is not this. */}
+                <YStack position="absolute" width={1} height={1} opacity={0} aria-hidden>
+                  <Image uri={current.preparing} width={1} height={1} fit="contain" />
+                </YStack>
+              </>
+            ) : drawn === null ? (
+              <Text size="$body" color="$textSecondary">
+                {failed ? failedLabel : unavailableLabel}
+              </Text>
+            ) : (
+              // The box below the header, not the window: sized to the window it overflows the
+              // column it is in, and what gets squeezed out is the chrome above it. `contain`
+              // because this is somebody being shown their own picture - a crop here would be
+              // hiding part of the thing they opened.
+              <Image
+                uri={drawn}
+                width={box.width}
+                height={box.height}
+                fit="contain"
+                testID={imageTestID}
+                onError={() => {
+                  setFailedUris((was) => [...was, drawn])
+                }}
+              />
+            )}
+            {items.length < 2 ? null : (
+              <XStack
+                position="absolute"
+                top={0}
+                bottom={0}
+                left={0}
+                right={0}
+                alignItems="center"
+                justifyContent="space-between"
+                paddingHorizontal="$xs"
+                pointerEvents="box-none"
+              >
+                {/* The glyph follows reading order, the index does not: previous is always
+                index - 1, and in a mirrored layout it is the chevron on the right that draws
+                it. */}
+                <Control
+                  icon={backChevron()}
+                  label={previousLabel}
+                  disabled={index <= 0}
+                  overMedia
+                  testID={previousTestID}
+                  onPress={() => {
+                    onIndex(index - 1)
                   }}
                 />
-              )}
-              {items.length < 2 ? null : (
-                <XStack
-                  position="absolute"
-                  top={0}
-                  bottom={0}
-                  left={0}
-                  right={0}
-                  alignItems="center"
-                  justifyContent="space-between"
-                  paddingHorizontal="$xs"
-                  pointerEvents="box-none"
-                >
-                  {/* The glyph follows reading order, the index does not: previous is always
-                  index - 1, and in a mirrored layout it is the chevron on the right that draws
-                  it. */}
-                  <Control
-                    icon={backChevron()}
-                    label={previousLabel}
-                    disabled={index <= 0}
-                    overMedia
-                    testID={previousTestID}
-                    onPress={() => {
-                      onIndex(index - 1)
-                    }}
-                  />
-                  <Control
-                    icon={forwardChevron()}
-                    label={nextLabel}
-                    disabled={index >= items.length - 1}
-                    overMedia
-                    testID={nextTestID}
-                    onPress={() => {
-                      onIndex(index + 1)
-                    }}
-                  />
-                </XStack>
-              )}
-            </YStack>
+                <Control
+                  icon={forwardChevron()}
+                  label={nextLabel}
+                  disabled={index >= items.length - 1}
+                  overMedia
+                  testID={nextTestID}
+                  onPress={() => {
+                    onIndex(index + 1)
+                  }}
+                />
+              </XStack>
+            )}
           </YStack>
-        </SafeArea>
-      </YStack>
-    </NativeModal>
+        </YStack>
+      </SafeArea>
+    </YStack>
+  )
+}
+
+/**
+ * One picture, full screen, over whatever was on screen.
+ *
+ * **A layer rather than a route.** It covers the conversation instead of navigating away, so
+ * dismissing it restores the transcript's scroll position for nothing and anything playing above
+ * it keeps going.
+ *
+ * Each opening draws a fresh body, so a picture that failed is tried again. The body stays mounted
+ * once closed, which is what `FullScreenModal` asks of its content.
+ */
+export function MediaViewer({ open, onClose, toasts, ...body }: MediaViewerProps) {
+  const [opening, setOpening] = useState(0)
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setOpening((count) => count + 1)
+  }
+  return (
+    <FullScreenModal open={open} onClose={onClose} toasts={toasts}>
+      <MediaViewerBody key={opening} {...body} onClose={onClose} />
+    </FullScreenModal>
   )
 }

@@ -17,14 +17,13 @@ describe('the album’s download cloud on native', () => {
   })
 })
 
-describe('the three-up’s cloud on native', () => {
-  it('takes a press, and leaves the tile under the rest of its box its own', () => {
-    // `none` on the box excludes the whole subtree on native, so the cloud's press never fired.
+describe('the album’s cloud on native', () => {
+  it('takes a press, and leaves the tiles under the rest of its box their own', () => {
+    // `none` on a box excludes the whole subtree on native, so the cloud's press never fired.
     // A press that falls through lands on the tile under it, which fetches the same set.
-    const album = source('AttachmentAlbum.tsx')
-    expect(album).not.toContain('pointerEvents="none"')
-    expect(album).toMatch(
-      /<XStack position="absolute"[^>]*pointerEvents="box-none">\s*<YStack[^>]*pointerEvents="box-none"/,
+    expect(source('AttachmentAlbum.tsx')).not.toContain('pointerEvents="none"')
+    expect(source('FetchHint.tsx')).toContain(
+      "pointerEvents={onPress === undefined ? 'none' : 'box-none'}",
     )
   })
 })
@@ -38,7 +37,7 @@ describe('an attachment tile’s picture on Android', () => {
 
   // A decode's size is Fresco's, which no tree or screenshot reports.
   it('asks for a decode 4/3 its view, so Fresco’s rounding still covers it', () => {
-    // Without it a three-up album's tiles decode at three quarters of their size.
+    // Without it an album's tiles decode at three quarters of their size.
     expect(picture).toContain('resizeMultiplier={4 / 3}')
   })
 
@@ -173,5 +172,14 @@ describe('a Button on native', () => {
         ).test(pressed),
     )
     expect(restated).toEqual([])
+  })
+})
+
+describe('Reply as an accessibility action on native', () => {
+  it('runs the reply only for its own action name', () => {
+    // The action is VoiceOver's and TalkBack's menu, which no driver opens.
+    expect(source('replyAction.ts')).toContain(
+      'if (event.nativeEvent.actionName === REPLY_ACTION) onReply()',
+    )
   })
 })

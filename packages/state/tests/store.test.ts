@@ -1,13 +1,21 @@
-import { friends, friendsWithAttachments, type FakeWorld } from '@session/client/fake'
 import {
+  createFakeTransport,
+  friends,
+  friendsWithAttachments,
+  type FakeWorld,
+} from '@session/client/fake'
+import {
+  createKeylessTransport,
   createRefusingTransport,
   createSessionClient,
+  keyMissing,
+  keyUnavailable,
   SessionClientError,
   type Frame,
   type MessagePage,
   type SessionClient,
 } from '@session/client'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createSessionStore, type SessionStore } from '#src/store'
 
@@ -51,6 +59,40 @@ describe('hydrating a device that has no account', () => {
   })
 })
 
+describe('the network status', () => {
+  it('is asked for by hydrate and then followed', async () => {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice)
+
+    await store.actions.hydrate()
+    // No network attached: the fake, like the bridge, answers disconnected rather than unknown.
+    expect(store.getState().networkStatus).toBe('disconnected')
+
+    await alice.attachNetwork({ netid: 'mainnet' })
+    // A new Network has not heard from its transport or router yet.
+    expect(store.getState().networkStatus).toBe('unknown')
+    world.settle()
+    expect(store.getState().networkStatus).toBe('connected')
+  })
+
+  it('is asked for again on a device left with no account', async () => {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const store = createSessionStore(alice)
+    await alice.attachNetwork({ netid: 'mainnet' })
+    world.settle()
+    await store.actions.hydrate()
+    expect(store.getState().networkStatus).toBe('connected')
+
+    // A discard resets the store to empty; the answer after it is what the bridge now says.
+    await store.actions.discardAccount()
+    expect(store.getState().networkStatus).toBe('disconnected')
+  })
+})
+
 describe("the account's theme", () => {
   function alice() {
     const { world, clients } = friends(['Alice', 'Bob'])
@@ -86,6 +128,40 @@ describe("the account's theme", () => {
     world.account('Alice').haveAccount = false
     await store.actions.hydrate()
     expect(store.getState().appearance).toBeNull()
+  })
+})
+
+describe('the recovery password', () => {
+  function alice() {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const client = clients['Alice']
+    if (!client) throw new Error('fixture did not produce a client')
+    return { world, client, store: createSessionStore(client) }
+  }
+
+  it('is shown until hidden, and stays hidden on the next start', async () => {
+    const { client, store } = alice()
+    await store.actions.hydrate()
+    expect(store.getState().recoveryPasswordHidden).toBe(false)
+
+    await store.actions.hideRecoveryPassword()
+    expect(store.getState().recoveryPasswordHidden).toBe(true)
+
+    const next = createSessionStore(client)
+    await next.actions.hydrate()
+    expect(next.getState().recoveryPasswordHidden).toBe(true)
+  })
+
+  it('reaches the caller without passing through the store', async () => {
+    const { store } = alice()
+    await store.actions.hydrate()
+    const before = JSON.stringify(store.getState())
+
+    const { words, seedHex } = await store.actions.getRecoveryPassword()
+
+    expect(words.length).toBeGreaterThan(0)
+    expect(seedHex).toMatch(/^(?:[0-9a-f]{32}){1,2}$/)
+    expect(JSON.stringify(store.getState())).toBe(before)
   })
 })
 
@@ -162,7 +238,7 @@ describe('a start with no bridge behind it', () => {
     const refused = createSessionStore(createSessionClient(createRefusingTransport('no module')))
     await refused.actions.start()
     expect(refused.getState().startupError).toMatch(/the bridge could not start: no module/)
-    expect(refused.getState().startupClearable).toBe(false)
+    expect(refused.getState().startupFailureKind).toBe('noBridge')
 
     const { clients } = friends(['Alice', 'Bob'])
     const alice = clients['Alice']
@@ -170,7 +246,40 @@ describe('a start with no bridge behind it', () => {
     const store = createSessionStore(alice)
     alice.getAccountInfo = () => Promise.reject(new SessionClientError('file is not a database'))
     await store.actions.start()
-    expect(store.getState().startupClearable).toBe(true)
+    expect(store.getState().startupFailureKind).toBe('unreadable')
+  })
+})
+
+describe('a start with no database key', () => {
+  it('is told apart by its code, and a confirmed clear opens a bridge and starts in place', async () => {
+    const { clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    let cleared = 0
+    const transport = createKeylessTransport(keyMissing(), () => {
+      cleared += 1
+      return Promise.resolve(createFakeTransport(alice))
+    })
+    const store = createSessionStore(createSessionClient(transport))
+
+    await store.actions.start()
+    expect(store.getState().startupError).toBe(keyMissing().message)
+    expect(store.getState().startupFailureKind).toBe('unreadable')
+    expect(cleared).toBe(0)
+
+    await store.actions.clearDeviceData()
+    expect(cleared).toBe(1)
+    expect(store.getState().startupError).toBeNull()
+    expect(store.getState().hydrated).toBe(true)
+  })
+
+  it('calls a key the keychain will not give up now transient', async () => {
+    const transport = createKeylessTransport(keyUnavailable('locked'), () =>
+      Promise.reject(new Error('unused')),
+    )
+    const store = createSessionStore(createSessionClient(transport))
+    await store.actions.start()
+    expect(store.getState().startupFailureKind).toBe('transient')
   })
 })
 
@@ -189,6 +298,7 @@ describe('a clear that fails', () => {
 
     await expect(store.actions.clearDeviceData()).rejects.toThrow('disk full')
     expect(store.getState().startupError).toBe('disk full')
+    expect(store.getState().startupFailureKind).toBe('transient')
   })
 })
 
@@ -231,6 +341,29 @@ describe('the store', () => {
     expect(attachment(withOne.id)?.availability).toBe('cached')
   })
 
+  it('shows a message as a list once asked, and reads the choice back after a reload', async () => {
+    const { store, world, bob } = fixture
+    const load = async () => {
+      const running = store.actions.loadHistory(bob)
+      world.settle()
+      await running
+    }
+    const gallery = (id: number) =>
+      store.getState().histories[bob]?.messages.find((m) => m.id === id)?.gallery
+
+    await load()
+    const album = store.getState().histories[bob]?.messages.find((m) => m.galleryViewable)
+    expect(album?.gallery).toBe(true)
+    if (!album) return
+
+    expect(await store.actions.setGallery(album.id, false)).toBe(true)
+    expect(gallery(album.id)).toBe(false)
+
+    store.actions.forgetHistory(bob)
+    await load()
+    expect(gallery(album.id)).toBe(false)
+  })
+
   it('drops a conversations window and its transfers when a screen stops showing it', async () => {
     const { store, world, bob } = fixture
     const running = store.actions.loadHistory(bob)
@@ -265,7 +398,7 @@ describe('the store', () => {
   it('does not bring back a window forgotten while an older page was in flight', async () => {
     const { store, world, bob } = fixture
     for (let i = 0; i < 40; i += 1) {
-      await store.actions.send(bob, `m${i}`)
+      await store.actions.send(bob, { body: `m${i}` })
       world.settle()
     }
     await store.actions.loadHistory(bob)
@@ -295,6 +428,36 @@ describe('the store', () => {
     pages[1]?.({ messages: [] })
     await second
     expect(store.getState().histories[bob]?.ready).toBe(true)
+  })
+
+  it('sends a message with its files, and shows it uploading them before it is sent', async () => {
+    const { store, world, bob } = fixture
+    world.writeFile('/disk/notes.txt', 900)
+    await store.actions.loadHistory(bob)
+
+    await store.actions.send(bob, {
+      body: '',
+      attachments: [{ path: '/disk/notes.txt', contentType: 'text/plain' }],
+    })
+    const sent = () => store.getState().histories[bob]?.messages.at(-1)
+    expect(sent()?.sendState).toBe('uploading')
+    expect(sent()?.attachments.map((a) => a.filename)).toEqual(['notes.txt'])
+
+    world.settle()
+    expect(sent()?.sendState).toBe('sent')
+    expect(sent()?.attachments.map((a) => [a.uploaded, a.sizeBytes])).toEqual([[true, 900]])
+  })
+
+  it('rejects a send libsession refuses, with nothing shown for it', async () => {
+    const { store, world, bob } = fixture
+    world.writeFile('/disk/other.txt', 10)
+    await store.actions.loadHistory(bob)
+    const before = store.getState().histories[bob]?.messages.length
+
+    await expect(
+      store.actions.send(bob, { body: 'x', attachments: [{ path: '/disk/missing.txt' }] }),
+    ).rejects.toThrow(SessionClientError)
+    expect(store.getState().histories[bob]?.messages.length).toBe(before)
   })
 
   it('leaves the state alone when asked to forget a conversation it never loaded', () => {
@@ -331,5 +494,36 @@ describe("libsession's log lines", () => {
 
     expect(received).toEqual([['info', 'network', message]])
     expect(store.getState()).toBe(before)
+  })
+})
+
+describe('the conversation lists', () => {
+  it('are read again when a placement names a row the store does not hold', async () => {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const account = world.account('Alice')
+    const [bob] = await alice.getConversations()
+    if (!bob) throw new Error('expected a conversation with Bob')
+    account.upsertConversation(
+      { ...bob, id: `05${'c'.repeat(64)}`, lastActivity: bob.lastActivity - 1 },
+      { announce: false },
+    )
+    const store = createSessionStore(alice)
+    await store.actions.hydrate()
+    const order = store.getState().conversations.map((c) => c.id)
+    expect(order.length).toBe(2)
+
+    // Placed after a row nobody holds: appended meanwhile, which puts Bob last and wrong.
+    account.emit({
+      type: 'conversation-updated',
+      conversation: bob,
+      placement: { from: 'conversations', to: 'conversations', after: 'nobody' },
+    })
+
+    await vi.waitFor(() => {
+      expect(store.getState().listsOutOfStep.conversations).toBe(false)
+      expect(store.getState().conversations.map((c) => c.id)).toEqual(order)
+    })
   })
 })

@@ -5,6 +5,7 @@ import type {
   Conversation,
   ConversationId,
   Message,
+  NetworkStatus,
 } from '@session/client'
 import {
   createContext,
@@ -17,7 +18,14 @@ import {
 } from 'react'
 import { useStore } from 'zustand'
 
-import { selectAttachmentTransfer, selectMessage, selectMessageTransfers } from './selectors'
+import {
+  conversationSelector,
+  selectAttachmentTransfer,
+  selectMessage,
+  selectMessageTransfers,
+  selectUnreadRequestCount,
+} from './selectors'
+import type { StartupFailureKind } from './startupFailure'
 import type { SessionActions, SessionStore } from './store'
 import type {
   AttachmentTransferState,
@@ -63,16 +71,34 @@ export function useStartupError(): string | null {
   return useStore(store, (state) => state.startupError)
 }
 
-/** Whether clearing the device could get past a failed start: see `startupClearable`. */
-export function useStartupClearable(): boolean {
+/** What kind of failed start `useStartupError` is, or null while there is none. */
+export function useStartupFailureKind(): StartupFailureKind | null {
   const store = useSessionStore()
-  return useStore(store, (state) => state.startupClearable)
+  return useStore(store, (state) => state.startupFailureKind)
 }
 
 /** The theme and accent the account chose, as stored, or null where it has not chosen one. */
 export function useAppearance(): StoredAppearance | null {
   const store = useSessionStore()
   return useStore(store, (state) => state.appearance)
+}
+
+/** Whether the recovery password was hidden on this device. */
+export function useRecoveryPasswordHidden(): boolean {
+  const store = useSessionStore()
+  return useStore(store, (state) => state.recoveryPasswordHidden)
+}
+
+/** The file server's limit on one upload, encrypted and padded, or null before a start asked. */
+export function useAttachmentUploadLimit(): number | null {
+  const store = useSessionStore()
+  return useStore(store, (state) => state.attachmentUploadLimitBytes)
+}
+
+/** Whether the attached network can carry traffic: see `SessionState.networkStatus`. */
+export function useNetworkStatus(): NetworkStatus {
+  const store = useSessionStore()
+  return useStore(store, (state) => state.networkStatus)
 }
 
 /** The whole of what libsession says about the account, or null before the first answer. */
@@ -99,10 +125,9 @@ export function useRequests(): Conversation[] {
 
 export function useConversation(id: ConversationId | undefined): Conversation | undefined {
   const store = useSessionStore()
-  return useStore(store, (state) =>
-    id === undefined
-      ? undefined
-      : (state.conversations.find((c) => c.id === id) ?? state.requests.find((c) => c.id === id)),
+  return useStore(
+    store,
+    useMemo(() => conversationSelector(id), [id]),
   )
 }
 
@@ -204,5 +229,5 @@ export function useMessage(conversationId: ConversationId, messageId: number): M
 /** Unread requests, which is not the same as the number of requests. */
 export function useUnreadRequestCount(): number {
   const store = useSessionStore()
-  return useStore(store, (state) => state.requests.filter((c) => c.unreadCount > 0).length)
+  return useStore(store, selectUnreadRequestCount)
 }

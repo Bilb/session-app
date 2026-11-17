@@ -19,6 +19,11 @@ const SEEDED_PICTURES: Attachment[] = [
     filename: 'harbour.jpg',
     hasThumbhash: true,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     sizeBytes: 2_411_724,
     voiceMessage: false,
     width: 1600,
@@ -34,6 +39,11 @@ const SEEDED_PICTURES: Attachment[] = [
     filename: 'ferry.png',
     hasThumbhash: true,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     sizeBytes: 812_004,
     voiceMessage: false,
     width: 1200,
@@ -57,6 +67,11 @@ const SEEDED_FILES: Attachment[] = [
     filename: 'receipt.jpg',
     hasThumbhash: true,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     sizeBytes: 96_500,
     voiceMessage: false,
     width: 900,
@@ -74,6 +89,11 @@ const SEEDED_FILES: Attachment[] = [
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -87,6 +107,11 @@ const SEEDED_FILES: Attachment[] = [
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -102,6 +127,11 @@ const SEEDED_FILES: Attachment[] = [
     height: 1200,
     hasThumbhash: true,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -126,6 +156,11 @@ const SEEDED_MANY: Attachment[] = Array.from({ length: 13 }, (_, at) => ({
       }),
   hasThumbhash: at !== 12,
   hasThumbnail: false,
+  thumbnailWidthPx: 0,
+  thumbnailHeightPx: 0,
+  hasRendition: false,
+  renditionRefused: false,
+  originalFile: false,
   sizeBytes: 120_000 + at * 4_000,
   voiceMessage: false,
   uploaded: true,
@@ -175,7 +210,7 @@ export const PHOTO_THUMBHASHES: readonly string[] = [
   '61491a15846579787f878889788888777692700709', // 29
   '90e7050d82488745976a77508a5767994795600309', // 30
 ]
-export type Kind = MediaKind | 'pdf' | 'zip' | 'sheet' | 'audio'
+export type Kind = MediaKind | 'pdf' | 'zip' | 'sheet' | 'audio' | 'apng'
 
 const TYPES: Record<Kind, { contentType: string; extension: string }> = {
   image: { contentType: 'image/jpeg', extension: 'jpg' },
@@ -184,6 +219,8 @@ const TYPES: Record<Kind, { contentType: string; extension: string }> = {
   zip: { contentType: 'application/zip', extension: 'zip' },
   sheet: { contentType: 'application/vnd.ms-excel', extension: 'xlsx' },
   audio: { contentType: 'audio/mpeg', extension: 'mp3' },
+  // Not displayable, so a file: libsession shows an APNG only when it is labelled a PNG.
+  apng: { contentType: 'image/apng', extension: 'png' },
 }
 
 /**
@@ -196,7 +233,7 @@ function showpiece(
   index: number,
   kind: Kind,
   photo: number,
-  options: { hashed?: boolean; expired?: boolean } = {},
+  options: { hashed?: boolean; expired?: boolean; original?: boolean } = {},
 ): Attachment {
   const { contentType, extension } = TYPES[kind]
   const picture = isViewableContentType(contentType)
@@ -217,6 +254,11 @@ function showpiece(
     ...(picture ? { width: 1600, height: 1200 } : {}),
     hasThumbhash: picture && options.hashed !== false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: options.original === true,
     uploaded: true,
     availability: options.expired === true ? 'notFound' : 'absent',
     fetchDoneBytes: 0,
@@ -225,11 +267,11 @@ function showpiece(
 }
 
 /**
- * A running number over the whole showcase, so pictures repeat as rarely as the photos allow.
+ * A running number over a run of messages, so pictures repeat as rarely as the photos allow.
  *
- * Reset with the fixture rather than per message: there are more pictures than photos, so it
- * wraps, and a wrap between messages is much less noticeable than two identical tiles side by
- * side. Only a message with more pictures than there are photos repeats one within itself.
+ * Reset per section of the showcase rather than per message: there are more pictures than photos,
+ * so it wraps, and a wrap between messages is much less noticeable than two identical tiles side
+ * by side. Only a message with more pictures than there are photos repeats one within itself.
  */
 let nextPhoto = 0
 
@@ -240,7 +282,11 @@ export function resetPhotos(): void {
 /** `expired` as a function picks which entries the file server no longer holds. */
 export function set(
   kinds: Kind[],
-  options: { hashed?: boolean; expired?: boolean | ((index: number) => boolean) } = {},
+  options: {
+    hashed?: boolean
+    expired?: boolean | ((index: number) => boolean)
+    original?: boolean
+  } = {},
 ): Attachment[] {
   const { expired, ...rest } = options
   return kinds.map((kind, index) => {
@@ -264,6 +310,11 @@ const SEEDED_EXPIRED: Attachment[] = [
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: true,
     availability: 'notFound',
     fetchDoneBytes: 0,
@@ -271,11 +322,22 @@ const SEEDED_EXPIRED: Attachment[] = [
   },
 ]
 
+/**
+ * Two pictures their sender sent as the original files, metadata and all: a recipient is offered
+ * them only to export, though each still draws its thumbnail.
+ */
+const SEEDED_ORIGINALS: Attachment[] = SEEDED_PICTURES.map((picture) => ({
+  ...picture,
+  filename: `original-${picture.filename ?? 'picture'}`,
+  originalFile: true,
+}))
+
 const SEEDED_SETS = {
   pictures: ['Here are the photos', SEEDED_PICTURES],
   files: ['And the paperwork', SEEDED_FILES],
   roll: ['The whole roll', SEEDED_MANY],
   expired: ['This one has expired', SEEDED_EXPIRED],
+  originals: ['Sent as the original files', SEEDED_ORIGINALS],
 } as const satisfies Record<string, readonly [string, Attachment[]]>
 
 type SeededSet = keyof typeof SEEDED_SETS
@@ -283,7 +345,7 @@ type SeededSet = keyof typeof SEEDED_SETS
 /**
  * `friends`, then Bob's attachment messages arriving at Alice. By default an album, a mixed set
  * the list draws, and one longer than the transcript list holds - the fewest that reach each code
- * path; `expired` adds a file the server no longer holds.
+ * path; `expired` adds a file the server no longer holds, `originals` pictures sent as files.
  *
  * Nothing is fetched: the conversation has not been asked what to download.
  */

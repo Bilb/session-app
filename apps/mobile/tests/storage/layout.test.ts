@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   databaseFiles,
+  discardedPaths,
   fileUri,
   libsessionPaths,
   plainPath,
@@ -26,6 +27,11 @@ describe('the storage layout', () => {
       '/d/session.db-wal',
       '/d/session.db-shm',
     ])
+  })
+
+  it('discards from a network what the bridge discards: the database, its files, the cache', () => {
+    const { dbPath, cacheDir } = libsessionPaths(GROUP, 'mainnet')
+    expect(discardedPaths(`${GROUP}/mainnet`)).toEqual([...databaseFiles(dbPath), cacheDir])
   })
 
   it('turns a path into the URI expo-file-system takes, and back', () => {

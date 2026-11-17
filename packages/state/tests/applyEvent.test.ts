@@ -1,4 +1,4 @@
-import type { Conversation, Message, SessionEvent } from '@session/client'
+import type { Conversation, ListPlacement, Message, SessionEvent } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
 import { applyEvent, mergePages, recordRefusal } from '#src/applyEvent'
@@ -32,6 +32,7 @@ function message(overrides: Partial<Message> = {}): Message {
     sendState: 'sent',
     attachments: [],
     galleryViewable: false,
+    gallery: false,
     ...overrides,
   }
 }
@@ -71,22 +72,45 @@ function replay(events: SessionEvent[], from: SessionState = emptyState): Sessio
 
 const ids = (list: Conversation[]): string[] => list.map((c) => c.id)
 
+/** First in the list its row belongs in, which is where a newest row goes. */
+function first(c: Conversation): ListPlacement {
+  return { from: 'none', to: c.request ? 'requests' : 'conversations' }
+}
+
+function added(c: Conversation, placement: ListPlacement = first(c)): SessionEvent {
+  return { type: 'conversation-added', conversation: c, placement }
+}
+
+function updated(c: Conversation, placement: ListPlacement = first(c)): SessionEvent {
+  return { type: 'conversation-updated', conversation: c, placement }
+}
+
+/** The conversation list as the store holds it once read, in libsession's order. */
+function seededList(...rowIds: string[]): SessionState {
+  return { ...emptyState, conversations: rowIds.map((id) => conversation({ id })) }
+}
+
 describe('applyEvent', () => {
-  it('keeps the order libsession sent, rather than imposing one', () => {
+  it('keeps the order libsession placed, rather than imposing one', () => {
     // Deliberately not the order our own comparator would produce: libsession orders both lists
     // in SQL, and it orders them differently from each other - requests carry no priority term.
     // A store that re-sorted would disagree with the request list today and with any later change
     // to the sort rules.
-    const state = replay([
-      {
-        type: 'conversation-list-replaced',
-        conversations: [
-          conversation({ id: 'a', lastActivity: 3000 }),
-          conversation({ id: 'b', lastActivity: 1000, priority: 1 }),
-          conversation({ id: 'c', lastActivity: 2000 }),
-        ],
-      },
-    ])
+    const seeded: SessionState = {
+      ...emptyState,
+      conversations: [
+        conversation({ id: 'a', lastActivity: 3000 }),
+        conversation({ id: 'b', lastActivity: 1000, priority: 1 }),
+      ],
+    }
+    const state = applyEvent(
+      seeded,
+      updated(conversation({ id: 'c', lastActivity: 2000 }), {
+        from: 'none',
+        to: 'conversations',
+        after: 'b',
+      }),
+    )
 
     expect(ids(state.conversations)).toEqual(['a', 'b', 'c'])
   })
@@ -94,8 +118,8 @@ describe('applyEvent', () => {
   it('moves an approved conversation out of the request list', () => {
     const asRequest = conversation({ request: true })
     const state = replay([
-      { type: 'conversation-added', conversation: asRequest },
-      { type: 'conversation-updated', conversation: { ...asRequest, request: false } },
+      added(asRequest),
+      updated({ ...asRequest, request: false }, { from: 'requests', to: 'conversations' }),
     ])
 
     // Approval is an update, not a remove-then-add, so the row has to be taken out of the
@@ -105,7 +129,7 @@ describe('applyEvent', () => {
   })
 
   it('is unchanged by replaying the same event', () => {
-    const event: SessionEvent = { type: 'conversation-added', conversation: conversation() }
+    const event = added(conversation())
     const once = replay([event])
     const twice = replay([event, event])
 
@@ -113,10 +137,7 @@ describe('applyEvent', () => {
   })
 
   it('ignores messages for a conversation whose history was never loaded', () => {
-    const state = replay([
-      { type: 'conversation-added', conversation: conversation() },
-      { type: 'messages-added', messages: [message()] },
-    ])
+    const state = replay([added(conversation()), { type: 'messages-added', messages: [message()] }])
 
     // A window built from one event would look complete and would not be.
     expect(state.histories['05alice']).toBeUndefined()
@@ -184,72 +205,174 @@ describe('applyEvent', () => {
 
   it('forgets a removed conversation everywhere at once', () => {
     const state = replay([
-      { type: 'conversation-added', conversation: conversation() },
-      { type: 'conversation-removed', conversationId: '05alice' },
+      added(conversation()),
+      { type: 'conversation-removed', conversationId: '05alice', list: 'conversations' },
     ])
 
     expect(ids(state.conversations)).toEqual([])
     expect(state.histories['05alice']).toBeUndefined()
   })
 
-  it('appends a conversation it has not seen, and leaves an updated one where it was', () => {
-    const seeded = replay([
-      {
-        type: 'conversation-list-replaced',
-        conversations: [
-          conversation({ id: 'a', lastActivity: 3000 }),
-          conversation({ id: 'b', lastActivity: 2000 }),
-          conversation({ id: 'c', lastActivity: 1000 }),
-        ],
-      },
-    ])
+  it('puts a row where its placement says, rather than deciding', () => {
+    const seeded = seededList('a', 'b', 'c')
 
-    // A rank that would sort to the front under any comparator: it still goes on the end, because
-    // libsession follows with a replacement carrying the real order.
-    const added = applyEvent(seeded, {
-      type: 'conversation-added',
-      conversation: conversation({ id: 'top', lastActivity: 9000, priority: 2 }),
-    })
-    expect(ids(added.conversations)).toEqual(['a', 'b', 'c', 'top'])
+    // A rank that would sort to the end under any comparator: it still goes first, because that is
+    // where libsession placed it.
+    const top = applyEvent(seeded, added(conversation({ id: 'top', lastActivity: 1 })))
+    expect(ids(top.conversations)).toEqual(['top', 'a', 'b', 'c'])
 
-    const updated = applyEvent(seeded, {
-      type: 'conversation-updated',
-      conversation: conversation({ id: 'c', lastActivity: 4000 }),
-    })
-    expect(ids(updated.conversations)).toEqual(['a', 'b', 'c'])
-    expect(updated.conversations.find((c) => c.id === 'c')?.lastActivity).toBe(4000)
+    const moved = applyEvent(
+      seeded,
+      updated(conversation({ id: 'c' }), {
+        from: 'conversations',
+        to: 'conversations',
+        after: 'a',
+      }),
+    )
+    expect(ids(moved.conversations)).toEqual(['a', 'c', 'b'])
   })
 
-  it('keeps the same order array when only a field changed', () => {
-    const seeded = replay([
-      {
-        type: 'conversation-list-replaced',
-        conversations: [
-          conversation({ id: 'a', lastActivity: 3000 }),
-          conversation({ id: 'b', lastActivity: 2000 }),
-        ],
-      },
-    ])
+  it('finds the row in either list, whatever the placement says it was in', () => {
+    // `from` is where libsession last reported the row, and it never reported one the app read for
+    // itself: that one comes with `from: none` while the store is holding it.
+    const seeded = seededList('a', 'b')
+    const state = applyEvent(
+      seeded,
+      updated(conversation({ id: 'b', unreadCount: 3 }), { from: 'none', to: 'conversations' }),
+    )
 
-    const state = applyEvent(seeded, {
-      type: 'conversation-updated',
-      conversation: conversation({ id: 'b', lastActivity: 2000, unreadCount: 3 }),
-    })
+    expect(ids(state.conversations)).toEqual(['b', 'a'])
+    expect(state.conversations[0]?.unreadCount).toBe(3)
+  })
+
+  it('takes a hidden row out of both lists', () => {
+    const seeded = seededList('a', 'b')
+    const state = applyEvent(
+      seeded,
+      updated(conversation({ id: 'a', priority: -1 }), { from: 'conversations', to: 'none' }),
+    )
+
+    expect(ids(state.conversations)).toEqual(['b'])
+    expect(state.listsOutOfStep).toEqual({ conversations: false, requests: false })
+  })
+
+  it('flags a list a row was placed after a stranger in, and keeps the row', () => {
+    const seeded = seededList('a', 'b')
+    const state = applyEvent(
+      seeded,
+      added(conversation({ id: 'new' }), { from: 'none', to: 'conversations', after: 'missing' }),
+    )
+
+    // Kept so it is not lost while the store reads the list again; flagged because no later
+    // placement can put a list right that is missing the row it places against.
+    expect(ids(state.conversations)).toEqual(['a', 'b', 'new'])
+    expect(state.listsOutOfStep).toEqual({ conversations: true, requests: false })
+  })
+
+  it('stays flagged through later placements, which cannot put the list right', () => {
+    const flagged = applyEvent(
+      seededList('a'),
+      added(conversation({ id: 'new' }), { from: 'none', to: 'conversations', after: 'missing' }),
+    )
+    const state = applyEvent(flagged, updated(conversation({ id: 'a' })))
+
+    expect(state.listsOutOfStep.conversations).toBe(true)
+  })
+
+  it('keeps a row in its place when the placement leaves it there', () => {
+    const seeded = seededList('a', 'b')
+
+    const state = applyEvent(
+      seeded,
+      updated(conversation({ id: 'b', unreadCount: 3 }), {
+        from: 'conversations',
+        to: 'conversations',
+        after: 'a',
+      }),
+    )
 
     // The row it replaced keeps its place, so the list still reads in libsession's order.
     expect(ids(state.conversations)).toEqual(ids(seeded.conversations))
     expect(state.conversations.find((c) => c.id === 'b')?.unreadCount).toBe(3)
   })
 
-  it('leaves the other list alone when the conversation was never in it', () => {
-    const seeded = replay([
-      { type: 'conversation-added', conversation: conversation({ id: 'req', request: true }) },
-    ])
+  it('hands back the same row objects when one row changes in place', () => {
+    const seeded = seededList('a', 'b', 'c')
+    const state = applyEvent(
+      seeded,
+      updated(conversation({ id: 'a', unreadCount: 3 }), { from: 'none', to: 'conversations' }),
+    )
 
-    const state = applyEvent(seeded, {
-      type: 'conversation-added',
-      conversation: conversation({ id: 'friend' }),
-    })
+    // First with no `after`, and already first: replaced where it is.
+    expect(ids(state.conversations)).toEqual(['a', 'b', 'c'])
+    expect(state.conversations[0]?.unreadCount).toBe(3)
+    expect(state.conversations[1]).toBe(seeded.conversations[1])
+    expect(state.conversations[2]).toBe(seeded.conversations[2])
+    expect(state.conversations).not.toBe(seeded.conversations)
+    expect(state.requests).toBe(seeded.requests)
+  })
+
+  it('takes a row out of both lists when both hold it', () => {
+    // A list read after a row crossed, while the placement that crossed it is still to come,
+    // holds the row the other list has not given up yet.
+    const row = conversation({ id: 'x' })
+    const both: SessionState = {
+      ...emptyState,
+      conversations: [row, conversation({ id: 'a' })],
+      requests: [conversation({ id: 'r', request: true }), { ...row, request: true }],
+    }
+
+    // In place in the list it belongs in, which must not stop the other being searched.
+    const inPlace = applyEvent(both, updated(row, { from: 'requests', to: 'conversations' }))
+    expect(ids(inPlace.conversations)).toEqual(['x', 'a'])
+    expect(ids(inPlace.requests)).toEqual(['r'])
+
+    const moved = applyEvent(
+      both,
+      updated(row, { from: 'requests', to: 'conversations', after: 'a' }),
+    )
+    expect(ids(moved.conversations)).toEqual(['a', 'x'])
+    expect(ids(moved.requests)).toEqual(['r'])
+
+    const hidden = applyEvent(both, updated(row, { from: 'requests', to: 'none' }))
+    expect(ids(hidden.conversations)).toEqual(['a'])
+    expect(ids(hidden.requests)).toEqual(['r'])
+  })
+
+  it('moves a row down as well as up, and to the end', () => {
+    const seeded = seededList('a', 'b', 'c')
+    const place = (id: string, after?: string): string[] =>
+      ids(
+        applyEvent(
+          seeded,
+          updated(conversation({ id }), {
+            from: 'conversations',
+            to: 'conversations',
+            ...(after === undefined ? {} : { after }),
+          }),
+        ).conversations,
+      )
+
+    expect(place('a', 'b')).toEqual(['b', 'a', 'c'])
+    expect(place('a', 'c')).toEqual(['b', 'c', 'a'])
+    expect(place('c')).toEqual(['c', 'a', 'b'])
+    expect(place('b', 'c')).toEqual(['a', 'c', 'b'])
+  })
+
+  it('flags a row placed after itself, which names no row', () => {
+    const state = applyEvent(
+      seededList('a', 'b'),
+      updated(conversation({ id: 'a' }), { from: 'none', to: 'conversations', after: 'a' }),
+    )
+
+    expect(ids(state.conversations)).toEqual(['b', 'a'])
+    expect(state.listsOutOfStep.conversations).toBe(true)
+  })
+
+  it('leaves the other list alone when the conversation was never in it', () => {
+    const seeded = replay([added(conversation({ id: 'req', request: true }))])
+
+    const state = applyEvent(seeded, added(conversation({ id: 'friend' })))
 
     // The same array, not merely an equal one: a screen watching the request list must not
     // re-render because a conversation it does not hold changed.
@@ -320,13 +443,7 @@ describe('applyEvent', () => {
       ...emptyState,
       histories: { '05alice': { ready: true, messages: [], exhausted: true, fetching: false } },
     }
-    const state = replay(
-      [
-        { type: 'conversation-added', conversation: convo },
-        { type: 'messages-added', messages: [msg] },
-      ],
-      seeded,
-    )
+    const state = replay([added(convo), { type: 'messages-added', messages: [msg] }], seeded)
 
     expect(state.conversations[0]).toBe(convo)
     expect(state.histories['05alice']?.messages[0]).toBe(msg)
@@ -482,7 +599,7 @@ describe('attachment transfers', () => {
     const state = replay(
       [
         progress({ doneBytes: 512, totalBytes: 2048 }),
-        { type: 'conversation-removed', conversationId: '05alice' },
+        { type: 'conversation-removed', conversationId: '05alice', list: 'conversations' },
       ],
       loaded(),
     )
@@ -506,6 +623,11 @@ describe('attachment transfers', () => {
           voiceMessage: false,
           hasThumbhash: false,
           hasThumbnail: false,
+          thumbnailWidthPx: 0,
+          thumbnailHeightPx: 0,
+          hasRendition: false,
+          renditionRefused: false,
+          originalFile: false,
           uploaded: true,
           availability: 'cached',
           fetchDoneBytes: 0,
@@ -526,6 +648,101 @@ describe('attachment transfers', () => {
     expect(announced.transfers[1]?.['export:0']?.state).toBe('done')
   })
 
+  describe('an upload', () => {
+    const file = (index: number, uploaded: boolean) => ({
+      index,
+      voiceMessage: false,
+      hasThumbhash: false,
+      hasThumbnail: false,
+      thumbnailWidthPx: 0,
+      thumbnailHeightPx: 0,
+      hasRendition: false,
+      renditionRefused: false,
+      originalFile: false,
+      uploaded,
+      availability: 'cached' as const,
+      fetchDoneBytes: 0,
+      fetchTotalBytes: 0,
+    })
+    const sending = (sendState: Message['sendState'], uploaded = [false, false]) =>
+      message({
+        outgoing: true,
+        sendState,
+        attachments: uploaded.map((up, index) => file(index, up)),
+      })
+    const upload = (
+      overrides: Partial<Extract<SessionEvent, { type: 'attachment-progress' }>> = {},
+    ) => progress({ transfer: 'upload', ...overrides })
+
+    it('is kept by file beside the downloads, while its message is uploading', () => {
+      const state = replay(
+        [
+          upload({ index: 0, doneBytes: 900, totalBytes: 900, outcome: { ok: true } }),
+          upload({ index: 1, doneBytes: 300, totalBytes: 1200 }),
+        ],
+        loaded([sending('uploading')]),
+      )
+      expect(state.transfers[1]).toEqual({
+        'upload:0': { state: 'done', doneBytes: 900, totalBytes: 900 },
+        'upload:1': { state: 'running', doneBytes: 300, totalBytes: 1200 },
+      })
+    })
+
+    it('outlives its message being announced while it is still uploading', () => {
+      const running = replay(
+        [upload({ index: 0, doneBytes: 900, totalBytes: 900, outcome: { ok: true } })],
+        loaded([sending('uploading')]),
+      )
+      const announced = applyEvent(running, {
+        type: 'messages-updated',
+        messages: [sending('uploading', [true, false])],
+      })
+      expect(announced.transfers[1]?.['upload:0']?.state).toBe('done')
+    })
+
+    it('is dropped once its message is announced past uploading, whatever it reached', () => {
+      const running = replay(
+        [
+          upload({ index: 0, doneBytes: 900, totalBytes: 900, outcome: { ok: true } }),
+          upload({ index: 1, doneBytes: 0, totalBytes: 0, outcome: { ok: false } }),
+        ],
+        loaded([sending('uploading')]),
+      )
+      const failed = applyEvent(running, {
+        type: 'messages-updated',
+        messages: [sending('failed', [true, false])],
+      })
+      expect(failed.transfers[1]).toEqual({})
+    })
+
+    it('is not recorded for a message that has already left uploading', () => {
+      // A file that fails at once is reported after its message has been announced failed.
+      const state = replay(
+        [upload({ index: 0, outcome: { ok: false, error: 'attachment.unreadable' } })],
+        loaded([sending('failed')]),
+      )
+      expect(state.transfers).toEqual({})
+    })
+
+    it('starts afresh on a retry', () => {
+      const first = replay(
+        [upload({ index: 1, doneBytes: 600, totalBytes: 1200 })],
+        loaded([sending('uploading', [true, false])]),
+      )
+      const retried = replay(
+        [
+          { type: 'messages-updated', messages: [sending('failed', [true, false])] },
+          { type: 'messages-updated', messages: [sending('uploading', [true, false])] },
+          upload({ index: 1, doneBytes: 0, totalBytes: 0 }),
+        ],
+        first,
+      )
+      expect(retried.transfers[1]).toEqual({
+        'upload:1': { state: 'running', doneBytes: 0, totalBytes: 0 },
+      })
+    })
+  })
+
   it('keeps a failed download when its message is announced', () => {
     // Availability cannot say a fetch failed transiently, so this report is the only record.
     const withFile = message({
@@ -535,6 +752,11 @@ describe('attachment transfers', () => {
           voiceMessage: false,
           hasThumbhash: false,
           hasThumbnail: false,
+          thumbnailWidthPx: 0,
+          thumbnailHeightPx: 0,
+          hasRendition: false,
+          renditionRefused: false,
+          originalFile: false,
           uploaded: true,
           availability: 'absent',
           fetchDoneBytes: 0,
@@ -574,5 +796,27 @@ describe('attachment transfers', () => {
     const before = replay([progress()], loaded())
     const after = applyEvent(before, { type: 'history-replaced', conversationId: '05bob' })
     expect(after.transfers).toBe(before.transfers)
+  })
+})
+
+describe('the network status', () => {
+  it('starts unknown and follows each change in order', () => {
+    expect(emptyState.networkStatus).toBe('unknown')
+    const after = replay(
+      [
+        { type: 'network-status-changed', status: 'connecting' },
+        { type: 'network-status-changed', status: 'connected' },
+        { type: 'network-status-changed', status: 'disconnected' },
+      ],
+      emptyState,
+    )
+    expect(after.networkStatus).toBe('disconnected')
+  })
+
+  it('leaves the state as it was for a repeat, which a status answer can be', () => {
+    const connected = replay([{ type: 'network-status-changed', status: 'connected' }], emptyState)
+    expect(applyEvent(connected, { type: 'network-status-changed', status: 'connected' })).toBe(
+      connected,
+    )
   })
 })

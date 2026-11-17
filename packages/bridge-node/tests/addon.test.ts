@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -265,6 +265,101 @@ describeAddon('the N-API addon', () => {
     transport.close()
   })
 
+  it('sends the files a message names, and answers one it cannot read rather than crashing', async () => {
+    const transport = createNodeBridgeTransport({
+      dbPath: join(dir, 'attachments.db'),
+      cacheDir: join(dir, 'attachments-cache'),
+      rawKey: new Uint8Array(32).fill(3),
+      deferAccount: false,
+    })
+    const frames: Frame[] = []
+    const waiting = new Map<number, (frame: Frame) => void>()
+    transport.setSink((frame) => {
+      frames.push(frame)
+      if (frame.type === 'response') waiting.get(frame.response.id)?.(frame)
+    })
+    const ask = (id: number, command: Request['command']) =>
+      new Promise<Frame>((resolve) => {
+        waiting.set(id, resolve)
+        transport.send({ id, command })
+      })
+    const photo = join(dir, 'été.jpg')
+    await writeFile(photo, Buffer.alloc(2_000, 0xab))
+    const conversationId = '05' + '12'.repeat(32)
+
+    try {
+      const refused = await ask(30, {
+        type: 'sendMessage',
+        conversationId,
+        body: 'nothing there',
+        attachments: [{ path: join(dir, 'no such file.jpg') }],
+      })
+      expect(refused.type === 'response' && refused.response.error).toMatch(
+        /is not a readable file/,
+      )
+
+      const sent = await ask(31, {
+        type: 'sendMessage',
+        conversationId,
+        body: '',
+        attachments: [
+          { path: photo, contentType: 'application/octet-stream', filename: 'for you.bin' },
+        ],
+      })
+      if (sent.type !== 'response' || sent.response.result?.type !== 'messageId')
+        throw new Error(`the send was not answered with an id: ${JSON.stringify(sent)}`)
+      const messageId = sent.response.result.messageId
+      const added = frames.flatMap((f) =>
+        f.type === 'event' && f.event.type === 'messages-added' ? f.event.messages : [],
+      )
+      const stored = added.find((m) => m.id === messageId)
+      expect(stored?.sendState).toBe('uploading')
+      expect(
+        stored?.attachments.map((a) => [a.index, a.filename, a.contentType, a.uploaded]),
+      ).toEqual([[0, 'for you.bin', 'application/octet-stream', false]])
+      expect(added.some((m) => m.body === 'nothing there')).toBe(false)
+
+      // A copy handed over is libsession's once the send is answered, and stays the caller's
+      // when the send is refused.
+      const copy = join(dir, 'staged-copy.jpg')
+      await writeFile(copy, Buffer.alloc(1_000, 0xcd))
+      const refusedTaking = await ask(32, {
+        type: 'sendMessage',
+        conversationId,
+        body: 'half there',
+        attachments: [{ path: copy, takeFile: true }, { path: join(dir, 'gone.jpg') }],
+      })
+      expect(refusedTaking.type === 'response' && refusedTaking.response.error).toBeTruthy()
+      expect(existsSync(copy)).toBe(true)
+      const taken = await ask(33, {
+        type: 'sendMessage',
+        conversationId,
+        body: 'taken',
+        attachments: [{ path: copy, takeFile: true }],
+      })
+      expect(taken.type === 'response' && taken.response.result?.type).toBe('messageId')
+      for (let round = 0; round < 100 && existsSync(copy); round += 1)
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      expect(existsSync(copy)).toBe(false)
+
+      // Taking through a link would delete a file the caller never named.
+      const target = join(dir, 'linked-target.jpg')
+      const link = join(dir, 'staged-link.jpg')
+      await writeFile(target, Buffer.alloc(1_000, 0xcd))
+      await symlink(target, link)
+      const refusedLink = await ask(34, {
+        type: 'sendMessage',
+        conversationId,
+        body: 'linked',
+        attachments: [{ path: link, takeFile: true }],
+      })
+      expect(refusedLink.type === 'response' && refusedLink.response.error).toMatch(/symbolic link/)
+      expect(existsSync(target)).toBe(true)
+    } finally {
+      transport.close()
+    }
+  })
+
   it('rejects a media fetch for a message that does not exist', async () => {
     const transport = createNodeBridgeTransport({
       dbPath: join(dir, 'no-media.db'),
@@ -432,7 +527,16 @@ describeEcho('the generated converters', () => {
     width: 1600,
     height: 1200,
     hasThumbhash: true,
+    // Not a whole number, so a converter that rounds or truncates cannot pass.
+    thumbhashAspect: 7 / 5,
     hasThumbnail: true,
+    // Portrait, so a width and height swapped in the frame cannot pass.
+    thumbnailWidthPx: 540,
+    thumbnailHeightPx: 720,
+    hasRendition: true,
+    // Never with a rendition from libsession; set here only so the frame carries both values.
+    renditionRefused: true,
+    originalFile: true,
     uploaded: true,
     availability: 'notFound',
     fetchDoneBytes: 0,
@@ -444,6 +548,11 @@ describeEcho('the generated converters', () => {
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: false,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -461,6 +570,7 @@ describeEcho('the generated converters', () => {
     syncState: 'pending',
     attachments: [fullAttachment, bareAttachment],
     galleryViewable: true,
+    gallery: true,
     replyTo: { author, timestamp: 1_699_999_999_999, messageId: 7, body: 'orig' },
     deleted: 'here',
   }
@@ -474,6 +584,7 @@ describeEcho('the generated converters', () => {
     sendState: 'sent',
     attachments: [],
     galleryViewable: false,
+    gallery: false,
   }
 
   const frames: Frame[] = [
@@ -530,6 +641,7 @@ describeEcho('the generated converters', () => {
     { type: 'response', response: { id: 900_011, result: { type: 'pref' } } },
     { type: 'response', response: { id: 900_012, result: { type: 'bool', value: true } } },
     { type: 'response', response: { id: 900_013, result: { type: 'empty' } } },
+    { type: 'response', response: { id: 900_050, result: { type: 'seedHidden' } } },
     {
       type: 'response',
       response: { id: 900_014, result: { type: 'path', path: '/tmp/a (1).jpg' } },
@@ -539,6 +651,11 @@ describeEcho('the generated converters', () => {
       response: { id: 900_015, result: { type: 'byteCount', bytes: 5_000_000 } },
     },
     { type: 'response', response: { id: 900_016, result: { type: 'byteCount' } } },
+    // A file server's upload limit is a uint64, so one past 32 bits has to cross whole.
+    {
+      type: 'response',
+      response: { id: 900_021, result: { type: 'byteCount', bytes: 5_000_000_000 } },
+    },
     { type: 'response', response: { id: 900_017, result: { type: 'edge', edgePx: 720 } } },
     {
       type: 'response',
@@ -554,14 +671,48 @@ describeEcho('the generated converters', () => {
       },
     },
     { type: 'response', response: { id: 900_019, result: { type: 'configSizes', sizes: [] } } },
-    { type: 'event', event: { type: 'conversation-added', conversation: fullConversation } },
-    { type: 'event', event: { type: 'conversation-updated', conversation: bareConversation } },
-    { type: 'event', event: { type: 'conversation-removed', conversationId } },
+    ...(
+      [
+        'reencoded',
+        'as-is',
+        'original-cannot-decode',
+        'original-animated-png',
+        'too-large-to-decode',
+        'too-large-for-server',
+        'unreadable',
+        'missing',
+      ] as const
+    ).map((plan, at): Frame => ({
+      type: 'response',
+      response: { id: 900_100 + at, result: { type: 'sendPlan', plan } },
+    })),
+    // Every NetworkStatus value once: the enum's names are what the converters spell.
+    ...(['unknown', 'connecting', 'connected', 'disconnected'] as const).map((status, at) => ({
+      type: 'response' as const,
+      response: { id: 900_020 + at, result: { type: 'networkStatus' as const, status } },
+    })),
+    // Both ends of a placement set, then the least of one: `after` absent and `from` none.
     {
       type: 'event',
-      event: { type: 'conversation-list-replaced', conversations: [fullConversation] },
+      event: {
+        type: 'conversation-added',
+        conversation: fullConversation,
+        placement: { from: 'requests', to: 'conversations', after: conversationId },
+      },
     },
-    { type: 'event', event: { type: 'request-list-replaced', conversations: [] } },
+    {
+      type: 'event',
+      event: {
+        type: 'conversation-updated',
+        conversation: bareConversation,
+        placement: { from: 'none', to: 'requests' },
+      },
+    },
+    // Every ConversationList value once, as with NetworkStatus above.
+    ...(['none', 'conversations', 'requests'] as const).map((list): Frame => ({
+      type: 'event',
+      event: { type: 'conversation-removed', conversationId, list },
+    })),
     { type: 'event', event: { type: 'messages-added', messages: [fullMessage] } },
     { type: 'event', event: { type: 'messages-updated', messages: [bareMessage] } },
     { type: 'event', event: { type: 'history-replaced', conversationId } },
@@ -588,7 +739,21 @@ describeEcho('the generated converters', () => {
         outcome: { ok: true },
       },
     },
+    {
+      type: 'event',
+      event: {
+        type: 'attachment-progress',
+        transfer: 'upload',
+        messageId: 43,
+        index: 2,
+        doneBytes: 0,
+        totalBytes: 0,
+        outcome: { ok: false, error: 'network.unavailable' },
+      },
+    },
     { type: 'event', event: { type: 'log', message: 'm', category: 'c', level: 'info' } },
+    { type: 'event', event: { type: 'network-status-changed', status: 'connected' } },
+    { type: 'event', event: { type: 'network-status-changed', status: 'disconnected' } },
   ]
 
   it('round-trips every frame shape exactly, structured clone included', async () => {

@@ -18,11 +18,15 @@ import {
   type AttachmentAvailability,
   type AttachmentTransfer,
   type Conversation,
+  type ListPlacement,
+  type MediaSource,
   type Message,
   type MessagePage,
   type SessionClient,
   type SessionEvent,
 } from '@session/client'
+
+import { recoveryHex, recoveryWords } from './seed'
 
 export interface ContractHarness {
   /** Two clients that already know each other, with no history and no attachments. */
@@ -33,6 +37,14 @@ export interface ContractHarness {
     bobId: string
     /** Lets whatever is in flight finish: a manual clock, or a real poll. */
     settle: () => Promise<void>
+    /** Writes a file of `sizeBytes` bytes for a send to name, and answers its path. */
+    writeFile: (name: string, sizeBytes: number) => Promise<string>
+    /** Deletes a file `writeFile` wrote. */
+    removeFile: (path: string) => Promise<void>
+    /** Writes a JPEG libsession decodes, for a send to name, and answers its path. */
+    writePicture: (name: string, widthPx: number, heightPx: number) => Promise<string>
+    /** Alice's media source. */
+    aliceMedia: MediaSource
   }>
   /** A pair where bob has written to alice but alice has not approved. */
   strangers(): Promise<{
@@ -48,9 +60,10 @@ export interface ContractHarness {
    * an incoming attachment cannot produce one for any scenario, and skipping the scenarios is
    * then the honest answer rather than a fixture that quietly has none.
    *
-   * `expired` asks for one the file server no longer holds.
+   * `expired` asks for one the file server no longer holds. `pastPixelLimits` asks for a JPEG
+   * past libsession's decode limits, which it caches but makes no thumbnail or rendition of.
    */
-  withAttachment(options?: { expired?: boolean }): Promise<{
+  withAttachment(options?: { expired?: boolean; pastPixelLimits?: boolean }): Promise<{
     client: SessionClient
     conversationId: string
     messageId: number
@@ -66,6 +79,10 @@ export interface ContractHarness {
    * The attachments point at nothing, so only what the client says about them can be asked.
    */
   receivesAttachments(): Promise<{
+    /** The receiving client, which `restart` accepts. */
+    client: SessionClient
+    /** The conversation the forged messages land in. */
+    conversationId: string
     receive: (contentTypes: readonly string[]) => Promise<Message>
   }>
   /** Stops and restarts a client against the same data. */
@@ -133,7 +150,27 @@ function messagesOf(
   return events.flatMap((e) => (e.type === type ? e.messages : []))
 }
 
+/** Where each change to one conversation placed it, in the order they arrived. */
+function placementsOf(events: SessionEvent[], id: string): ListPlacement[] {
+  return events.flatMap((e) =>
+    (e.type === 'conversation-added' || e.type === 'conversation-updated') &&
+    e.conversation.id === id
+      ? [e.placement]
+      : [],
+  )
+}
+
 /** What a `messages-updated` event says about one attachment, if it mentions it. */
+type ProgressEvent = Extract<SessionEvent, { type: 'attachment-progress' }>
+
+/** A message's upload reports, in the order they arrived. */
+function uploadsOf(events: SessionEvent[], messageId: number): ProgressEvent[] {
+  return events.filter(
+    (e): e is ProgressEvent =>
+      e.type === 'attachment-progress' && e.transfer === 'upload' && e.messageId === messageId,
+  )
+}
+
 function announcedAvailability(
   event: SessionEvent,
   messageId: number,
@@ -145,8 +182,8 @@ function announcedAvailability(
 }
 
 /**
- * libsession's `image::displayable_image_types` and its comparison, which reads the MIME essence
- * and folds ASCII case, as the `galleryViewable` of a message holding one attachment of each type.
+ * libsession's `image::displayable_image_types`, compared by `mime_essence` with ASCII case
+ * folded, as the `galleryViewable` of a message holding one attachment of each type.
  */
 const GALLERY_VIEWABLE: [contentType: string, galleryViewable: boolean][] = [
   ['image/jpeg', true],
@@ -172,8 +209,16 @@ const GALLERY_VIEWABLE: [contentType: string, galleryViewable: boolean][] = [
   ['image/jxl', false],
   ['image/x-icon', false],
   ['image/jpeg; charset=binary', true],
+  ['Image/PNG ; foo=bar', true],
   ['image/jpeg ', true],
   [' image/png', true],
+  ['\t\r\nimage/webp\n', true],
+  ['\fimage/png', false],
+  ['image/png\v', false],
+  ['\u00a0image/png', false],
+  ['image/png\0', false],
+  ['image/apng; charset=binary', false],
+  [';image/png', false],
   ['image/', false],
   ['', false],
   ['video/mp4', false],
@@ -294,6 +339,42 @@ export function runSessionClientContract(
       const info = await client.getAccountInfo()
       expect(info.haveAccount).toBe(true)
       expect(info.sessionId).toBeDefined()
+    })
+
+    it('gives the seed as a recovery QR code carries it, and restores the same account', async () => {
+      // The QR code's round trip: what one device draws is what another device restores from.
+      // Every existing client reads 16 bytes there, so a 13-word account must come out short.
+      const first = await harness.newcomer()
+      await first.client.createAccount()
+      const hexSeed = await recoveryHex(first.client)
+      expect(/^(?:[0-9a-f]{32}){1,2}$/.test(hexSeed)).toBe(true)
+      if ((await recoveryWords(first.client)).length === 13) expect(hexSeed.length).toBe(32)
+      const { sessionId } = await first.client.getAccountInfo()
+
+      const second = await harness.newcomer()
+      await second.client.restoreAccount({ hexSeed })
+
+      expect((await second.client.getAccountInfo()).sessionId).toBe(sessionId)
+    })
+
+    it('stops giving the seed out once the recovery password is hidden, and keeps the account', async () => {
+      // Hiding is for good, and enforced below the app: neither form of the seed comes back.
+      const { client } = await harness.newcomer()
+      await client.createAccount()
+      const { sessionId } = await client.getAccountInfo()
+      expect(await client.getRecoveryPasswordHidden()).toBe(false)
+
+      await client.hideRecoveryPassword()
+
+      expect(await client.getRecoveryPasswordHidden()).toBe(true)
+      expect(await client.getSeedMnemonic()).toBe(null)
+      expect(await client.getSeedHex()).toBe(null)
+      expect((await client.getAccountInfo()).sessionId).toBe(sessionId)
+
+      // Not undone through the generic preference store, which shares the flag's key.
+      expect(await failure(() => client.setPref('recoveryPassword.hidden', 'false'))).toBeDefined()
+      expect(await client.getRecoveryPasswordHidden()).toBe(true)
+      expect(await client.getSeedMnemonic()).toBe(null)
     })
 
     it('refuses a phrase of the wrong length, and still makes nothing', async () => {
@@ -460,13 +541,54 @@ export function runSessionClientContract(
 
       await alice.sendMessage(bobId, { body: 'hello' })
       await settle()
+      // A barrier: the row is reported at the end of libsession's turn.
+      await alice.getConversations()
 
-      const updated = seen.events.find((e) => e.type === 'conversation-updated')
-      expect(updated).toBeDefined()
-      if (updated?.type !== 'conversation-updated') throw new Error('unreachable')
+      // Added or updated: whether the first message made the row is the implementation's business.
+      const changed = seen.events.find(
+        (e) => e.type === 'conversation-added' || e.type === 'conversation-updated',
+      )
+      expect(changed).toBeDefined()
+      if (changed?.type !== 'conversation-added' && changed?.type !== 'conversation-updated')
+        throw new Error('unreachable')
       // A display can bind straight to this: it is the new row, not a hint to go and fetch.
-      expect(updated.conversation.id).toBe(bobId)
-      expect(updated.conversation.displayName).toBeDefined()
+      expect(changed.conversation.id).toBe(bobId)
+      expect(changed.conversation.displayName).toBeDefined()
+      seen.stop()
+    })
+
+    it('places a conversation with a new message first in its list', async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      const seen = collect(alice)
+
+      await alice.sendMessage(bobId, { body: 'hello' })
+      await settle()
+      // Also a barrier: libsession reports a changed row at the end of its loop's turn, so the
+      // answer to a later query comes after the report on the stream.
+      const [top] = await alice.getConversations()
+
+      // The last word on the row, as a subscriber applying them in order ends up with it.
+      const placement = placementsOf(seen.events, bobId).at(-1)
+      expect(top?.id).toBe(bobId)
+      expect(placement?.to).toBe('conversations')
+      // Nothing sorts before the newest activity, which an unset `after` is what says.
+      expect(placement?.after).toBeUndefined()
+      seen.stop()
+    })
+
+    it('places a request in the request list', async () => {
+      const { alice, bob, bobId, settle } = await harness.strangers()
+      const aliceId = (await alice.getAccountInfo()).sessionId ?? ''
+      const seen = collect(alice)
+
+      await bob.sendMessage(aliceId, { body: 'still here' })
+      await settle()
+      const [top] = await alice.getMessageRequests()
+
+      const placement = placementsOf(seen.events, bobId).at(-1)
+      expect(top?.id).toBe(bobId)
+      expect(placement?.to).toBe('requests')
+      expect(placement?.after).toBeUndefined()
       seen.stop()
     })
 
@@ -481,16 +603,53 @@ export function runSessionClientContract(
       const seen = collect(alice)
       await alice.approveConversation(bobId)
 
-      // Approval arrives as an update, so both lists have to be re-sent for the row to
-      // move: a display that only watched one of them would show it twice or not at all.
-      expect(seen.events.some((e) => e.type === 'conversation-list-replaced')).toBe(true)
-      expect(seen.events.some((e) => e.type === 'request-list-replaced')).toBe(true)
-
       const after = await alice.getConversations()
       const requestsAfter = await alice.getMessageRequests()
+      // Approval arrives as an update whose placement crosses lists: out of the requests and into
+      // the conversations, in one event a display applies to both.
+      expect(placementsOf(seen.events, bobId).at(-1)?.to).toBe('conversations')
       expect(after.some((c: Conversation) => c.id === bobId)).toBe(true)
       expect(requestsAfter.some((c: Conversation) => c.id === bobId)).toBe(false)
       seen.stop()
+    })
+
+    it('moves a request it writes back to into the conversations', async () => {
+      const { alice, bobId, settle } = await harness.strangers()
+      const seen = collect(alice)
+
+      await alice.sendMessage(bobId, { body: 'come in' })
+      await settle()
+      const [top] = await alice.getConversations()
+      const requests = await alice.getMessageRequests()
+
+      const placement = placementsOf(seen.events, bobId).at(-1)
+      expect(placement?.to).toBe('conversations')
+      expect(placement?.after).toBeUndefined()
+      expect(top?.id).toBe(bobId)
+      expect(requests.some((c: Conversation) => c.id === bobId)).toBe(false)
+      seen.stop()
+    })
+
+    it('places a pin at the top and a hide in neither list', async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      await alice.sendMessage(bobId, { body: 'hello' })
+      await settle()
+
+      const pinned = collect(alice)
+      await alice.setPriority(bobId, 1)
+      await settle()
+      await alice.getConversations()
+      expect(placementsOf(pinned.events, bobId).at(-1)?.to).toBe('conversations')
+      expect(placementsOf(pinned.events, bobId).at(-1)?.after).toBeUndefined()
+      pinned.stop()
+
+      const hidden = collect(alice)
+      await alice.setPriority(bobId, -1)
+      await settle()
+      const conversations = await alice.getConversations()
+      expect(placementsOf(hidden.events, bobId).at(-1)?.to).toBe('none')
+      expect(conversations.some((c: Conversation) => c.id === bobId)).toBe(false)
+      hidden.stop()
     })
 
     it('pages history without duplicating a message at the seam', async () => {
@@ -526,6 +685,343 @@ export function runSessionClientContract(
       // libsession's send queue does not survive the process; a UI that has never seen
       // this state spins for ever after a crash.
       expect(['interrupted', 'sent', 'failed']).toContain(inFlight?.sendState)
+    })
+
+    it('retries a send a restart stopped, uploading again and settling by update', async () => {
+      const { alice, bobId, settle, writeFile } = await harness.friends()
+      const path = await writeFile('again.txt', 1_200)
+      const messageId = await alice.sendMessage(bobId, {
+        body: 'again',
+        attachments: [{ path, contentType: 'text/plain' }],
+      })
+
+      const restarted = await harness.restart(alice)
+      const { messages } = await restarted.getMessages(bobId)
+      // Stopped with its file not up: failed or interrupted, whether or not there is a network.
+      expect(['failed', 'interrupted']).toContain(
+        messages.find((m) => m.id === messageId)?.sendState,
+      )
+
+      const seen = collect(restarted)
+      expect(await restarted.retrySend(messageId)).toBe(true)
+      const last = () =>
+        messagesOf(seen.events, 'messages-updated')
+          .filter((m) => m.id === messageId)
+          .at(-1)?.sendState
+      // Offline, as the addon runs, the upload fails again; with a network it is sent.
+      const terminal = new Set(['sent', 'failed'])
+      for (let round = 0; round < 50 && !terminal.has(last() ?? ''); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      expect(messagesOf(seen.events, 'messages-updated').some((m) => m.id === messageId)).toBe(true)
+      expect(['sent', 'failed']).toContain(last())
+      // The retry's upload reports as the first send's would have, ending once either way.
+      const outcomes = uploadsOf(seen.events, messageId).filter((e) => e.outcome !== undefined)
+      expect(outcomes.map((e) => [e.index, e.outcome?.ok])).toEqual([[0, last() === 'sent']])
+      seen.stop()
+    })
+
+    it('reports each upload against the id the send answered, and ends it once', async () => {
+      const { alice, bobId, settle, writeFile } = await harness.friends()
+      const first = await writeFile('first.txt', 40_000)
+      const second = await writeFile('second.txt', 1_200)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [
+          { path: first, contentType: 'text/plain' },
+          { path: second, contentType: 'text/plain' },
+        ],
+      })
+      // Every event up to the answer, at least: a report among them was sent before the id was.
+      const answered = seen.events.length
+      expect(
+        seen.events
+          .slice(0, answered)
+          .filter((e) => e.type === 'attachment-progress' && e.transfer === 'upload'),
+      ).toEqual([])
+
+      const last = () =>
+        messagesOf(seen.events, 'messages-updated')
+          .filter((m) => m.id === messageId)
+          .at(-1)?.sendState
+      const terminal = new Set(['sent', 'failed'])
+      for (let round = 0; round < 50 && !terminal.has(last() ?? ''); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      const state = last()
+      expect(['sent', 'failed']).toContain(state)
+
+      // Nothing names another message: the send's own id, never a guess at it.
+      const reports = seen.events.filter(
+        (e): e is ProgressEvent => e.type === 'attachment-progress' && e.transfer === 'upload',
+      )
+      expect(reports.every((e) => e.messageId === messageId)).toBe(true)
+      // Per file: at most one outcome, and nothing after it.
+      for (const index of [0, 1]) {
+        const own = reports.filter((e) => e.index === index)
+        const ended = own.filter((e) => e.outcome !== undefined)
+        expect(ended.length <= 1 && (ended.length === 0 || own.at(-1) === ended[0])).toBe(true)
+      }
+      const outcomes = reports.flatMap((e) => (e.outcome === undefined ? [] : [e]))
+      if (state === 'sent') {
+        // Both up, in order: libsession uploads a message's files one at a time.
+        expect(outcomes.map((e) => [e.index, e.outcome?.ok])).toEqual([
+          [0, true],
+          [1, true],
+        ])
+      } else {
+        // Offline, as the addon runs: the first fails, with its reason, and the second is never
+        // tried, so it reports nothing at all.
+        expect(outcomes.map((e) => [e.index, e.outcome?.ok])).toEqual([[0, false]])
+        expect(typeof outcomes[0]?.outcome?.error).toBe('string')
+        expect(reports.some((e) => e.index === 1)).toBe(false)
+      }
+      seen.stop()
+    })
+
+    it('stores a message with its files before uploading them, and settles it after', async () => {
+      const { alice, bobId, settle, writeFile } = await harness.friends()
+      const path = await writeFile('notes.txt', 1_200)
+      const seen = collect(alice)
+
+      // No body: a message can be only its files.
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path, contentType: 'text/plain', filename: 'for bob.txt' }],
+      })
+
+      const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
+      expect(added?.sendState).toBe('uploading')
+      expect(
+        added?.attachments.map((a) => [a.index, a.filename, a.contentType, a.uploaded]),
+      ).toEqual([[0, 'for bob.txt', 'text/plain', false]])
+
+      // Offline, as the addon runs, the upload fails; either way it leaves `uploading` by update.
+      const last = () =>
+        messagesOf(seen.events, 'messages-updated')
+          .filter((m) => m.id === messageId)
+          .at(-1)?.sendState
+      const terminal = new Set(['sent', 'failed'])
+      for (let round = 0; round < 50 && !terminal.has(last() ?? ''); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      expect(['sent', 'failed']).toContain(last())
+      seen.stop()
+    })
+
+    it('types a file sent without a type by its extension', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const path = await writeFile('minutes.PDF', 2_000)
+      const sheet = await writeFile('budget.xlsx', 2_000)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path }, { path: sheet }],
+      })
+
+      const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
+      expect(added?.attachments.map((a) => a.contentType)).toEqual([
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      ])
+      seen.stop()
+    })
+
+    it('marks a picture it cannot decode as the original file, and nothing else', async () => {
+      const { alice, bobId, settle, writeFile } = await harness.friends()
+      const bitmap = await writeFile('scan.bmp', 2_000)
+      const notes = await writeFile('notes.txt', 2_000)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path: bitmap, contentType: 'image/bmp' }, { path: notes }],
+      })
+      // libsession decides as it reads the file for sending, after the message is stored.
+      const flags = async () =>
+        (await alice.getMessages(bobId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.map((a) => a.originalFile)
+      for (let round = 0; round < 50 && (await flags())?.[0] !== true; round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      expect(await flags()).toEqual([true, false])
+    })
+
+    it('plans a send from the file, its label and the file server limit, sending nothing', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const notes = await writeFile('notes.txt', 2_000)
+      // Well past the limit either way it is counted, plaintext or padded and encrypted.
+      const big = await writeFile('big.bin', 12_000_000)
+      const scan = await writeFile('scan.bmp', 2_000)
+      const hugeScan = await writeFile('huge.bmp', 12_000_000)
+      const tiff = await writeFile('scan.tiff', 2_000)
+      const seen = collect(alice)
+
+      expect(await alice.attachmentSendPlan(notes)).toBe('as-is')
+      expect(await alice.attachmentSendPlan(notes, 'text/plain')).toBe('as-is')
+      expect(await alice.attachmentSendPlan(big)).toBe('too-large-for-server')
+      // A label that is a picture this build does not read goes as the original file.
+      expect(await alice.attachmentSendPlan(scan, 'image/bmp')).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(scan, 'Image/BMP; x=y')).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(hugeScan, 'image/bmp')).toBe('too-large-for-server')
+      // Unlabelled, typed by its extension as a send types it.
+      expect(await alice.attachmentSendPlan(tiff)).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(`${notes}.gone`)).toBe('missing')
+
+      expect((await alice.getMessages(bobId)).messages).toEqual([])
+      expect(seen.events.filter((e) => e.type !== 'log')).toEqual([])
+      seen.stop()
+    })
+
+    it('names the file server limit a send plan holds a file to, counted encrypted', async () => {
+      const { alice } = await harness.friends()
+      // The built-in servers' default, which the scenario below is the plaintext edge of.
+      expect(await alice.getAttachmentUploadLimit()).toBe(10_000_000)
+    })
+
+    it('holds a file sent as it is to the file server limit once it is encrypted', async () => {
+      const { alice, writeFile } = await harness.friends()
+      // 9,956,278 bytes encrypt to just within the default 10,000,000; one more byte does not.
+      const fits = await writeFile('fits.bin', 9_956_278)
+      const over = await writeFile('over.bin', 9_956_279)
+
+      expect(await alice.attachmentSendPlan(fits)).toBe('as-is')
+      expect(await alice.attachmentSendPlan(over)).toBe('too-large-for-server')
+      expect(await alice.attachmentSendPlan(fits, 'image/bmp')).toBe('original-cannot-decode')
+      expect(await alice.attachmentSendPlan(over, 'image/bmp')).toBe('too-large-for-server')
+    })
+
+    it('serves its own copy of every file a send carries before it is up', async () => {
+      const { alice, bobId, writeFile, removeFile, aliceMedia } = await harness.friends()
+      const taken = await writeFile('taken.txt', 2_000)
+      const lent = await writeFile('lent.txt', 3_000)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [
+          { path: taken, filename: 'taken.txt', takeFile: true },
+          { path: lent, filename: 'lent.txt' },
+        ],
+      })
+
+      const added = messagesOf(seen.events, 'messages-added').find((m) => m.id === messageId)
+      expect(added?.attachments.map((a) => a.uploaded)).toEqual([false, false])
+      expect(added?.attachments[0]?.availability).toBe('cached')
+      // libsession copies a file it was not handed off the calling thread, and says so by update.
+      let lentAvailability = added?.attachments[1]?.availability
+      for (let round = 0; round < 100 && lentAvailability !== 'cached'; round += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 20))
+        lentAvailability = (await alice.getMessages(bobId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.find((a) => a.index === 1)?.availability
+      }
+      expect(lentAvailability).toBe('cached')
+
+      // From here the caller's file is not read.
+      await removeFile(lent)
+      expect((await aliceMedia.fetchMedia({ messageId, index: 0 })).bytes.length).toBe(2_000)
+      expect((await aliceMedia.fetchMedia({ messageId, index: 1 })).bytes.length).toBe(3_000)
+      const message = (await alice.getMessages(bobId)).messages.find((m) => m.id === messageId)
+      expect(message?.sendState === 'unsendable').toBe(false)
+      seen.stop()
+    })
+
+    it('thumbnails a picture we send before it is up, and never takes that back', async () => {
+      const { alice, bobId, settle, writeFile, writePicture } = await harness.friends()
+      const photo = await writePicture('photo.jpg', 640, 480)
+      const notes = await writeFile('notes.txt', 2_000)
+      const seen = collect(alice)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: '',
+        attachments: [{ path: photo }, { path: notes }],
+      })
+      // libsession makes it off its loop, and says so by update.
+      const thumbnailed = async () =>
+        (await alice.getMessages(bobId)).messages.find((m) => m.id === messageId)?.attachments[0]
+          ?.hasThumbnail === true
+      for (let round = 0; round < 100 && !(await thumbnailed()); round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+      await settle()
+
+      // Every announcement from the first with a thumbnail on, including the upload's and the
+      // cached file's own thumbnail taking over.
+      const announced = [
+        ...messagesOf(seen.events, 'messages-added'),
+        ...messagesOf(seen.events, 'messages-updated'),
+      ].filter((m) => m.id === messageId)
+      const from = announced.findIndex((m) => m.attachments[0]?.hasThumbnail === true)
+      expect(from).toBeGreaterThan(-1)
+      expect(announced[from]?.attachments[0]?.uploaded).toBe(false)
+      const after = announced.slice(from).map((m) => m.attachments[0])
+      expect(after.every((a) => a?.hasThumbnail === true && (a.thumbnailWidthPx ?? 0) > 0)).toBe(
+        true,
+      )
+      expect(announced.some((m) => m.attachments[1]?.hasThumbnail === true)).toBe(false)
+      seen.stop()
+    })
+
+    it('refuses a send whose file is missing or empty, storing nothing', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const empty = await writeFile('empty.bin', 0)
+      const seen = collect(alice)
+
+      const missing = await failure(() =>
+        alice.sendMessage(bobId, { body: 'gone', attachments: [{ path: `${empty}.gone` }] }),
+      )
+      const blank = await failure(() =>
+        alice.sendMessage(bobId, { body: 'empty', attachments: [{ path: empty }] }),
+      )
+
+      expect(missing instanceof SessionClientError).toBe(true)
+      expect(blank instanceof SessionClientError).toBe(true)
+      expect(messagesOf(seen.events, 'messages-added').length).toBe(0)
+      seen.stop()
+    })
+
+    it('delivers the files of a message to the other side once they are up', async () => {
+      const { alice, bob, aliceId, bobId, settle, writeFile } = await harness.friends()
+      const path = await writeFile('harbour.jpg', 48_000)
+
+      const messageId = await alice.sendMessage(bobId, {
+        body: 'look',
+        attachments: [{ path, contentType: 'image/jpeg' }],
+      })
+      await settle()
+
+      const sent = (await alice.getMessages(bobId)).messages.find((m) => m.id === messageId)
+      expect(sent?.sendState).toBe('sent')
+      expect(sent?.attachments.map((a) => a.uploaded)).toEqual([true])
+      const arrived = (await bob.getMessages(aliceId)).messages.find((m) => m.body === 'look')
+      expect(arrived?.attachments.map((a) => [a.filename, a.contentType, a.uploaded])).toEqual([
+        ['harbour.jpg', 'image/jpeg', true],
+      ])
+    })
+
+    it('fails a message whose files were still uploading across a restart', async () => {
+      const { alice, bobId, writeFile } = await harness.friends()
+      const path = await writeFile('draft.pdf', 30_000)
+      await alice.sendMessage(bobId, {
+        body: 'mid-upload',
+        attachments: [{ path, contentType: 'application/pdf' }],
+      })
+
+      const restarted = await harness.restart(alice)
+      const { messages } = await restarted.getMessages(bobId)
+
+      // Nothing reached a swarm before the files were up, so this is no unknown: it is a failure,
+      // and a retry is safe.
+      expect(messages.find((m) => m.body === 'mid-upload')?.sendState).toBe('failed')
     })
 
     it('clears a conversation by replacing its history, not by removing it', async () => {
@@ -581,11 +1077,11 @@ export function runSessionClientContract(
       expect(next?.id).toBeGreaterThan(highest)
     })
 
-    it('refuses a seed that is not 32 bytes of hex', async () => {
+    it('refuses a seed that is not 16 or 32 bytes of hex', async () => {
       const { alice } = await harness.friends()
 
       // oxenc's from_hex is UB on non-hex or odd-length input, so the refusal precedes the decode.
-      for (const hexSeed of ['', 'zz'.repeat(32), `${'ab'.repeat(31)}a`]) {
+      for (const hexSeed of ['', 'zz'.repeat(32), `${'ab'.repeat(31)}a`, 'ab'.repeat(24)]) {
         const error = await failure(() => alice.restoreAccount({ hexSeed }))
         expect(error instanceof Error).toBe(true)
         expect(String(error)).toContain('hexSeed')
@@ -658,6 +1154,31 @@ export function runSessionClientContract(
       }
       for (const router of ['onion-requests', 'direct'] as const)
         expect(await failure(() => client.attachNetwork({ ...devnet, router }))).toBeUndefined()
+    })
+
+    /**
+     * The half of the network status that holds offline. Whether a path comes up needs service
+     * nodes, which this suite never reaches; the event's shape is the echo test's.
+     */
+    it('reports no network as disconnected', async () => {
+      const { alice } = await harness.friends()
+      expect(await alice.getNetworkStatus()).toBe('disconnected')
+    })
+
+    it('goes nowhere on a network accepted before there is an account', async () => {
+      const { client } = await harness.newcomer()
+      const seen = collect(client)
+      // Accepted and recorded, and attached only once an account exists to attach it to.
+      await client.attachNetwork({
+        netid: 'devnet',
+        router: 'onion-requests',
+        seedNodes: [
+          { ed25519PubkeyHex: 'a'.repeat(64), ip: '10.0.0.1', httpsPort: 1300, omqPort: 1305 },
+        ],
+      })
+      expect(await client.getNetworkStatus()).toBe('disconnected')
+      expect(seen.events.filter((e) => e.type === 'network-status-changed')).toEqual([])
+      seen.stop()
     })
 
     it('refuses a network it cannot build, and stays where it was', async () => {
@@ -1023,7 +1544,36 @@ export function runSessionClientContract(
         (m) => m.id === messageId,
       )?.attachments[0]
       expect(image?.availability).toBe('cached')
+      expect(image?.renditionRefused).toBe(false)
       seen.stop()
+    })
+
+    it('says when it will make no rendition of a picture it holds', async () => {
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment({
+        pastPixelLimits: true,
+      })
+      const held = async () =>
+        (await client.getMessages(conversationId)).messages
+          .find((m) => m.id === messageId)
+          ?.attachments.find((a) => a.index === index)
+      expect((await held())?.renditionRefused).toBe(false)
+
+      const running = client.downloadAttachment(messageId, index)
+      await settle()
+      await running
+      // libsession settles it as it reads the cached file's header, and says so by update.
+      for (let round = 0; round < 100 && (await held())?.renditionRefused !== true; round += 1) {
+        await settle()
+        await new Promise((resolve) => setTimeout(resolve, 20))
+      }
+
+      const picture = await held()
+      expect(picture?.availability).toBe('cached')
+      expect([picture?.renditionRefused, picture?.hasRendition, picture?.hasThumbnail]).toEqual([
+        true,
+        false,
+        false,
+      ])
     })
 
     it('shows a message as a gallery only when every attachment is an image libsession displays', async () => {
@@ -1038,6 +1588,60 @@ export function runSessionClientContract(
       expect((await receive(['image/jpeg', 'application/pdf'])).galleryViewable).toBe(false)
       expect((await receive(['image/heic', 'image/png'])).galleryViewable).toBe(false)
       expect((await receive(['image/png', 'IMAGE/GIF'])).galleryViewable).toBe(true)
+    })
+
+    it('gives a picture no thumbnail size before it has a thumbnail', async () => {
+      const { receive } = await harness.receivesAttachments()
+      const [picture] = (await receive(['image/jpeg'])).attachments
+      expect(picture?.hasThumbnail).toBe(false)
+      expect([picture?.thumbnailWidthPx, picture?.thumbnailHeightPx]).toEqual([0, 0])
+    })
+
+    it('starts a message as a gallery exactly where it can be one', async () => {
+      const { receive } = await harness.receivesAttachments()
+      expect((await receive(['image/jpeg', 'image/png'])).gallery).toBe(true)
+      expect((await receive(['image/jpeg', 'application/pdf'])).gallery).toBe(false)
+    })
+
+    it('stores a gallery choice, announces it, and keeps it across a restart', async () => {
+      const { client, conversationId, receive } = await harness.receivesAttachments()
+      const { id } = await receive(['image/jpeg'])
+      const seen = collect(client)
+
+      expect(await client.setGallery(id, false)).toBe(true)
+      const announced = messagesOf(seen.events, 'messages-updated').filter((m) => m.id === id)
+      expect(announced.map((m) => m.gallery)).toEqual([false])
+      seen.stop()
+
+      const restarted = await harness.restart(client)
+      const stored = async () =>
+        (await restarted.getMessages(conversationId)).messages.find((m) => m.id === id)?.gallery
+      expect(await stored()).toBe(false)
+
+      expect(await restarted.setGallery(id, true)).toBe(true)
+      expect(await stored()).toBe(true)
+    })
+
+    it('announces nothing when asked for the gallery choice already stored', async () => {
+      const { client, receive } = await harness.receivesAttachments()
+      const { id } = await receive(['image/png'])
+      const seen = collect(client)
+      expect(await client.setGallery(id, true)).toBe(true)
+      // The stream is ordered, so a no-op that announced would show up ahead of the real change.
+      expect(await client.setGallery(id, false)).toBe(true)
+      const announced = messagesOf(seen.events, 'messages-updated').filter((m) => m.id === id)
+      expect(announced.map((m) => m.gallery)).toEqual([false])
+      seen.stop()
+    })
+
+    it('refuses a gallery for a message that cannot be one, and for one that does not exist', async () => {
+      const { client, conversationId, receive } = await harness.receivesAttachments()
+      const { id } = await receive(['image/jpeg', 'application/pdf'])
+      expect(await client.setGallery(id, true)).toBe(false)
+      expect(await client.setGallery(id, false)).toBe(true)
+      const page = await client.getMessages(conversationId)
+      expect(page.messages.find((m) => m.id === id)?.gallery).toBe(false)
+      expect(await client.setGallery(987_654_321, false)).toBe(false)
     })
 
     it('has no attachment cache limit until one is set, and reads back the one set', async () => {

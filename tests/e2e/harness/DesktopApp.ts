@@ -125,6 +125,14 @@ const BLOCKING_IMPACTS = new Set(['serious', 'critical'])
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
 
 /**
+ * Whoever runs the suite asked for no window on screen: `pnpm catalog:compare` does, so a capture
+ * on a developer's Mac neither covers the screen nor takes focus. The app reads it from the env a
+ * launch passes on; see apps/desktop/src/main/hiddenRun.ts.
+ */
+const HIDDEN_RUN_VARIABLE = 'SESSION_E2E_HIDDEN'
+const hiddenRunAsked = process.env[HIDDEN_RUN_VARIABLE] === '1'
+
+/**
  * The Electron client, driven by Playwright.
  *
  * testID reaches the DOM as data-testid through react-native-web, so the selector a test
@@ -160,6 +168,11 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
         '--no-sandbox',
         '--disable-gpu',
         '--disable-dev-shm-usage',
+        // Pictures in sRGB, as the Linux captures Argos compares with are. On a Mac a capture is
+        // otherwise encoded in the display's colour space, which a window opening elsewhere can
+        // change between two pages. Here rather than in main's `appendSwitch`, which is too late
+        // for it.
+        '--force-color-profile=srgb',
       ],
       env: {
         ...process.env,
@@ -171,6 +184,18 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
     })
 
     const page = await app.firstWindow()
+    // A build without hidden runs ignores the variable and shows its window: stopped at once
+    // rather than left on screen for the length of a run that was promised to stay out of sight.
+    if (
+      hiddenRunAsked &&
+      (await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows().some((window) => window.isVisible()),
+      ))
+    ) {
+      await app.close()
+      rmSync(dataDir, { recursive: true, force: true })
+      throw new Error(`${HIDDEN_RUN_VARIABLE}=1, but this desktop build showed its window`)
+    }
     await page.waitForLoadState('domcontentloaded')
     return new DesktopApp(identity, app, page, dataDir)
   }
@@ -416,6 +441,11 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
         ),
       ),
     )
+  }
+
+  /** What the app last copied, read in the main process: the renderer may not read it. */
+  async readClipboard(): Promise<string> {
+    return this.app.evaluate(({ clipboard }) => clipboard.readText())
   }
 
   /** The page's own size, in CSS px: the window's frame is the window manager's. */

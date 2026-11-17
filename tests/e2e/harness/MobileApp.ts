@@ -22,6 +22,8 @@ import {
 } from './nativeAccessibility'
 import { parseNativeTree, walk, type NativeNode } from './nativeTree'
 
+/** Over react-native's 500 ms long-press delay, with room for a slow emulator. */
+const LONG_PRESS_HOLD_MS = 1_000
 const run = promisify(execFile)
 
 export type MobilePlatform = 'android' | 'ios'
@@ -307,6 +309,24 @@ export class MobileApp implements ISessionApp {
       .perform()
   }
 
+  /** Holds a finger on the middle of the element, past the platform's long-press delay. */
+  async longPress(id: ElementId, at = 0): Promise<void> {
+    const box = await this.frame(id, at)
+    if (box === null) throw new Error(`No element ${String(at)} carries ${id}`)
+    this.scrolledTo = null
+    const scale = this.platform === 'android' ? (await this.screenDensity()) / 160 : 1
+    await this.driver
+      .action('pointer', { parameters: { pointerType: 'touch' } })
+      .move({
+        x: Math.round((box.x + box.width / 2) * scale),
+        y: Math.round((box.y + box.height / 2) * scale),
+      })
+      .down()
+      .pause(LONG_PRESS_HOLD_MS)
+      .up()
+      .perform()
+  }
+
   async type(id: ElementId, text: string): Promise<void> {
     this.scrolledTo = null
     await (await this.element(id)).setValue(text)
@@ -426,6 +446,7 @@ export class MobileApp implements ISessionApp {
   /**
    * The checker's findings within the box of `scope`, by position rather than by subtree: a
    * screen's id can sit on a view the tree lists beside the screen's content rather than over it.
+   * On iOS only target sizes are scoped: XCTest audits the whole screen and gives no frames.
    */
   async audit(scope?: ElementId): Promise<AuditIssue[]> {
     // A page source costs seconds on iOS, and an audit after a scroll needs the one it just read.

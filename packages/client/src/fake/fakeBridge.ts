@@ -1,6 +1,7 @@
 import { utf8Decode } from '@session/basic-types'
 import type { Command, Frame, Request, Result } from '@session/bridge-types'
 
+import { SessionClientError } from '../errors'
 import type { BridgeTransport, SessionClient } from '../types'
 
 /**
@@ -22,7 +23,10 @@ export function createFakeTransport(client: SessionClient): BridgeTransport {
     sink?.({ type: 'event', event })
   })
 
-  function respond(id: number, outcome: { result: Result } | { error: string }): void {
+  function respond(
+    id: number,
+    outcome: { result: Result } | { error: string; code?: string },
+  ): void {
     sink?.({ type: 'response', response: { id, ...outcome } })
   }
 
@@ -30,7 +34,7 @@ export function createFakeTransport(client: SessionClient): BridgeTransport {
     send(request: Request): void {
       void handle(client, request.command)
         .then((result) => respond(request.id, { result }))
-        .catch((error: unknown) => respond(request.id, { error: describe(error) }))
+        .catch((error: unknown) => respond(request.id, refusal(error)))
     },
 
     setSink(onFrame: (frame: Frame) => void): void {
@@ -45,8 +49,11 @@ export function createFakeTransport(client: SessionClient): BridgeTransport {
   }
 }
 
-function describe(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
+/** The error as the shim answers one: its text, and its dotted code where it carries one. */
+function refusal(error: unknown): { error: string; code?: string } {
+  if (!(error instanceof Error)) return { error: String(error) }
+  const code = error instanceof SessionClientError ? error.code : undefined
+  return code === undefined ? { error: error.message } : { error: error.message, code }
 }
 
 const empty: Result = { type: 'empty' }
@@ -102,9 +109,21 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     await client.keepAccount()
     return empty
   },
-  getSeedMnemonic: async (client, cmd) => ({
-    type: 'mnemonic',
-    words: await client.getSeedMnemonic(cmd.language),
+  getSeedMnemonic: async (client, cmd) => {
+    const words = await client.getSeedMnemonic(cmd.language)
+    return words === null ? { type: 'seedHidden' } : { type: 'mnemonic', words }
+  },
+  getSeedHex: async (client) => {
+    const hex = await client.getSeedHex()
+    return hex === null ? { type: 'seedHidden' } : { type: 'hex', hex }
+  },
+  hideRecoveryPassword: async (client) => {
+    await client.hideRecoveryPassword()
+    return empty
+  },
+  getRecoveryPasswordHidden: async (client) => ({
+    type: 'bool',
+    value: await client.getRecoveryPasswordHidden(),
   }),
   setDisplayName: async (client, cmd) => {
     await client.setDisplayName(cmd.name)
@@ -125,6 +144,10 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
   warmNetworkCache: async (client) => ({
     type: 'bool',
     value: await client.warmNetworkCache(),
+  }),
+  getNetworkStatus: async (client) => ({
+    type: 'networkStatus',
+    status: await client.getNetworkStatus(),
   }),
   setPushToken: () => unsupported('setPushToken'),
   handlePushPayload: () => unsupported('handlePushPayload'),
@@ -187,11 +210,16 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     messageId: await client.sendMessage(cmd.conversationId, {
       body: cmd.body,
       ...(cmd.replyTo === undefined ? {} : { replyTo: cmd.replyTo }),
+      ...(cmd.attachments === undefined ? {} : { attachments: cmd.attachments }),
     }),
   }),
   retrySend: async (client, cmd) => ({
     type: 'bool',
     value: await client.retrySend(cmd.messageId),
+  }),
+  setGallery: async (client, cmd) => ({
+    type: 'bool',
+    value: await client.setGallery(cmd.messageId, cmd.gallery),
   }),
   deleteMessage: async (client, cmd) => {
     await client.deleteMessage(cmd.messageId, cmd.scope)
@@ -209,11 +237,19 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
       replace: cmd.replace,
     }),
   }),
+  attachmentSendPlan: async (client, cmd) => ({
+    type: 'sendPlan',
+    plan: await client.attachmentSendPlan(cmd.path, cmd.contentType),
+  }),
   setAutoDownload: async (client, cmd) => {
     await client.setAutoDownload(cmd.conversationId, cmd.mode)
     return empty
   },
   getCacheDir: async (client) => ({ type: 'path', path: await client.getCacheDir() }),
+  getAttachmentUploadLimit: async (client) => ({
+    type: 'byteCount',
+    bytes: await client.getAttachmentUploadLimit(),
+  }),
   getAttachmentCacheLimit: async (client) => {
     const bytes = await client.getAttachmentCacheLimit()
     return { type: 'byteCount', ...(bytes === undefined ? {} : { bytes }) }

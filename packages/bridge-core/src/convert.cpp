@@ -91,6 +91,17 @@ bool thumbhash_decodable(const ::session::client::Attachment& a) {
     return !(a.width && a.height) || (plausible_side(*a.width) && plausible_side(*a.height));
 }
 
+namespace {
+
+    // Set exactly when `has_thumbhash` is: the same test decides both.
+    std::optional<double> thumbhash_aspect(const ::session::client::Attachment& a) {
+        if (!thumbhash_decodable(a))
+            return std::nullopt;
+        return image::thumbhash::component_aspect_ratio(*a.thumbhash);
+    }
+
+}  // namespace
+
 Attachment to_bridge(::session::client::Attachment&& from) {
     return Attachment(
             static_cast<double>(from.index),
@@ -101,7 +112,13 @@ Attachment to_bridge(::session::client::Attachment&& from) {
             number(from.width),
             number(from.height),
             thumbhash_decodable(from),
+            thumbhash_aspect(from),
             from.has_thumbnail,
+            static_cast<double>(from.thumbnail_width),
+            static_cast<double>(from.thumbnail_height),
+            from.has_rendition,
+            from.picture && from.picture->rendition_refused,
+            from.original_file,
             from.uploaded,
             availability(from.availability),
             static_cast<double>(from.fetch_done),
@@ -151,6 +168,7 @@ Message to_bridge(::session::client::Message&& from) {
                                  : std::nullopt,
             std::move(attachments),
             from.gallery_viewable,
+            from.gallery,
             std::move(reply),
             deleted);
 }
@@ -205,6 +223,49 @@ Conversation to_bridge(::session::client::AnyConversation&& from) {
             awaiting_approval,
             note_to_self,
             blocked);
+}
+
+SendPlan to_bridge(image::SendPlan from) {
+    // No default label: -Werror=switch makes a new plan a build failure here.
+    switch (from) {
+        case image::SendPlan::reencoded: return SendPlan::reencoded;
+        case image::SendPlan::as_is: return SendPlan::as_is;
+        case image::SendPlan::original_cannot_decode: return SendPlan::original_cannot_decode;
+        case image::SendPlan::original_animated_png: return SendPlan::original_animated_png;
+        case image::SendPlan::too_large_to_decode: return SendPlan::too_large_to_decode;
+        case image::SendPlan::too_large_for_server: return SendPlan::too_large_for_server;
+        case image::SendPlan::unreadable: return SendPlan::unreadable;
+        case image::SendPlan::missing: return SendPlan::missing;
+    }
+    return SendPlan::unreadable;
+}
+
+NetworkStatus to_bridge(::session::network::ConnectionStatus from) {
+    using ::session::network::ConnectionStatus;
+    switch (from) {
+        case ConnectionStatus::unknown: return NetworkStatus::unknown;
+        case ConnectionStatus::connecting: return NetworkStatus::connecting;
+        case ConnectionStatus::connected: return NetworkStatus::connected;
+        case ConnectionStatus::disconnected: return NetworkStatus::disconnected;
+    }
+    return NetworkStatus::unknown;
+}
+
+ConversationList to_bridge(::session::client::ConversationList from) {
+    using ::session::client::ConversationList;
+    switch (from) {
+        case ConversationList::none: return session_bridge::ConversationList::none;
+        case ConversationList::conversations: return session_bridge::ConversationList::conversations;
+        case ConversationList::requests: return session_bridge::ConversationList::requests;
+    }
+    return session_bridge::ConversationList::none;
+}
+
+ListPlacement to_bridge(::session::client::ListPlacement&& from) {
+    std::optional<std::string> after;
+    if (from.after)
+        after = from.after->to_string();
+    return ListPlacement{to_bridge(from.from), to_bridge(from.to), std::move(after)};
 }
 
 }  // namespace session_bridge

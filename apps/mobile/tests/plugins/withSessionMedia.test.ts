@@ -1,7 +1,11 @@
 import type { ExportedConfig } from '@expo/config-plugins'
 import { describe, expect, it } from 'vitest'
 
-import { mainApplicationServingMedia, withSessionMedia } from '#plugins/withSessionMedia'
+import {
+  mainApplicationServingMedia,
+  propertiesDecodingAnimatedWebP,
+  withSessionMedia,
+} from '#plugins/withSessionMedia'
 
 /**
  * SDK 58's template, cut down to the lines the rewrite reads. `PackageList(this)` sits in a `lazy`
@@ -51,8 +55,26 @@ describe('handing Fresco the media configuration', () => {
     expect(() => mainApplicationServingMedia(without, 'kt')).toThrow('PackageList(this)')
   })
 
-  it('is applied as the MainApplication mod', () => {
+  it('is applied as the MainApplication and Gradle properties mods', () => {
     const config = withSessionMedia({ name: 'Session', slug: 'session-app' }) as ExportedConfig
     expect(typeof config.mods?.android?.['mainApplication']).toBe('function')
+    expect(typeof config.mods?.android?.['gradleProperties']).toBe('function')
+  })
+})
+
+describe('linking the animated WebP decoder', () => {
+  it("turns on the template's animated WebP once, keeping everything else", () => {
+    const template = [
+      { type: 'comment', value: 'Enable animated webp support (~3.4 MB increase)' },
+      { type: 'property', key: 'expo.webp.enabled', value: 'true' },
+      { type: 'property', key: 'expo.webp.animated', value: 'false' },
+    ] as const
+    const out = propertiesDecodingAnimatedWebP([...template])
+    expect(
+      out.filter((item) => item.type === 'property' && item.key === 'expo.webp.animated'),
+    ).toEqual([{ type: 'property', key: 'expo.webp.animated', value: 'true' }])
+    expect(out).toContainEqual(template[0])
+    expect(out).toContainEqual(template[1])
+    expect(propertiesDecodingAnimatedWebP(out)).toEqual(out)
   })
 })

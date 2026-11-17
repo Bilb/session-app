@@ -2,13 +2,18 @@
 
 #include "MediaSource.hpp"
 
+#include <session_bridge/decode_plan.hpp>
 #include <session_bridge/media_url.hpp>
 
 #include <oxen/log.hpp>
 #include <pthread.h>
 
+#include <algorithm>
 #include <climits>
 #include <cstddef>
+#include <functional>
+#include <memory>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -147,6 +152,20 @@ void answer_thumbnail(jobject load, ::session_bridge::Media media) {
     env->DeleteGlobalRef(load);
 }
 
+/// Typed by its bytes rather than by whoever answered: a JPEG or a WebP, animated or not.
+void answer_rendition(jobject load, ::session_bridge::Media media) {
+    JNIEnv* env = attached_env();
+    if (!env)
+        return;
+    if (media.error)
+        fail(env, load, *media.error);
+    else if (::session_bridge::rendition_content_type(media.bytes))
+        hand_over(env, load, std::move(media.bytes));
+    else
+        fail(env, load, "a rendition that is not a JPEG or WebP");
+    env->DeleteGlobalRef(load);
+}
+
 /// Larger than any ThumbHash decodes to, and small enough that `width * height * 4` fits a jint.
 constexpr double MAX_THUMBHASH_SIDE = 16384;
 
@@ -232,23 +251,23 @@ jint register_media_loader(JavaVM* vm) {
 
 }  // namespace session_bridge_rn
 
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jlong JNICALL
 Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url, jobject load) {
     const char* chars = env->GetStringUTFChars(url, nullptr);
     if (!chars)
-        return;  // OutOfMemoryError is pending and is thrown from fetch().
+        return 0;  // OutOfMemoryError is pending and is thrown from fetch().
     const std::string text{chars};
     env->ReleaseStringUTFChars(url, chars);
 
     const auto parsed = ::session_bridge::parse_media_url(text);
     if (!parsed) {
         fail(env, load, "not a media URL");
-        return;
+        return 0;
     }
     auto source = ::session_bridge_rn::media_source();
     if (!source) {
         fail(env, load, "nothing is serving media");
-        return;
+        return 0;
     }
 
     jobject held = env->NewGlobalRef(load);
@@ -260,13 +279,72 @@ Java_session_bridge_rn_SessionMediaNative_fetch(JNIEnv* env, jclass, jstring url
         source->fetch_thumbnail(parsed->message_id, parsed->index, [held](auto media) {
             answer_thumbnail(held, std::move(media));
         });
+    else if (parsed->kind == ::session_bridge::MediaUrlKind::rendition)
+        source->fetch_rendition(parsed->message_id, parsed->index, [held](auto media) {
+            answer_rendition(held, std::move(media));
+        });
+    else if (parsed->kind == ::session_bridge::MediaUrlKind::staged)
+        return reinterpret_cast<jlong>(new std::function<void()>{source->fetch_staged_thumbnail(
+                parsed->path, [held](auto media) { answer_thumbnail(held, std::move(media)); })});
     else
         source->fetch_media(parsed->message_id, parsed->index, [held](auto media) {
             answer_media(held, std::move(media));
         });
+    return 0;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_session_bridge_rn_SessionMediaNative_withdraw(JNIEnv*, jclass, jlong handle) {
+    std::unique_ptr<std::function<void()>> withdraw{reinterpret_cast<std::function<void()>*>(handle)};
+    (*withdraw)();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_session_bridge_rn_SessionMediaNative_forget(JNIEnv*, jclass, jlong handle) {
+    delete reinterpret_cast<std::function<void()>*>(handle);
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_session_bridge_rn_SessionMediaNative_release(JNIEnv*, jclass, jlong handle) {
     delete reinterpret_cast<std::vector<std::byte>*>(handle);
+}
+
+namespace {
+
+/// A plan as `[edge in pixels, first frame only, past the whole-decode ceiling]`; null with
+/// OutOfMemoryError pending.
+jintArray plan_array(JNIEnv* env, const ::session_bridge::DecodePlan& plan) {
+    const jint values[] = {
+            static_cast<jint>(std::min(plan.edge_px, static_cast<double>(INT_MAX))),
+            plan.first_frame_only,
+            plan.exceeds_whole_decode_ceiling};
+    jintArray out = env->NewIntArray(3);
+    if (out)
+        env->SetIntArrayRegion(out, 0, 3, values);
+    return out;
+}
+
+}  // namespace
+
+/// The shim's plan for the first `size` bytes of a direct buffer.
+extern "C" JNIEXPORT jintArray JNICALL
+Java_session_bridge_rn_SessionMediaNative_plan(JNIEnv* env, jclass, jobject bytes, jint size) {
+    const auto* data = static_cast<const std::byte*>(env->GetDirectBufferAddress(bytes));
+    const jlong capacity = env->GetDirectBufferCapacity(bytes);
+    return plan_array(
+            env,
+            data && size >= 0 && size <= capacity
+                    ? ::session_bridge::decode_plan(std::span{data, static_cast<size_t>(size)})
+                    : ::session_bridge::unmeasured_decode_plan());
+}
+
+/// The shim's plan for `size` bytes at `address`, which the caller keeps alive for the call.
+extern "C" JNIEXPORT jintArray JNICALL
+Java_session_bridge_rn_SessionMediaNative_planAt(JNIEnv* env, jclass, jlong address, jint size) {
+    const auto* data = reinterpret_cast<const std::byte*>(address);
+    return plan_array(
+            env,
+            data && size >= 0
+                    ? ::session_bridge::decode_plan(std::span{data, static_cast<size_t>(size)})
+                    : ::session_bridge::unmeasured_decode_plan());
 }

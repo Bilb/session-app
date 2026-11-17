@@ -41,7 +41,8 @@ void parses_every_url_as_the_table_says() {
             continue;
         if (session_bridge::media_url_kind_name(parsed->kind) != vector.kind
             || parsed->message_id != vector.message_id
-            || parsed->index != vector.index)
+            || parsed->index != vector.index
+            || parsed->path != vector.path)
             failed("parse_media_url", vector.url, "parsed to the wrong ref");
     }
 }
@@ -75,6 +76,23 @@ void serves_an_image_type_only_for_the_image_family() {
         failed("servable_image_type", "table", "holds no servable video to refuse");
 }
 
+/// A rendition is typed by its bytes alone, and only as one of the two formats libsession makes.
+void types_a_rendition_by_its_bytes() {
+    using namespace std::string_view_literals;
+    const auto type = [](std::string_view bytes) {
+        return session_bridge::rendition_content_type(bytes_of(bytes));
+    };
+    if (type("\xff\xd8\xff\xe0\0\x10JFIF"sv) != std::string{"image/jpeg"})
+        failed("rendition_content_type", "jpeg", "not typed image/jpeg");
+    if (type("RIFF\x24\0\0\0WEBPVP8 "sv) != std::string{"image/webp"})
+        failed("rendition_content_type", "webp", "not typed image/webp");
+    for (const auto refused :
+         {"\x89PNG\r\n\x1a\n\0\0\0\rIHDR"sv, "GIF89a"sv, "RIFF\x24\0\0\0WAVE"sv, "RIFF"sv,
+          "\xff\xd8"sv, ""sv})
+        if (type(refused))
+            failed("rendition_content_type", "not a rendition", "typed " + shown(type(refused)));
+}
+
 }  // namespace
 
 int main() {
@@ -85,6 +103,7 @@ int main() {
     parses_every_url_as_the_table_says();
     serves_and_refuses_bytes_as_the_table_says();
     serves_an_image_type_only_for_the_image_family();
+    types_a_rendition_by_its_bytes();
     if (failures == 0)
         std::puts("media_url: all passed");
     return failures == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

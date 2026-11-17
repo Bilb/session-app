@@ -13,11 +13,13 @@ export interface StorageRootPaths {
   logs: string
   /** Decrypted copies on their way out of the app, to the share sheet. */
   exports: string
+  /** Copies of what was picked, until a send takes them. */
+  staged: string
 }
 
 export type RootName = keyof StorageRootPaths
 
-export const ROOT_NAMES: readonly RootName[] = ['data', 'logs', 'exports']
+export const ROOT_NAMES: readonly RootName[] = ['data', 'logs', 'exports', 'staged']
 
 /** What the file system reports for one root: see the native module's `inspect`. */
 export interface RootState {
@@ -61,6 +63,14 @@ export function libsessionPaths(
 /** The database and the two files SQLite keeps beside it in WAL mode. */
 export function databaseFiles(dbPath: string): string[] {
   return [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]
+}
+
+/**
+ * What a discard removes from one network's directory, as the bridge's own discard does: the
+ * database and its two files, and the attachment cache. The service-node cache beside them stays.
+ */
+export function discardedPaths(networkDir: string): string[] {
+  return [...databaseFiles(`${networkDir}/session.db`), `${networkDir}/attachments`]
 }
 
 /**

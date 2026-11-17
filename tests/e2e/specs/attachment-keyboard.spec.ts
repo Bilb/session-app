@@ -14,7 +14,7 @@ import { downloadFromRow, openFirstConversation } from '../harness/attachments'
 import { DesktopApp } from '../harness/DesktopApp'
 import { onDesktop } from '../harness/expected'
 import { SEEDED_ALBUM, SEEDED_LIST } from '../harness/fixtures'
-import { tabStops, tabTo, type Stop } from '../harness/keyboard'
+import { focusMessageHolding, tabStops, tabTo, type Stop } from '../harness/keyboard'
 
 /** Export has no catalogue word yet; see `attachmentFooterAction`. */
 const EXPORT = verbName('export')
@@ -103,6 +103,7 @@ test('names each album tile and says what a press on it does @desktop @medium-ri
       - button "${SEEDED_ALBUM[1]}"
     `)
 
+    await focusMessageHolding(app, ELEMENT.conversation.attachmentTile)
     const stops = await tabStops(app)
     const isTile = (stop: Stop) =>
       stop.testID === ELEMENT.conversation.attachmentTile &&
@@ -130,6 +131,7 @@ test('reaches a set’s footer with Tab, switches its view with Enter and downlo
     await openFirstConversation(app)
     await app.waitForVisible(ELEMENT.conversation.attachmentViewList)
 
+    await focusMessageHolding(app, ELEMENT.conversation.attachmentViewList)
     const toList = await tabTo(
       app,
       (stop) => stop.testID === ELEMENT.conversation.attachmentViewList,
@@ -168,6 +170,7 @@ test('keeps focus on the control and the tile whose Enter starts a download @des
 
     // The picture's control, the one Export, then the control of the document below it, whose
     // row has no lead square to stop on.
+    await focusMessageHolding(app, ELEMENT.conversation.attachmentExport)
     await tabTo(app, (stop) => stop.testID === ELEMENT.conversation.attachmentExport)
     await app.page.keyboard.press('Tab')
     await expect(focused).toHaveAttribute('data-testid', ELEMENT.conversation.attachmentDownload)
@@ -179,6 +182,7 @@ test('keeps focus on the control and the tile whose Enter starts a download @des
     })
     await expect(focused).toHaveAccessibleName(EXPORT)
 
+    await focusMessageHolding(app, ELEMENT.conversation.attachmentTile)
     await tabTo(
       app,
       (stop) => stop.testID === ELEMENT.conversation.attachmentTile && stop.node?.name === tile,

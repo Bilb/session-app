@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  ALBUM_WIDTH,
   contentTypeEssence,
   isDisplayableImage,
   isViewableContentType,
   isViewableImage,
   isViewableVideo,
+  jpegSize,
   mediaKindOf,
+  tallestTilePx,
   thumbnailEdgePxFor,
 } from '#src/media'
 
@@ -22,6 +23,7 @@ describe('the essence of a declared content type', () => {
   it('keeps a NUL, which no type it is compared with carries', () => {
     expect(contentTypeEssence('image/png\0.exe')).toBe('image/png\0.exe')
     expect(isViewableImage('image/png\0')).toBe(false)
+    expect(isDisplayableImage('image/png\0')).toBe(false)
   })
 
   it('trims space, tab, CR and LF alone', () => {
@@ -83,9 +85,15 @@ describe('which content types libsession calls displayable', () => {
     expect(isDisplayableImage(undefined)).toBe(false)
   })
 
-  it('compares the essence, as libsession does: parameters and edge space ignored', () => {
+  it('compares the essence, as libsession does', () => {
     expect(isDisplayableImage('image/jpeg; charset=binary')).toBe(true)
-    expect(isDisplayableImage(' image/png')).toBe(true)
+    expect(isDisplayableImage(' image/png ')).toBe(true)
+    expect(isDisplayableImage('\fimage/png')).toBe(false)
+  })
+
+  it('shows an APNG as a file', () => {
+    expect(isDisplayableImage('image/apng')).toBe(false)
+    expect(isViewableImage('image/apng')).toBe(false)
   })
 })
 
@@ -97,11 +105,61 @@ describe('a viewable type’s kind', () => {
 })
 
 describe('the edge thumbnails are made at', () => {
-  it('follows the densest display', () => {
-    expect(thumbnailEdgePxFor([1, 2, 1.5])).toBe(ALBUM_WIDTH * 2)
+  it('covers the tallest tile, a picture alone at the narrow layout’s cap', () => {
+    expect(tallestTilePx('narrow')).toBe(340)
+    expect(thumbnailEdgePxFor([2], 'narrow')).toBe(680)
   })
 
-  it('makes them at 1x with no display connected', () => {
-    expect(thumbnailEdgePxFor([])).toBe(ALBUM_WIDTH)
+  it('covers a wide-layout row as tall as its widest album, the lone picture capped below it', () => {
+    expect(tallestTilePx('wide')).toBe(340)
+    expect(thumbnailEdgePxFor([1, 2, 1.5], 'wide')).toBe(680)
+  })
+
+  it('stays within libsession’s 1024 px at 3x, and makes them at 1x with no display connected', () => {
+    expect(thumbnailEdgePxFor([3], 'narrow')).toBe(1020)
+    expect(thumbnailEdgePxFor([3], 'wide')).toBe(1020)
+    expect(thumbnailEdgePxFor([4], 'wide')).toBe(1024)
+    expect(thumbnailEdgePxFor([], 'wide')).toBe(340)
+  })
+})
+
+/** A JPEG's markers up to a frame header under `marker`, which is all a size is read from. */
+function jpegHeader(width: number, height: number, marker = 0xc0): Uint8Array {
+  return Uint8Array.from([
+    0xff,
+    0xd8,
+    0xff,
+    marker,
+    0x00,
+    0x11,
+    0x08,
+    height >> 8,
+    height & 0xff,
+    width >> 8,
+    width & 0xff,
+    0x03,
+  ])
+}
+
+describe("a JPEG's size", () => {
+  it('reads a baseline or progressive frame header', () => {
+    expect(jpegSize(jpegHeader(4032, 3024))).toEqual({ width: 4032, height: 3024 })
+    expect(jpegSize(jpegHeader(720, 1280, 0xc2))).toEqual({ width: 720, height: 1280 })
+  })
+
+  it('walks past the segments before the frame header', () => {
+    const app0 = [0xff, 0xe0, 0x00, 0x04, 0x4a, 0x46]
+    const dht = [0xff, 0xc4, 0x00, 0x03, 0x00]
+    const frame = jpegHeader(300, 200).subarray(2)
+    const bytes = Uint8Array.from([0xff, 0xd8, ...app0, ...dht, ...frame])
+    expect(jpegSize(bytes)).toEqual({ width: 300, height: 200 })
+  })
+
+  it('answers null for what is not a JPEG with a frame header', () => {
+    expect(jpegSize(new Uint8Array(64))).toBeNull()
+    expect(jpegSize(Uint8Array.from('GIF89a', (c) => c.charCodeAt(0)))).toBeNull()
+    // C4, a Huffman table, shares the frame markers' range.
+    expect(jpegSize(jpegHeader(300, 200, 0xc4))).toBeNull()
+    expect(jpegSize(jpegHeader(300, 200).subarray(0, 8))).toBeNull()
   })
 })

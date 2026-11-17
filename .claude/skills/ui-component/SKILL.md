@@ -31,6 +31,10 @@ The shared types file is what stops the two drifting: each app typechecks agains
 one its bundler resolves, so a prop added to only one of them would otherwise go unnoticed
 until the other platform was run. `Input` is the worked example.
 
+Split only the part that differs. When most of a component is the same on both, move the
+platform-specific piece into its own trio and keep the component one file that imports it:
+`UpdateIndicator.tsx` is one file, and only its `UpdateFadeLayer` is split.
+
 `packages/ui/tsconfig.json` excludes `*.native.*` - those are typechecked by `apps/mobile`,
 which loads react-native's types and sets `moduleSuffixes`. Run `pnpm --filter @session/mobile typecheck`
 after touching one.
@@ -49,5 +53,6 @@ after touching one.
 
 A catalog story for how it looks (see "What can be seen is tested in the catalog" in
 `CLAUDE.md`), captured with `tests/e2e/catalog/capture.sh` after
-`pnpm --filter @session/desktop build`. A render test only for behaviour a picture cannot show.
+`pnpm --filter @session/desktop build` on a Linux x86_64 host; elsewhere, push and read the
+pull request's build in Argos. A render test only for behaviour a picture cannot show.
 Then `pnpm --filter @session/ui typecheck` and `pnpm --filter @session/mobile typecheck`.

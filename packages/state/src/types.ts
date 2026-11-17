@@ -3,10 +3,17 @@ import type {
   AttachmentTransfer,
   Conversation,
   ConversationId,
+  ConversationList,
   Message,
   MessageCursor,
+  NetworkStatus,
   TransferProgress,
 } from '@session/client'
+
+import type { StartupFailureKind } from './startupFailure'
+
+/** One of the two lists a conversation can be in, named as the state field holding it. */
+export type ListName = Exclude<ConversationList, 'none'>
 
 /**
  * One conversation's loaded history.
@@ -50,6 +57,11 @@ export type MessageTransfers = Record<string, AttachmentTransferState>
 export interface SessionState {
   hydrated: boolean
   account: AccountInfo | null
+  /**
+   * The most the file server takes in one upload, encrypted and padded, as libsession says: what
+   * the composer quotes as the size limit. Null until a start has asked.
+   */
+  attachmentUploadLimitBytes: number | null
 
   /**
    * Why the app could not start, or null while it still might.
@@ -61,14 +73,14 @@ export interface SessionState {
    */
   startupError: string | null
   /**
-   * Whether clearing the device could get past `startupError`. False when the bridge itself could
-   * not be made: every request is refused, the discard a clear makes included.
+   * What kind of failure `startupError` is, which decides what the screen explains and whether it
+   * offers a clear; null exactly when `startupError` is. See `classifyStartupFailure`.
    */
-  startupClearable: boolean
+  startupFailureKind: StartupFailureKind | null
 
   /**
-   * Complete lists, in the order libsession sent them. libsession sends whole state, so partial
-   * copies would only rot.
+   * Complete lists, in libsession's order: read once, then kept by its placements. A placement
+   * names the row it follows, so a partial copy would have nowhere to put one.
    *
    * A list and nothing beside it. libsession orders both queries in SQL and does not order them
    * the same way - conversations are `priority DESC, last_activity DESC, id`, requests are
@@ -79,6 +91,12 @@ export interface SessionState {
    */
   conversations: Conversation[]
   requests: Conversation[]
+  /**
+   * Which lists an event placed a row in after a row they do not hold, so they no longer match
+   * libsession's and no later placement can put them right. The store reads that list again,
+   * and the answer clears it.
+   */
+  listsOutOfStep: Record<ListName, boolean>
 
   histories: Record<ConversationId, MessageWindow>
 
@@ -99,6 +117,22 @@ export interface SessionState {
    * it.
    */
   appearance: StoredAppearance | null
+
+  /**
+   * Whether the recovery password was hidden on this device, which takes away the row that shows
+   * it. Device-local, as on every legacy client: hiding it here says nothing about another device.
+   */
+  recoveryPasswordHidden: boolean
+
+  /**
+   * Whether the attached network can carry traffic, as libsession last said: asked once by
+   * `hydrate`, then followed by its events. `unknown` until that first answer, which is
+   * libsession's own word for a status nobody has reported yet.
+   *
+   * Not the account's, so nothing that empties the account's state is meant to keep it: every
+   * such reset is followed by a `hydrate`, which asks again.
+   */
+  networkStatus: NetworkStatus
 }
 
 export interface StoredAppearance {
@@ -109,11 +143,15 @@ export interface StoredAppearance {
 export const emptyState: SessionState = {
   hydrated: false,
   account: null,
+  attachmentUploadLimitBytes: null,
   startupError: null,
-  startupClearable: true,
+  startupFailureKind: null,
   conversations: [],
   requests: [],
+  listsOutOfStep: { conversations: false, requests: false },
   histories: {},
   transfers: {},
   appearance: null,
+  recoveryPasswordHidden: false,
+  networkStatus: 'unknown',
 }

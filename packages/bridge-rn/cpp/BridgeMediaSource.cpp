@@ -51,6 +51,31 @@ void BridgeMediaSource::fetch_thumbnail(
     _bridge->fetch_thumbnail(message_id, index, std::move(tracked));
 }
 
+void BridgeMediaSource::fetch_rendition(
+        double message_id, double index, ::session_bridge::MediaHandler cb) {
+    auto tracked = _pending->track(std::move(cb));
+    std::shared_lock lock{_mutex};
+    if (!_bridge) {
+        lock.unlock();
+        tracked(failed<::session_bridge::Media>("the bridge is closed"));
+        return;
+    }
+    _bridge->fetch_rendition(message_id, index, std::move(tracked));
+}
+
+std::function<void()> BridgeMediaSource::fetch_staged_thumbnail(
+        std::string path, ::session_bridge::MediaHandler cb) {
+    auto tracked = _pending->track(std::move(cb));
+    std::shared_lock lock{_mutex};
+    if (!_bridge) {
+        lock.unlock();
+        tracked(failed<::session_bridge::Media>("the bridge is closed"));
+        return [] {};
+    }
+    // Safe to call after the bridge closes: it holds nothing of the bridge's but shared state.
+    return _bridge->fetch_staged_thumbnail(std::move(path), std::move(tracked));
+}
+
 void BridgeMediaSource::detach() {
     std::unique_lock lock{_mutex};
     _bridge = nullptr;

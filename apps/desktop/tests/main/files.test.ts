@@ -1,11 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { MAX_SUGGESTED_NAME_CHARS } from '@session/app/exportFileName'
 import type { Frame, Request } from '@session/client'
+
+import type { BrowserWindow } from 'electron'
 
 import {
   dialogDefaultPath,
@@ -13,8 +15,15 @@ import {
   MAX_PATH_CHARS,
   readLastFolder,
   sanitiseSuggestedName,
+  SendGate,
+  serveFiles,
   writeLastFolder,
 } from '#src/main/files'
+import { PreviewGrants } from '#src/main/previewGrants'
+
+vi.mock('electron', () => ({
+  default: { app: { getPath: () => tmpdir() }, dialog: {}, shell: {} },
+}))
 
 function exportTo(destination: string, id = 1, replace = false): Request {
   return {
@@ -221,5 +230,175 @@ describe('where a save dialog opens', () => {
 
     writeFileSync(file, '')
     expect(readLastFolder(file)).toBeUndefined()
+  })
+})
+
+function sending(attachments: unknown, id = 1): Request {
+  return {
+    id,
+    command: {
+      type: 'sendMessage',
+      conversationId: '05' + 'ab'.repeat(32),
+      body: '',
+      attachments: attachments as never,
+    },
+  }
+}
+
+/** libsession reads whatever a send names, so the page may name only what the person picked. */
+describe('a send the page asks for', () => {
+  const photo = '/home/someone/Pictures/harbour.jpg'
+
+  it('carries a file picked in this window, as it was described', () => {
+    const gate = new SendGate(false)
+    gate.grant(photo)
+    const asked = sending([{ path: photo, contentType: 'image/jpeg', filename: 'harbour.jpg' }])
+    expect(gate.admit(asked)).toEqual(asked)
+  })
+
+  it('is refused for a file nobody picked', () => {
+    const gate = new SendGate(false)
+    gate.grant(photo)
+    expect(
+      typeof gate.admit(sending([{ path: photo }, { path: '/home/someone/.ssh/id_ed25519' }])),
+    ).toBe('string')
+    expect(typeof gate.admit(sending([{}]))).toBe('string')
+    expect(typeof gate.admit(sending([null]))).toBe('string')
+    expect(typeof gate.admit(sending('/etc/passwd'))).toBe('string')
+  })
+
+  it('never lets libsession take the person’s own file', () => {
+    const gate = new SendGate(false)
+    gate.grant(photo)
+    expect(gate.admit(sending([{ path: photo, takeFile: true }]))).toEqual(
+      sending([{ path: photo }]),
+    )
+  })
+
+  it('holds a grant until every pick of the path has been let go', () => {
+    const gate = new SendGate(false)
+    gate.grant(photo)
+    gate.grant(photo)
+    gate.release(photo)
+    expect(typeof gate.admit(sending([{ path: photo }]))).not.toBe('string')
+    gate.release(photo)
+    expect(typeof gate.admit(sending([{ path: photo }]))).toBe('string')
+  })
+
+  it('folds case where the file system does', () => {
+    const gate = new SendGate(true)
+    gate.grant('C:\\Users\\Someone\\Photo.JPG')
+    expect(typeof gate.admit(sending([{ path: 'c:\\users\\someone\\photo.jpg' }]))).not.toBe(
+      'string',
+    )
+  })
+
+  it('plans a send only of a file picked in this window, and while it is held', () => {
+    const plan = (path: unknown): Request => ({
+      id: 3,
+      command: { type: 'attachmentSendPlan', path } as Request['command'],
+    })
+    const gate = new SendGate(false)
+    expect(typeof gate.admit(plan(photo))).toBe('string')
+    gate.grant(photo)
+    expect(gate.admit(plan(photo))).toEqual(plan(photo))
+    expect(typeof gate.admit(plan('/home/someone/.ssh/id_ed25519'))).toBe('string')
+    expect(typeof gate.admit(plan(undefined))).toBe('string')
+    expect(typeof gate.admit(plan(42))).toBe('string')
+    gate.release(photo)
+    expect(typeof gate.admit(plan(photo))).toBe('string')
+  })
+
+  it('sends and plans the file it admitted, as the grant resolved it', () => {
+    const root = mkdtempSync(join(tmpdir(), 'session-app-files-test-'))
+    try {
+      const real = join(root, 'real')
+      mkdirSync(real)
+      const alias = join(root, 'alias')
+      symlinkSync(real, alias)
+      const gate = new SendGate(false)
+      gate.grant(join(alias, 'harbour.jpg'))
+      const admitted = join(realpathSync(real), 'harbour.jpg')
+      const spelled = join(alias, '..', 'alias', 'harbour.jpg')
+
+      expect(
+        gate.admit(sending([{ path: spelled, contentType: 'image/jpeg', filename: 'h.jpg' }])),
+      ).toEqual(sending([{ path: admitted, contentType: 'image/jpeg', filename: 'h.jpg' }]))
+      const plan = (path: string): Request => ({
+        id: 3,
+        command: { type: 'attachmentSendPlan', path },
+      })
+      expect(gate.admit(plan(spelled))).toEqual(plan(admitted))
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it('keeps the case of the path it sends where it folds case to compare', () => {
+    const gate = new SendGate(true)
+    gate.grant('/home/Someone/Photo.JPG')
+    expect(gate.admit(sending([{ path: '/home/someone/photo.jpg' }]))).toEqual(
+      sending([{ path: '/home/someone/photo.jpg' }]),
+    )
+  })
+
+  it('leaves a message without files, and every other command, alone', () => {
+    const gate = new SendGate(false)
+    const plain: Request = {
+      id: 2,
+      command: { type: 'sendMessage', conversationId: '05' + 'ab'.repeat(32), body: 'hi' },
+    }
+    expect(gate.admit(plain)).toBe(plain)
+    expect(gate.admit(exportTo('/tmp/x'))).toEqual(exportTo('/tmp/x'))
+  })
+})
+
+const APP_URL = 'app://session/index.html'
+
+/** A window as `serveFiles` uses it: its handlers and listeners, callable from the test. */
+function fakeWindow() {
+  const handlers = new Map<string, (event: unknown, ...args: unknown[]) => unknown>()
+  const listeners = new Map<string, () => void>()
+  const window = {
+    webContents: {
+      ipc: {
+        handle: (channel: string, handler: (event: unknown, ...args: unknown[]) => unknown) => {
+          handlers.set(channel, handler)
+        },
+      },
+      on: (name: string, listener: () => void) => {
+        listeners.set(name, listener)
+      },
+    },
+  }
+  const fromApp = { senderFrame: { url: APP_URL, parent: null } }
+  return {
+    window: window as unknown as BrowserWindow,
+    invoke: (channel: string, ...args: unknown[]) => handlers.get(channel)?.(fromApp, ...args),
+    emit: (name: string) => {
+      listeners.get(name)?.()
+    },
+  }
+}
+
+describe('the gate a window serves its sends through', () => {
+  const photo = '/home/someone/Pictures/harbour.jpg'
+
+  it('admits only what this window picked and still holds', () => {
+    const { window, invoke } = fakeWindow()
+    const gate = serveFiles(window, APP_URL, new PreviewGrants())
+    expect(typeof gate.admit(sending([{ path: photo }]))).toBe('string')
+    expect(invoke('files:allow-send', photo)).toBe(true)
+    expect(typeof gate.admit(sending([{ path: photo }]))).not.toBe('string')
+    invoke('files:release-send', photo)
+    expect(typeof gate.admit(sending([{ path: photo }]))).toBe('string')
+  })
+
+  it.each(['did-navigate', 'render-process-gone'])('forgets every pick on %s', (name) => {
+    const { window, invoke, emit } = fakeWindow()
+    const gate = serveFiles(window, APP_URL, new PreviewGrants())
+    invoke('files:allow-send', photo)
+    emit(name)
+    expect(typeof gate.admit(sending([{ path: photo }]))).toBe('string')
   })
 })

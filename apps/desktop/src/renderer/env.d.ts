@@ -1,4 +1,4 @@
-import type { WithSpan } from '@session/basic-types'
+import type { QrMark, WithSpan } from '@session/basic-types'
 import type { DiagnosticsSnapshot, ExportPart, LogFileInfo } from '@session/logging'
 
 // The type imports make this a module, so what it declares for the page is declared global.
@@ -50,13 +50,23 @@ declare global {
     readonly sessionDesktop: {
       openExternal(url: string): void
       chooseExportLocation(suggestedName: string): Promise<string | null>
+      /** Main draws the PNG and asks where to save it; false when cancelled or refused. */
+      saveQrCode(value: string, mark: QrMark | null): Promise<boolean>
       /** False when main refused a path outside the folders chosen this run. */
       revealInFolder(path: string): Promise<boolean>
+      /** Empty for a file that is not on disk. */
+      pathForFile(file: File): string
+      allowPreview(file: File): Promise<string | null>
+      revokePreview(url: string): Promise<void>
       /** Rejects when the main process refuses: no recent click or key press, or too long. */
       copyText(text: string): Promise<void>
+      allowSend(file: File): Promise<boolean>
+      releaseSend(path: string): Promise<void>
       setLocale(locale: string): void
       /** Ends this process and starts the app again in a fresh one. */
       restart(): void
+      /** Ends this process on every platform: macOS too, where closing the window does not. */
+      quit(): void
       /** The content zoom from the View menu: called with the current one, then on each change. */
       onZoom(listener: (zoom: number) => void): void
       /** Main's clock, which times the renderer's lines; see `LogSession` in main's logs.ts. */
@@ -69,6 +79,10 @@ declare global {
       exportLogs(name: string, parts: readonly ExportPart[]): Promise<boolean>
       /** What main's `log:diagnostics` handler returns, typed alike on both sides. */
       diagnostics(): Promise<DiagnosticsSnapshot>
+      /** `process.platform`: `darwin`, `win32`, `linux`. */
+      readonly platform: string
+      /** The Help menu's Keyboard Shortcuts; returns the unsubscribe. */
+      onKeyboardShortcuts(listener: () => void): () => void
       /** Flag variables main read at launch, by full name; only those set. */
       readonly launchOverrides: Readonly<Record<string, string>>
     }

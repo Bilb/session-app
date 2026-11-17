@@ -1,11 +1,18 @@
-import { isDisplayableImage, isViewableContentType, isViewableVideo } from '@session/basic-types'
+import {
+  isDisplayableImage,
+  isStagedPath,
+  isViewableContentType,
+  isViewableVideo,
+  MAX_STAGED_READ_BYTES,
+  sniffContentType,
+} from '@session/basic-types'
 import type { AttachmentRef } from '@session/bridge-types'
 
 import type { MediaSource } from '../types'
 
 import { PHOTO_THUMBHASHES } from './attachments'
 import type { FakeSessionClient } from './FakeSessionClient'
-import { decodeThumbhash, type Decoded } from './thumbhash'
+import { decodeThumbhash, hexBytes, type Decoded } from './thumbhash'
 
 /**
  * What the fake draws for an attachment, the same on every app that runs it: one of the thirty
@@ -80,10 +87,6 @@ export function thumbnailFileNames(): string[] {
   return photoFileNames().map(thumbnailFileName)
 }
 
-function hexBytes(hex: string): Uint8Array {
-  return Uint8Array.from(hex.match(/../g)?.map((b) => parseInt(b, 16)) ?? [])
-}
-
 /**
  * The placeholder for an attachment: the real hash of the photograph it is drawn as, decoded, so
  * what is drawn is what a recipient would be sent, limits included.
@@ -108,16 +111,44 @@ function refuseUnknown(client: FakeSessionClient, { messageId, index }: Attachme
   throw new Error(`attachment ${String(index)} of message ${String(messageId)} does not exist`)
 }
 
+/** What the fake reads of a staged file: enough to sniff, and how long it is. */
+export interface StagedHead {
+  head: Uint8Array
+  size: number
+}
+
+/** As many leading bytes as `sniffContentType` reads. */
+const SNIFF_BYTES = 16
+
 /**
  * The bytes behind each media URL on the fake: what the real bridge's `fetchMedia`,
- * `fetchThumbhash` and `fetchThumbnail` answer. `readPhoto` reads a dev photograph or thumbnail by
- * file name, wherever the app keeps them.
+ * `fetchThumbhash`, `fetchThumbnail`, `fetchRendition` and `fetchStagedThumbnail` answer.
+ * `readPhoto` reads a dev photograph or thumbnail by file name, wherever the app keeps them;
+ * `readStagedHead` reads the first `count` bytes and the size of a file staged to send by its path,
+ * rejecting anything but a regular file, as the shim does.
  */
 export function createFakeMediaSource(
   client: FakeSessionClient,
   readPhoto: (fileName: string) => Promise<Uint8Array>,
+  readStagedHead: (path: string, count: number) => Promise<StagedHead>,
 ): MediaSource {
   return {
+    async fetchStagedThumbnail(path) {
+      // As the shim does, in its words, none of which names the file.
+      if (!isStagedPath(path)) throw new Error('not an absolute path')
+      const { head, size } = await readStagedHead(path, SNIFF_BYTES).catch(() => {
+        throw new Error('the file could not be read')
+      })
+      if (size > MAX_STAGED_READ_BYTES) throw new Error('the file could not be read')
+      if (sniffContentType(head)?.startsWith('image/') !== true) {
+        throw new Error('the file is not a picture')
+      }
+      // The fake makes no thumbnails: a picture is drawn as a dev photograph, as an attachment is.
+      const name = path.split(/[\\/]/).pop() ?? path
+      return readPhoto(
+        thumbnailFileName(`unsplash-${photoNumber(name) ?? assignedNumber(name)}.jpg`),
+      )
+    },
     async fetchMedia(ref) {
       refuseUnknown(client, ref)
       // As the shim does, in its words: from the cache only, so nothing drawn spends data.
@@ -128,6 +159,10 @@ export function createFakeMediaSource(
       }
       const photo = photoFileName(client, ref)
       const declared = client.locate(ref)?.attachment.contentType
+      // The world keeps a file's size and not its bytes, so a taken file is served as that many.
+      const takenBytes = client.takenSizeBytes(ref)
+      if (photo === null && declared !== undefined && takenBytes !== undefined)
+        return { contentType: declared, bytes: new Uint8Array(takenBytes) }
       if (photo === null || declared === undefined) throw new Error('not a picture')
       // A video is served its still, which a video type would get refused: nothing here plays one.
       const contentType = isViewableVideo(declared) ? 'image/jpeg' : declared
@@ -150,6 +185,20 @@ export function createFakeMediaSource(
       const photo = stillFileName(client, ref)
       if (photo === null) throw new Error('not a picture')
       return readPhoto(thumbnailFileName(photo))
+    },
+    async fetchRendition(ref) {
+      refuseUnknown(client, ref)
+      // As the shim does, in its words; and as libsession, the ask is what makes one.
+      if (!client.hasRendition(ref)) {
+        client.askRendition(ref)
+        throw new Error(
+          `attachment ${String(ref.index)} of message ${String(ref.messageId)} has no rendition`,
+        )
+      }
+      // A dev photograph is a JPEG within the edge, which libsession serves as its own rendition.
+      const photo = stillFileName(client, ref)
+      if (photo === null) throw new Error('not a picture')
+      return { contentType: 'image/jpeg', bytes: await readPhoto(photo) }
     },
   }
 }

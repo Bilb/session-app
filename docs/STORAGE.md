@@ -17,6 +17,7 @@ nothing else may reach the file system.
 | `data`    | `<app group>/session`    | `filesDir/session` |
 | `logs`    | `<app group>/logs`       | `filesDir/logs`    |
 | `exports` | `Library/Caches/exports` | `cacheDir/exports` |
+| `staged`  | `<app group>/staged`     | `filesDir/staged`  |
 
 `data` is libsession's, with a directory per network holding the database, its -wal and -shm, the
 attachment cache and the netcache.
@@ -35,9 +36,13 @@ keeps the class of the directory it was first written in, and the temporary dire
 files usually start, defaults to `complete`, which a locked phone cannot open. Legacy hit this with
 its extension's files and fixed it by protecting each one again where it landed. Here:
 
-- **Everything the app writes today is created where it stays.** libsession's renames (`.part` to
-  final, its snode and router caches) stay within one directory, and expo-file-system does not write
-  through a temporary file.
+- **Everything the app writes is created where it stays, but for picks.** libsession's renames
+  (`.part` to final, its snode and router caches) stay within one directory, and expo-file-system
+  does not write through a temporary file. A picker writes its copy in the cache, and `staged`
+  takes it in through `moveInto`.
+- **A staged copy sent with a message is libsession's from then on.** `takeFile` has libsession
+  move it beneath its cache, in the same container, so it keeps the class `moveInto` gave it, and
+  the launch sweep of `staged` never meets it.
 - **A move goes through `moveInto`**, which protects the file again where it lands. The storage
   module's `File` and `Directory` types leave out expo-file-system's `move` and `copy`, so nothing
   else can move a file in; a copy, when something needs one, gets a `copyInto` beside it.
@@ -46,9 +51,9 @@ its extension's files and fixed it by protecting each one again where it landed.
 - **A notification extension, or anything else native that writes outside a root and moves the
   result in, has to call `protect` on it**, as legacy's extension does.
 
-**Temporary files.** Nothing stages files of its own today, so there is no temporary directory of
-the app's own. The first thing that does -- the notification extension, or attachment sending --
-should make one the way legacy does: a directory per launch inside `NSTemporaryDirectory()`, created
+**Temporary files.** There is no temporary directory of the app's own: the pickers write theirs, and
+what `staged` and `exports/attachments` hold is deleted at launch. The first thing that needs one -- the
+notification extension, say -- should make one the way legacy does: a directory per launch inside `NSTemporaryDirectory()`, created
 under class C, with the previous launches' directories deleted shortly after start
 (`SessionFileManager.clearOldTemporaryDirectories` in legacy's `FileManagerType.swift`). Files staged
 there still go into a root through `moveInto`.

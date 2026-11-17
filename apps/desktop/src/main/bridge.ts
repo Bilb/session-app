@@ -1,5 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { randomBytes } from 'node:crypto'
+import { existsSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -13,44 +12,15 @@ import {
   parseRouterKind,
   thumbnailEdgePxFor,
 } from '@session/basic-types'
-import type { BridgeTransport, MediaSource } from '@session/client'
+import type { BridgeTransport, DecodePlanner, MediaSource } from '@session/client'
 import type { NetworkSettings } from '@session/logging'
+
+import { databasePaths, replaceDatabase, resolveDatabaseKey } from './databaseKey'
 
 const { app, safeStorage, screen } = electron
 
-/**
- * The database key.
- *
- * libsession accepts a key but neither derives nor stores one, so custody is ours. A random
- * 32 bytes at first boot, sealed with safeStorage and kept beside the database. The renderer
- * never sees it: it lives in the main process, which is also the only process that can load
- * the addon.
- *
- * safeStorage degrades to plaintext where there is no keyring - a bare Linux session, most
- * often - and says so. Encrypting anyway would be a claim we cannot keep; the fallback that
- * belongs here is the argon2id password path the bridge already supports, which needs a
- * screen to ask on and so waits for onboarding.
- */
-function resolveDatabaseKey(dir: string): Uint8Array {
-  const keyFile = join(dir, 'db-key.bin')
-
-  try {
-    const stored = readFileSync(keyFile)
-    return safeStorage.isEncryptionAvailable()
-      ? new Uint8Array(Buffer.from(safeStorage.decryptString(stored), 'base64'))
-      : new Uint8Array(stored)
-  } catch {
-    // No key yet: this is a first boot.
-  }
-
-  const key = randomBytes(32)
-  writeFileSync(
-    keyFile,
-    safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(key.toString('base64')) : key,
-    { mode: 0o600 },
-  )
-  return new Uint8Array(key)
-}
+/** What main serves the renderer from: the frames, the media scheme and the decode plans. */
+export type Bridge = BridgeTransport & MediaSource & DecodePlanner
 
 /**
  * The repo-root `.env`, for a build run out of the checkout.
@@ -104,14 +74,35 @@ export function sessionDataDir(): string {
 }
 
 /**
+ * The startup-failure screen's clear, for a bridge that could not be made for want of its key:
+ * see `replaceDatabase`. Then the bridge, on the new key.
+ */
+export async function replaceDatabaseAndCreateBridge(): Promise<Bridge> {
+  replaceDatabase(sessionDataDir(), safeStorage)
+  return createBridge()
+}
+
+/**
  * Opens the bridge the renderer talks to.
  *
- * Everything above this file sees frames either way.
+ * Everything above this file sees frames either way. Rejects with a `DatabaseKeyError` when the
+ * key cannot be had, which `replaceDatabaseAndCreateBridge` is the way past.
  */
-export async function createBridge(): Promise<BridgeTransport & MediaSource> {
+export async function createBridge(): Promise<Bridge> {
   loadDotEnv()
 
+  // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
+  // neither. libsession derives its own snode cache from the database's directory, which puts
+  // that on the right side of the split too.
+  const dir = sessionDataDir()
+
   if (developerSetting('EXPO_PUBLIC_SESSION_FAKE') === '1') {
+    // The fake opens no database and needs no key. Asked to, it keeps one anyway, so key custody
+    // and the clear past its failures can be driven end to end without the addon.
+    if (developerSetting('EXPO_PUBLIC_SESSION_FAKE_KEY_CUSTODY') === '1') {
+      mkdirSync(dir, { recursive: true })
+      resolveDatabaseKey(dir, safeStorage)
+    }
     const { createFakeBridge } = await import('./dev/fakeBridge')
     return createFakeBridge()
   }
@@ -138,11 +129,9 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
   const router = parseRouterKind(developerSetting('EXPO_PUBLIC_SESSION_ROUTER'))
   const logs = parseLogSpec(developerSetting('EXPO_PUBLIC_SESSION_LOG'))
 
-  // Per network, so a devnet identity and a mainnet one can both exist and switching back loses
-  // neither. libsession derives its own snode cache from the database's directory, which puts
-  // that on the right side of the split too.
-  const dir = sessionDataDir()
   mkdirSync(dir, { recursive: true })
+  // Before the seed nodes are asked for: a key that cannot be had fails the start at once.
+  const rawKey = resolveDatabaseKey(dir, safeStorage)
 
   const seedNodes =
     devnet === undefined
@@ -158,9 +147,8 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
     )
 
   return createNodeBridgeTransport({
-    dbPath: join(dir, 'session.db'),
-    cacheDir: join(dir, 'attachments'),
-    rawKey: resolveDatabaseKey(dir),
+    ...databasePaths(dir),
+    rawKey,
     // Onboarding has to be asked. Without this libsession creates an account as the database
     // opens, and the first screen the user sees is a conversation list for an identity nobody
     // chose.
@@ -180,6 +168,7 @@ export async function createBridge(): Promise<BridgeTransport & MediaSource> {
     // soft, one made too large only costs memory. A stored edge (setThumbnailEdge) wins over this.
     thumbnailEdgePx: thumbnailEdgePxFor(
       screen.getAllDisplays().map((display) => display.scaleFactor),
+      'wide',
     ),
     // Off unless asked for: it is chatty at anything below warn, and the reason to turn it up is
     // always a specific failure. `warn,network=debug` is what a diagnosis looks like - a flat

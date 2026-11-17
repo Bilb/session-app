@@ -6,6 +6,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
+import { useWindowDimensions } from 'react-native'
 import { XStack, YStack } from 'tamagui'
 
 import type { MarkProps } from './Brand'
@@ -13,6 +14,7 @@ import { Icon } from './Icon'
 import type { IconName } from './Icon.types'
 import type { FocusRingShape } from './keyboardPress'
 import { logical } from './logicalEdges'
+import { usePageZoom } from './pageZoom'
 import { PressArea } from './PressArea'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { SIZE_SCALE, SPACE_SCALE } from './scales'
@@ -40,10 +42,14 @@ const ICON_SIZE = SIZE_SCALE.lg
 const STACK_TRAILING_FROM_SCALE = 1.5
 
 /**
- * Half a pixel: a whole one lands on one device pixel or two depending on
- * position, so one group's lines would draw at different weights.
+ * One device pixel, under the desktop's zoom too. A fixed length lands on one device pixel or two
+ * depending on position, and a fraction of one is rounded to nothing at some positions, so one
+ * group's lines would draw at different weights or not at all.
  */
-const SEPARATOR = 0.5
+function useSeparatorHeight(): number {
+  const { scale } = useWindowDimensions()
+  return 1 / (scale * usePageZoom())
+}
 
 export interface SettingsRowProps {
   label: string
@@ -63,6 +69,12 @@ export interface SettingsRowProps {
    * under the text instead of squeezing it. A glyph or a switch stays beside it.
    */
   wideTrailing?: boolean
+  /**
+   * The trailing text gives way before the label: it shrinks first and truncates, so a long
+   * translation of either keeps the row's name whole. For a value that only qualifies the name, as
+   * the path's state does.
+   */
+  trailingYields?: boolean
   /** Tints the label and its icon, for a row that destroys something. */
   destructive?: boolean
   /** Without one the row is static, with nothing to press but its trailing control. */
@@ -85,6 +97,7 @@ export function SettingsRow({
   subtitle,
   trailing,
   wideTrailing = false,
+  trailingYields = false,
   accentIcon = false,
   destructive = false,
   onPress,
@@ -95,7 +108,18 @@ export function SettingsRow({
   const tone = disabled ? '$textDisabled' : destructive ? '$dangerColor' : '$textPrimary'
   // `accentText`, not the accent: as a glyph the accent is too faint on a light ground.
   const iconTone = accentIcon && !disabled ? '$accentText' : tone
-  const content = { label, icon, subtitle, trailing, wideTrailing, disabled, inert, tone, iconTone }
+  const content = {
+    label,
+    icon,
+    subtitle,
+    trailing,
+    wideTrailing,
+    trailingYields,
+    disabled,
+    inert,
+    tone,
+    iconTone,
+  }
 
   // A static row is not a control: as a disabled press area it would be announced as a dimmed
   // button with a live one inside it, and its trailing control counted as disabled with it.
@@ -119,6 +143,7 @@ interface RowContentProps {
   subtitle?: string | undefined
   trailing?: ReactNode | undefined
   wideTrailing: boolean
+  trailingYields: boolean
   disabled: boolean
   /** Not pressable, whether static or disabled: no hover, press or pointer. */
   inert: boolean
@@ -136,6 +161,7 @@ function RowContent({
   subtitle,
   trailing,
   wideTrailing,
+  trailingYields,
   disabled,
   inert,
   pressed,
@@ -158,7 +184,12 @@ function RowContent({
       </YStack>
     ) : (
       // More room than icon-to-label, so wrapped label text does not run into the control.
-      <YStack {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}>
+      <YStack
+        {...logical({ paddingStart: SPACE_SCALE.xs, paddingEnd: SPACE_SCALE['2xs'] })}
+        {...(trailingYields
+          ? { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, alignItems: 'flex-end' }
+          : {})}
+      >
         {trailing}
       </YStack>
     )
@@ -200,7 +231,15 @@ function RowContent({
           </YStack>
         )}
 
-        <YStack flex={1} gap="$3xs">
+        <YStack
+          // When the trailing text yields, the label keeps its own width and the trailing text,
+          // starting from nothing, takes what is left. Short of room, only the label has width to
+          // give up, so it wraps once the trailing text is gone rather than before.
+          {...(trailingYields
+            ? { flexGrow: 0, flexShrink: 1, flexBasis: 'auto', minWidth: 0 }
+            : { flex: 1 })}
+          gap="$3xs"
+        >
           <Text
             size="$bodyLarge"
             weight="bold"
@@ -256,16 +295,36 @@ function Mark({
  */
 export function SettingsGroup({ children }: { children: ReactNode }) {
   const rows = Children.toArray(children)
+  const separator = useSeparatorHeight()
   return (
     <YStack borderRadius="$md" overflow="hidden" backgroundColor="$backgroundSecondary">
       {rows.map((row, at) => (
         <Fragment key={at}>
           {at === 0 ? null : (
-            <YStack height={SEPARATOR} marginHorizontal="$md" backgroundColor="$separatorColor" />
+            <YStack height={separator} marginHorizontal="$md" backgroundColor="$separatorColor" />
           )}
           {row}
         </Fragment>
       ))}
+    </YStack>
+  )
+}
+
+/**
+ * A line of secondary text in a group, in place of a row that is not there: says why, and does
+ * nothing. Shorter than a row, because nothing in it is a tap target.
+ */
+export function SettingsNote({ text, testID }: { text: string; testID: string }) {
+  return (
+    <YStack
+      backgroundColor="$backgroundSecondary"
+      paddingHorizontal="$md"
+      paddingVertical="$sm"
+      testID={testID}
+    >
+      <Text size="$label" tone="secondary">
+        {text}
+      </Text>
     </YStack>
   )
 }

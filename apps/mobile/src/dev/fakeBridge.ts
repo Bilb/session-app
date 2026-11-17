@@ -1,4 +1,5 @@
 import { serveNativeMediaFrom, type BridgeTransport } from '@session/client'
+import { Platform } from 'react-native'
 import {
   createFakeMediaSource,
   createFakeTransport,
@@ -7,7 +8,7 @@ import {
   type FakeSessionClient,
 } from '@session/client/fake'
 
-import { pushedPhotos, readPushedPhoto, writeFakeExport } from '../storage/devMedia'
+import { pushedPhotos, readPushedPhoto, readStagedHead, writeFakeExport } from '../storage/devMedia'
 import { fakeExportSource } from './fakeMedia'
 
 /**
@@ -52,13 +53,21 @@ export function createFakeBridge(): BridgeTransport {
   })
 
   writingExports(alice, photos)
+  alice.readStagedFilesWith({
+    decodesHeic: Platform.OS === 'ios',
+    sizeOf: async (path) => (await readStagedHead(path, 0)).size,
+  })
   // Through the real loaders: the port is platform.ts's, and only the bytes are the fake's.
   serveNativeMediaFrom(
-    createFakeMediaSource(alice, async (photo) => {
-      const uri = photos.get(photo)
-      if (uri === undefined) throw new Error(`no dev photograph ${photo}`)
-      return readPushedPhoto(uri)
-    }),
+    createFakeMediaSource(
+      alice,
+      async (photo) => {
+        const uri = photos.get(photo)
+        if (uri === undefined) throw new Error(`no dev photograph ${photo}`)
+        return readPushedPhoto(uri)
+      },
+      readStagedHead,
+    ),
   )
 
   return createFakeTransport(served)

@@ -5,6 +5,7 @@ import { getLocale, subscribeLocale } from '@session/localization'
 import { mediaUrl } from '@session/app/mediaUrl'
 
 import { flushLogRecords } from './logs'
+import { chooseFiles, releasePreview, toPickedFiles } from './pickedFiles'
 
 const memory = memoryPorts()
 
@@ -19,14 +20,20 @@ const memory = memoryPorts()
 setPorts(
   memoryPorts({
     files: {
-      // Attaching is not a thing the composer can do yet, so the pickers stay the memory ones
-      // rather than becoming two dialogs nothing opens.
       ...memory.files,
+      pickFiles: async (options) => toPickedFiles(await chooseFiles(options ?? {})),
+      pickImages: async (options) =>
+        toPickedFiles(await chooseFiles({ ...options, accept: 'image/*' })),
+      droppedFiles: (items) => toPickedFiles(items),
+      // A pick is the person's own file, which nothing deletes.
+      discardPicked: () => undefined,
+      releasePreview,
       chooseExportLocation: (suggestedName) =>
         window.sessionDesktop.chooseExportLocation(suggestedName),
       revealInFolder: async (path) => {
         await window.sessionDesktop.revealInFolder(path)
       },
+      saveQrCode: (value, mark) => window.sessionDesktop.saveQrCode(value, mark),
     },
     // Main owns the files, compresses with zlib, and asks where to save; see main/logs.ts.
     logs: {
@@ -42,6 +49,7 @@ setPorts(
       urlFor: (ref) => mediaUrl('attachment', ref),
       thumbhashUrlFor: (ref) => mediaUrl('thumbhash', ref),
       thumbnailUrlFor: (ref) => mediaUrl('thumbnail', ref),
+      renditionUrlFor: (ref) => mediaUrl('rendition', ref),
     },
     // The same variable and the same parser the main process uses, inlined at build time.
     network: {
@@ -68,14 +76,18 @@ setPorts(
       libsessionCommit: import.meta.env.EXPO_PUBLIC_SESSION_LIBSESSION_COMMIT,
     },
     window: {
-      // One window, so closing it is quitting, and `window.close()` needs no IPC call to do it.
+      // Through main rather than `window.close()`, which on macOS leaves the process running.
+      // The records waiting here go first, on the same channel, so a Quit's own line is written.
       close: () => {
-        window.close()
+        flushLogRecords()
+        window.sessionDesktop.quit()
       },
       restart: () => {
         flushLogRecords()
         window.sessionDesktop.restart()
       },
+      // Not asked for here: blocking capture of a secret screen is Android's alone, for now.
+      preventScreenCapture: null,
       isFocused: () => document.hasFocus(),
       onFocusChange: (handler) => {
         const onFocus = () => handler(true)
@@ -86,6 +98,10 @@ setPorts(
           window.removeEventListener('focus', onFocus)
           window.removeEventListener('blur', onBlur)
         }
+      },
+      keyboardShortcuts: {
+        keyNames: window.sessionDesktop.platform === 'darwin' ? 'mac' : 'pc',
+        onOpenList: (handler) => window.sessionDesktop.onKeyboardShortcuts(handler),
       },
     },
     linking: {
@@ -109,6 +125,8 @@ setPorts(
     },
     clipboard: {
       setString: (value) => window.sessionDesktop.copyText(value),
+      // No sensitive flag on a desktop clipboard.
+      setSecret: (value) => window.sessionDesktop.copyText(value),
       confirmsCopy: false,
     },
   }),

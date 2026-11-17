@@ -5,6 +5,7 @@ import { logical } from './logicalEdges'
 import { PressArea } from './PressArea'
 import { RADIUS_SCALE, SIZE_SCALE, SPACE_SCALE } from './scales'
 import { Text } from './Text'
+import { raisedShadow } from './shadowColour'
 import type { ToastCardProps } from './ToastCard.types'
 import { useTokenColor } from './useTokenColor'
 
@@ -37,7 +38,7 @@ export function ToastCard({ text, onPress, closeLabel, testID, closeTestID }: To
       paddingVertical={PADDING_BLOCK}
       backgroundColor="$backgroundSecondary"
       borderRadius={RADIUS}
-      boxShadow={`0px 4px 12px 0px ${shadow}`}
+      boxShadow={`0px 4px 12px 0px ${raisedShadow(shadow)}`}
       $platform-web={{ cursor: 'pointer' }}
       userSelect="none"
       pointerEvents="auto"

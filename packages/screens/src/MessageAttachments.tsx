@@ -1,15 +1,19 @@
-import { ALBUM_WIDTH } from '@session/basic-types'
-import type { Message } from '@session/client'
-import { SPACE_SCALE, YStack } from '@session/ui'
+import type { Attachment, Message } from '@session/client'
+import { YStack } from '@session/ui'
+import { useSessionActions } from '@session/state'
 
-import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
+import { AttachmentFooter, FOOTER_CLEARANCE } from './AttachmentFooter'
 import { AttachmentList, LIST_MAX_ROWS } from './AttachmentList'
-import { AttachmentPill } from './AttachmentPill'
 import { attachmentView, canChooseView } from './attachmentView'
 import { useConversationUi } from './conversationUi'
+import { exportOne } from './exportAttachment'
 import { MessageAlbum } from './MessageAlbum'
+import { isUploadPhase, whileSending } from './uploadState'
+import { useAttachmentFooter } from './useAttachmentFooter'
+import { useAlbumGeometry } from './useAlbumGeometry'
 import { useAttachmentSet } from './useAttachmentSet'
-import { useViewChoice } from './viewChoices'
+import { useExportFeedback } from './useExportFeedback'
+import { viewerFit } from './viewableAttachments'
 
 /**
  * Everything one message's attachments draw: the album or the list, and the one footer under both.
@@ -17,11 +21,28 @@ import { useViewChoice } from './viewChoices'
  * The footer is the set's, not either shape's - its count is every attachment, including the ones
  * behind "+N" that no tile shows.
  */
-export function MessageAttachments({ message }: { message: Message }) {
+export function MessageAttachments({
+  message,
+  width,
+}: {
+  message: Message
+  /** How wide the attachments and their footer are drawn: see `attachmentsWidthPx`. */
+  width: number
+}) {
   const ui = useConversationUi()
-  const { set, fetchFor, act, downloadMissing } = useAttachmentSet(message)
-  const view = attachmentView(message, useViewChoice(ui.views, message.id))
+  const actions = useSessionActions()
+  const feedback = useExportFeedback()
+  const attachmentSet = useAttachmentSet(message)
+  const { set, fetchFor, downloadMissing } = attachmentSet
+  const footer = useAttachmentFooter(message, attachmentSet)
+  const geometry = useAlbumGeometry()
+  const albumWidth = width
+  const view = attachmentView(message)
   const overflows = view === 'list' && message.attachments.length > LIST_MAX_ROWS
+  const sending = isUploadPhase(message)
+  const albumFetch = sending
+    ? (attachment: Attachment) => whileSending(fetchFor(attachment))
+    : fetchFor
 
   // Once rather than per shape: a message with nothing attached would otherwise draw an empty
   // album, because "every attachment can be shown" is true of no attachments at all.
@@ -32,23 +53,31 @@ export function MessageAttachments({ message }: { message: Message }) {
     // its names and the footer's total no width at all, and the bubble would resize on a toggle.
     // Capped at the bubble's inside, so where a pane is too narrow the list shrinks instead.
     // The gap clears the footer's overhang, so a tile or row is never under the footer's targets.
-    <YStack gap={SPACE_SCALE['3xs'] + ROW_OVERHANG} width={ALBUM_WIDTH} maxWidth="100%">
+    <YStack gap={FOOTER_CLEARANCE} width={albumWidth} maxWidth="100%">
       {view === 'gallery' ? (
-        <MessageAlbum
-          message={message}
-          onAccent={message.outgoing}
-          fetchFor={fetchFor}
-          setState={set.state}
-          // Opens only a picture that is here, as the legacy clients do. A tile is the whole set's,
-          // so tapping one that is not fetches every attachment the album stands for.
-          onOpen={(index) => {
-            const tapped = message.attachments.find((a) => a.index === index)
-            if (tapped !== undefined && fetchFor(tapped).state === 'ready')
-              ui.openViewer(message.id, index)
-            else downloadMissing()
-          }}
-          control={<AttachmentPill set={set} />}
-        />
+        // Centred where the footer's least is wider than the one narrow picture above it.
+        <YStack alignItems="center">
+          <MessageAlbum
+            message={message}
+            // The layout's own width: a narrow picture comes out narrower than it, not the reverse.
+            width={geometry.widthPx}
+            loneMaxHeightPx={geometry.loneMaxHeightPx}
+            onAccent={message.outgoing}
+            fetchFor={albumFetch}
+            setState={set.state}
+            // Opens only a picture that is here, as the legacy clients do, and exports one sent as
+            // the original file. A tile is the whole set's, so tapping one that is not here fetches
+            // every attachment the album stands for.
+            onOpen={(index) => {
+              const tapped = message.attachments.find((a) => a.index === index)
+              if (tapped !== undefined && albumFetch(tapped).state === 'ready') {
+                const fit = viewerFit(tapped)
+                if (fit !== 'exports') ui.openViewer(message.id, index)
+                else if (!sending) void exportOne(message, index, actions, feedback)
+              } else if (!sending) downloadMissing()
+            }}
+          />
+        </YStack>
       ) : (
         <AttachmentList
           message={message}
@@ -65,10 +94,12 @@ export function MessageAttachments({ message }: { message: Message }) {
       <AttachmentFooter
         set={set}
         onAccent={message.outgoing}
-        onAction={act}
+        onAction={footer.onAction}
+        sending={footer.sending}
         view={canChooseView(message) ? view : undefined}
         onView={(chosen) => {
-          ui.views.choose(message.id, chosen)
+          // Nothing redraws until libsession announces it, so a failure still shows what is stored.
+          void actions.setGallery(message.id, chosen === 'gallery').catch(() => undefined)
         }}
       />
     </YStack>

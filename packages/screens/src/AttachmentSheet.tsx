@@ -2,22 +2,48 @@ import type { Attachment, ConversationId, Message } from '@session/client'
 import { tr } from '@session/localization'
 import { useMessage } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
-import { fileRowHeight, List, Sheet, useFontScale, YStack } from '@session/ui'
+import { fileRowHeight, List, Sheet, SheetSurface, useFontScale, YStack } from '@session/ui'
 import { useCallback, useRef, type ReactNode } from 'react'
 
-import { AttachmentFooter, ROW_OVERHANG } from './AttachmentFooter'
+import { AttachmentFooter, FOOTER_CLEARANCE } from './AttachmentFooter'
 import { AttachmentRow } from './AttachmentRow'
+import { firstFailedPosition } from './uploadState'
+import { useAttachmentFooter } from './useAttachmentFooter'
 import { useAttachmentSet } from './useAttachmentSet'
 
 const attachmentKey = (attachment: Attachment): string => String(attachment.index)
 
 function SheetFooter({ message }: { message: Message }) {
-  const { set, act } = useAttachmentSet(message)
+  const { set, onAction, sending } = useAttachmentFooter(message, useAttachmentSet(message))
   // Inside the sheet's footer, so the overhang lies over this padding and not over the rows.
   return (
-    <YStack paddingTop={ROW_OVERHANG}>
-      <AttachmentFooter set={set} onAction={act} />
+    <YStack paddingTop={FOOTER_CLEARANCE}>
+      <AttachmentFooter set={set} onAction={onAction} sending={sending} />
     </YStack>
+  )
+}
+
+function SheetRows({ message }: { message: Message }) {
+  const rowHeight = fileRowHeight(useFontScale())
+  const renderRow = useCallback(
+    (attachment: Attachment) => <AttachmentRow message={message} attachment={attachment} />,
+    [message],
+  )
+  return (
+    // Windowed: a set this long mounted all at once is a pause between the tap and the sheet.
+    // With the row height given, the sheet opens at its full height rather than growing as the
+    // rows measure.
+    <List
+      data={message.attachments}
+      keyExtractor={attachmentKey}
+      renderItem={renderRow}
+      itemHeight={rowHeight}
+      fitsContent
+      paddingHorizontal="md"
+      // Opened from a set whose upload failed, on the file that failed: it can be the 31st.
+      initialScrollIndex={firstFailedPosition(message)}
+      testID={ELEMENT.conversation.attachmentSheetList}
+    />
   )
 }
 
@@ -36,12 +62,6 @@ function MessageSheet({
 }) {
   const message = useMessage(conversationId, messageId)
   const shown = open && message !== undefined
-  const rowHeight = fileRowHeight(useFontScale())
-  const renderRow = useCallback(
-    (attachment: Attachment) =>
-      message === undefined ? null : <AttachmentRow message={message} attachment={attachment} />,
-    [message],
-  )
   return (
     <>
       {shown ? null : overlay}
@@ -57,20 +77,7 @@ function MessageSheet({
         scrimTestID={ELEMENT.conversation.attachmentSheetScrim}
         bodyIsList
       >
-        {message === undefined ? null : (
-          // Windowed: a set this long mounted all at once is a pause between the tap and the sheet.
-          // With the row height given, the sheet opens at its full height rather than growing as
-          // the rows measure.
-          <List
-            data={message.attachments}
-            keyExtractor={attachmentKey}
-            renderItem={renderRow}
-            itemHeight={rowHeight}
-            fitsContent
-            paddingHorizontal="md"
-            testID={ELEMENT.conversation.attachmentSheetList}
-          />
-        )}
+        {message === undefined ? null : <SheetRows message={message} />}
       </Sheet>
     </>
   )
@@ -111,5 +118,34 @@ export function AttachmentSheet({
       onClose={onClose}
       overlay={overlay}
     />
+  )
+}
+
+/**
+ * The sheet `AttachmentSheet` opens on a message, drawn as the dialog it is on a wide window but
+ * on the page rather than in a modal: for the catalog, which captures one. Close does nothing.
+ */
+export function DetachedAttachmentSheet({
+  conversationId,
+  messageId,
+}: {
+  conversationId: ConversationId
+  messageId: number
+}) {
+  const message = useMessage(conversationId, messageId)
+  if (message === undefined) return null
+  return (
+    <SheetSurface
+      wide
+      onClose={() => {}}
+      title={tr('attachments')}
+      closeLabel={tr('close')}
+      footer={<SheetFooter message={message} />}
+      testID={ELEMENT.conversation.attachmentSheet}
+      closeTestID={ELEMENT.conversation.attachmentSheetClose}
+      bodyIsList
+    >
+      <SheetRows message={message} />
+    </SheetSurface>
   )
 }

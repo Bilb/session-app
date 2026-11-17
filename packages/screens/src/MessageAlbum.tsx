@@ -1,6 +1,5 @@
 import { requirePorts } from '@session/app'
-import { ALBUM_WIDTH } from '@session/basic-types'
-import { useCallback, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react'
 import type { Attachment, Message } from '@session/client'
 import { PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
@@ -9,9 +8,10 @@ import { AttachmentAlbum, type AlbumItem } from '@session/ui'
 import type { Fetch, FetchState } from './attachmentFetch'
 import type { AttachmentSetState } from './attachmentSet'
 import { rowVerb, verbLabel } from './attachmentPress'
+import { albumAspect } from './albumAspect'
 import { albumTileName } from './albumTileName'
 import { useLocale } from './useLocale'
-import { leadUri, viewableAttachments } from './viewableAttachments'
+import { isViewable, leadUri, viewerFit } from './viewableAttachments'
 
 /**
  * One message's pictures, as an album.
@@ -21,24 +21,28 @@ import { leadUri, viewableAttachments } from './viewableAttachments'
  */
 export function MessageAlbum({
   message,
+  width,
+  loneMaxHeightPx,
   onOpen,
-  control,
   fetchFor,
   setState,
   onAccent,
 }: {
   message: Message
+  /** The message's attachments' width, which the album fills. */
+  width: number
+  /** How tall a picture sent alone may be drawn: its layout's cap. */
+  loneMaxHeightPx?: number | undefined
   /** Takes the attachment's index in the message. */
   onOpen: (index: number) => void
-  /** The set's own control, drawn over the box the layout names. */
-  control?: ReactNode | undefined
   fetchFor: (attachment: Attachment) => Fetch
   /** The whole set's state, whose verb the cloud says, as the footer does. */
   setState: AttachmentSetState
   /** Drawn on a bubble you sent. */
   onAccent: boolean
 }) {
-  const viewable = useMemo(() => viewableAttachments(message), [message])
+  // Every picture, those sent as original files included: they draw a tile and export on a tap.
+  const viewable = useMemo(() => message.attachments.filter(isViewable), [message])
   // The labels are the catalogue's, which a memo would otherwise hold in the last language.
   const locale = useLocale()
   const statesKey = viewable.map((attachment) => fetchFor(attachment).state).join()
@@ -47,9 +51,8 @@ export function MessageAlbum({
     const states = statesKey.split(',') as FetchState[]
     return viewable.map((attachment, at) => {
       const state = states[at] ?? 'idle'
-      // A tile is always a picture the viewer shows, and does what such a row does: see
-      // `MessageAttachments`' `onOpen`.
-      const verb = rowVerb(state, true)
+      // A tile does what its row would: see `MessageAttachments`' `onOpen`.
+      const verb = rowVerb(state, viewerFit(attachment))
       return {
         uri: leadUri(message.id, attachment, state),
         // Its own URL rather than pixels on the frame stream, so a placeholder reaches the
@@ -60,6 +63,7 @@ export function MessageAlbum({
         fetchesOnOpen: state === 'idle' || state === 'failed',
         testID: ELEMENT.conversation.attachmentImage,
         label: albumTileName(attachment.filename, at, viewable.length),
+        aspect: albumAspect(attachment),
         hint: verb === null ? undefined : verbLabel(verb),
         transferring: state === 'fetching',
       }
@@ -83,11 +87,11 @@ export function MessageAlbum({
   return (
     <AttachmentAlbum
       items={items}
-      width={ALBUM_WIDTH}
+      width={width}
+      loneMaxHeightPx={loneMaxHeightPx}
       overflowLabel={(count) => tr('andMore', { count })}
       overflowName={PENDING_COPY.attachmentNameAndMore}
       onOpen={openAt}
-      control={control}
       fetchLabel={setState === 'failed' ? tr('retry') : tr('download')}
       fetchTestID={ELEMENT.conversation.attachmentFetch}
       tileTestID={ELEMENT.conversation.attachmentTile}

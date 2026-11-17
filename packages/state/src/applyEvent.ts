@@ -3,11 +3,12 @@ import type {
   AttachmentTransfer,
   Conversation,
   ConversationId,
+  ListPlacement,
   Message,
   SessionEvent,
 } from '@session/client'
 
-import type { AttachmentTransferState, MessageWindow, SessionState } from './types'
+import type { AttachmentTransferState, ListName, MessageWindow, SessionState } from './types'
 import { transferKey } from './types'
 
 /**
@@ -15,8 +16,12 @@ import { transferKey } from './types'
  *
  * Every event carries complete state, so this only ever replaces - it never merges a delta
  * or goes back to ask for the rest. That is what makes replaying the same event twice
- * harmless, and what lets the store be seeded and then have earlier events land on top of
- * it without contradicting themselves.
+ * harmless.
+ *
+ * A conversation's position is the one relative thing: a placement puts a row after another, so
+ * the lists stay right only when every event lands, in order, on top of lists read earlier on the
+ * same stream. When one cannot be applied, `listsOutOfStep` says so and the store reads that
+ * list again.
  *
  * The objects the bridge hands over are stored as they are: this rebuilds the containers on the
  * path to a change (a map, an id array) and nothing inside them.
@@ -25,16 +30,10 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
   switch (event.type) {
     case 'conversation-added':
     case 'conversation-updated':
-      return upsertConversation(state, event.conversation)
+      return placeConversation(state, event.conversation, event.placement)
 
     case 'conversation-removed':
       return removeConversation(state, event.conversationId)
-
-    case 'conversation-list-replaced':
-      return { ...state, conversations: event.conversations }
-
-    case 'request-list-replaced':
-      return { ...state, requests: event.conversations }
 
     case 'messages-added':
     case 'messages-updated':
@@ -68,6 +67,11 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
     case 'attachment-progress':
       return recordTransfer(state, event)
 
+    case 'network-status-changed':
+      return state.networkStatus === event.status
+        ? state
+        : { ...state, networkStatus: event.status }
+
     case 'log':
       return state
 
@@ -84,12 +88,18 @@ export function applyEvent(state: SessionState, event: SessionEvent): SessionSta
  *
  * By message, because a report names no conversation. A report that arrives between a message
  * being announced and it landing in a window is dropped; the bar starts on the next one.
+ *
+ * An upload is kept only while its message is `uploading`. libsession reports a file that fails
+ * at once before the send has an id to report it by, so the bridge holds that report until after
+ * the message has already been announced failed, and the failure is the message's to say.
  */
 function recordTransfer(
   state: SessionState,
   event: Extract<SessionEvent, { type: 'attachment-progress' }>,
 ): SessionState {
-  if (!isLoaded(state, event.messageId)) return state
+  const message = loadedMessage(state, event.messageId)
+  if (message === undefined) return state
+  if (event.transfer === 'upload' && message.sendState !== 'uploading') return state
 
   const entry: AttachmentTransferState = {
     // An outcome ends a transfer; `doneBytes === totalBytes` does not, and arrives before it.
@@ -147,11 +157,14 @@ function sameTransfer(
   )
 }
 
-/** Whether any loaded window holds this message, which is what makes a report worth keeping. */
-function isLoaded(state: SessionState, messageId: number): boolean {
-  return Object.values(state.histories).some(
-    (window) => window.ready && window.messages.some((m) => m.id === messageId),
-  )
+/** The message as a loaded window holds it, which is what makes a report worth keeping. */
+function loadedMessage(state: SessionState, messageId: number): Message | undefined {
+  for (const window of Object.values(state.histories)) {
+    if (!window.ready) continue
+    const message = window.messages.find((m) => m.id === messageId)
+    if (message !== undefined) return message
+  }
+  return undefined
 }
 
 /** The transfers without those of the messages a dropped window held. */
@@ -166,8 +179,6 @@ export function withoutHistory(
   return kept
 }
 
-type ListKey = 'conversations' | 'requests'
-
 /**
  * The list without `id`, or the same array when it was not in it.
  *
@@ -176,32 +187,66 @@ type ListKey = 'conversations' | 'requests'
  * that never touched it.
  */
 function without(list: Conversation[], id: ConversationId): Conversation[] {
-  return list.some((c) => c.id === id) ? list.filter((c) => c.id !== id) : list
+  const at = list.findIndex((c) => c.id === id)
+  if (at === -1) return list
+  const rest = list.slice()
+  rest.splice(at, 1)
+  return rest
 }
 
 /**
- * Approval arrives as an update, not as a removal followed by an addition, so a row that
- * changed side has to be taken out of the list it used to be in. Missing this is what makes
- * a conversation appear in both lists at once.
+ * Takes the row out of whichever list holds it and puts it where the placement says.
+ *
+ * Both lists are searched rather than the placement's `from`, which is where libsession last
+ * *reported* the row: a row the app read with `getConversations` and has not heard about since
+ * is one libsession never reported, so its `from` is `none` while the app holds it. Both, even
+ * once one is found to hold it: a list read after a row crossed, with the placement that crossed
+ * it still to come, leaves the row in both until that placement lands.
+ *
+ * An `after` this store does not hold has no right answer, and appending would leave the row
+ * somewhere plausible and wrong with nothing to correct it. It is appended all the same, so it
+ * is not lost meanwhile, and the list is flagged for the store to read again.
  */
-function upsertConversation(state: SessionState, conversation: Conversation): SessionState {
-  const to: ListKey = conversation.request ? 'requests' : 'conversations'
-  const from: ListKey = conversation.request ? 'conversations' : 'requests'
-
-  const at = state[to].findIndex((c) => c.id === conversation.id)
-  let target: Conversation[]
-  if (at === -1) {
-    // Appended, because where it belongs is not this file's decision: libsession orders the
-    // lists, and the only case that moves a conversation between them - approval - is followed
-    // by a replacement carrying the real order, so an appended row is corrected within the same
-    // batch rather than left where it was put.
-    target = [...state[to], conversation]
-  } else {
-    target = state[to].slice()
-    target[at] = conversation
+function placeConversation(
+  state: SessionState,
+  conversation: Conversation,
+  { to, after }: ListPlacement,
+): SessionState {
+  const { id } = conversation
+  if (to === 'none') {
+    return {
+      ...state,
+      conversations: without(state.conversations, id),
+      requests: without(state.requests, id),
+    }
   }
 
-  return { ...state, [from]: without(state[from], conversation.id), [to]: target }
+  const other: ListName = to === 'conversations' ? 'requests' : 'conversations'
+  const list = state[to]
+
+  // Most changes leave a row where it is: a read receipt, a snippet, an unread count.
+  const at = list.findIndex((c) => c.id === id)
+  if (at !== -1 && (after === undefined ? at === 0 : list[at - 1]?.id === after)) {
+    const kept = list.slice()
+    kept[at] = conversation
+    return { ...state, [to]: kept, [other]: without(state[other], id) }
+  }
+
+  const anchor = after === undefined ? -1 : list.findIndex((c) => c.id === after)
+  // A row placed after itself names no row.
+  const found = after === undefined || (anchor !== -1 && anchor !== at)
+  const placed = list.slice()
+  if (at !== -1) placed.splice(at, 1)
+  // The anchor moved up one when the row came out from above it.
+  const below = at !== -1 && at < anchor ? anchor : anchor + 1
+  placed.splice(found ? below : placed.length, 0, conversation)
+
+  return {
+    ...state,
+    [to]: placed,
+    [other]: without(state[other], id),
+    listsOutOfStep: found ? state.listsOutOfStep : { ...state.listsOutOfStep, [to]: true },
+  }
 }
 
 function removeConversation(state: SessionState, id: ConversationId): SessionState {
@@ -247,23 +292,32 @@ function upsertMessage(
   return {
     ...state,
     histories: { ...state.histories, [conversationId]: updated },
-    transfers: withoutFinishedDownloads(state.transfers, message),
+    transfers: withoutSettledTransfers(state.transfers, message),
   }
 }
 
 /**
  * A message's finished downloads, dropped once the message itself is announced: from then on its
  * `availability` says what they left, and a report kept past that would outlive an eviction.
+ *
+ * Its uploads go too once it is announced in any state but `uploading`: they were one attempt's,
+ * `uploaded` says what that attempt left, and a retry reports its own from the start.
  */
-function withoutFinishedDownloads(
+function withoutSettledTransfers(
   transfers: SessionState['transfers'],
   message: Message,
 ): SessionState['transfers'] {
   const own = transfers[message.id]
   if (own === undefined) return transfers
-  const finished = message.attachments
-    .map((a) => transferKey('download', a.index))
-    .filter((key) => own[key]?.state === 'done')
+  const uploadsOver = message.sendState !== 'uploading'
+  const finished = message.attachments.flatMap((a) => {
+    const download = transferKey('download', a.index)
+    const upload = transferKey('upload', a.index)
+    return [
+      ...(own[download]?.state === 'done' ? [download] : []),
+      ...(uploadsOver && upload in own ? [upload] : []),
+    ]
+  })
   if (finished.length === 0) return transfers
   const kept = { ...own }
   for (const key of finished) delete kept[key]

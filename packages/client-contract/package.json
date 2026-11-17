@@ -22,6 +22,7 @@
     "media-vectors:hpp": "node --disable-warning=ExperimentalWarning scripts/writeMediaVectors.ts"
   },
   "dependencies": {
+    "@session/basic-types": "workspace:*",
     "@session/client": "workspace:*"
   },
   "devDependencies": {

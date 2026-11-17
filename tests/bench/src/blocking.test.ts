@@ -1,12 +1,12 @@
 import type { Frame } from '@session/client'
-import { applyEvent, emptyState } from '@session/state'
+import { applyEvent, emptyState, type SessionState } from '@session/state'
 import { afterAll, it } from 'vitest'
 
 import {
-  conversationListFrame,
   conversationUpdatedFrame,
   emptyResponseFrame,
   makeCorpus,
+  messagesAddedFrame,
 } from './fixtures'
 import { ms, report, table } from './measure'
 import { loopback, type Loopback } from './pipeline'
@@ -31,30 +31,36 @@ afterAll(() => {
   pipe.close()
 })
 
-it('a small response arriving behind a conversation list', () => {
+it('a small response arriving behind a batch of messages', () => {
   const rows: string[][] = []
   const response = emptyResponseFrame(1)
 
   for (const n of [0, 100, 500, 1000, 5000]) {
     const frames: Frame[] = []
-    if (n > 0) {
-      const { conversations } = makeCorpus({ conversations: n, messages: 0 })
-      frames.push(conversationListFrame(conversations))
-    }
+    const { conversations, messages } = makeCorpus({ conversations: 1, messages: n })
+    const conversationId = conversations[0]?.id as string
+    if (n > 0) frames.push(messagesAddedFrame(messages))
     frames.push(response)
+    // A window that is loaded, so the batch is projected rather than dropped as unseen.
+    const loaded: SessionState = {
+      ...emptyState,
+      histories: {
+        [conversationId]: { ready: true, messages: [], exhausted: true, fetching: false },
+      },
+    }
 
     // Everything a real sink does, including the projection each event triggers, because the
     // response cannot be reached until the work in front of it has finished.
     const waits: number[] = []
     for (let sample = 0; sample < 30; sample++) {
-      let state = emptyState
+      let state = loaded
       const queuedAt = performance.now()
       for (const frame of frames) {
         pipe.push(frame)
         for (const event of pipe.drain()) state = applyEvent(state, event)
       }
       waits.push(performance.now() - queuedAt)
-      if (state === emptyState && n > 0) throw new Error('the list never landed')
+      if (state === loaded && n > 0) throw new Error('the batch never landed')
     }
     waits.sort((a, b) => a - b)
 
@@ -85,14 +91,12 @@ it('a storm of single-conversation updates, as polling produces', () => {
 
     // Seed the store, then update one row at a time - what a poll cycle looks like when unread
     // counts move.
-    let seeded = emptyState
-    pipe.push(conversationListFrame(conversations))
-    for (const event of pipe.drain()) seeded = applyEvent(seeded, event)
+    const seeded = { ...emptyState, conversations }
 
     const single = conversations[0]
     if (!single) throw new Error('no fixture conversation')
-    // conversation-updated, not a one-row list-replaced: only the former reaches
-    // upsertConversation, which is where a single row's cost is decided.
+    // Placed first, where the row already is: the cost of taking a row out and putting it back,
+    // which is every change to a conversation now that no list is sent whole.
     const updateFrame = conversationUpdatedFrame({ ...single, unreadCount: 9 })
 
     pipe.push(updateFrame)
@@ -119,7 +123,7 @@ it('a storm of single-conversation updates, as polling produces', () => {
     '\n\n== ONE ROW CHANGES ==  applyEvent cost when the store already holds N conversations\n\n' +
       table(rows, ['store holds', 'median', 'p95', 'x20 events']) +
       '\n' +
-      '  The payload is one conversation. Whether the work is one or N is upsertConversation\n' +
+      '  The payload is one conversation. Whether the work is one or N is placeConversation\n' +
       '  business, and this is the number that says which it currently is.\n' +
       '  The last column is one poll cycle that touches twenty rows.\n',
   )

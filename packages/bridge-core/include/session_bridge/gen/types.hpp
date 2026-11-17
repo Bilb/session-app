@@ -296,16 +296,54 @@ struct Attachment {
     /// media port like any other rather than riding the frame stream. What it names is the second
     /// path on that scheme.
     bool has_thumbhash;
-    /// Whether libsession holds a thumbnail of this attachment: a square JPEG of the picture, cropped
-    /// to cover, at most the client's thumbnail edge on a side. Made only of a displayable image whose
-    /// bytes are cached, and after them, so it turns true in a later `messages-updated` than the one
-    /// reporting `cached`; false again once the cache evicts the file, which takes the thumbnail too.
+    /// The ThumbHash's rough record of the picture's shape, width over height: libsession's
+    /// `component_aspect_ratio`, the ratio of the hash's DCT component counts, which its encoder picks
+    /// in proportion to the source. Set exactly when `hasThumbhash` is.
+    ///
+    /// Coarse by construction. It is one of 7/n or n/7 for n in 1 to 7 (5/n or n/5 for a hash with
+    /// alpha), and saturates there: a 4:3 photo reads 7:5, and every picture wider than 7:1 reads 7.
+    /// A last resort for laying a picture out where the sender gave no `width` and `height`, and
+    /// never a reason to override them.
+    ///
+    /// libsession's header says it is not the picture's aspect ratio and must never be used to lay one
+    /// out. Here it shapes only a tile with nothing else to go on, and only until the thumbnail lands,
+    /// whose shape `albumAspect` takes instead: the tile moves at most once.
+    std::optional<double> thumbhash_aspect;
+    /// Whether libsession holds a thumbnail of this attachment: a JPEG of the picture in its own
+    /// shape, cropped to its centre at 21:9 when it is wider than that either way up, then the
+    /// client's thumbnail edge tall and never enlarged. An album's tile takes its shape, within the
+    /// same 9:21 to 21:9; a list's square thumbnail covers it and crops. Made of a displayable image
+    /// whose bytes are cached, and after them, so it turns true in a later `messages-updated` than the
+    /// one reporting `cached`; false again once the cache evicts the file, which takes the thumbnail
+    /// too. One we send has it sooner: made from libsession's own copy before the upload, and true
+    /// from then on until the cached file is evicted.
     ///
     /// What a tile draws, through the media scheme's `thumbnail` path; a viewer draws the file.
     bool has_thumbnail;
+    /// The thumbnail's size, read from the JPEG libsession made, so a layout can shape a tile before
+    /// loading it. Both 0 while `hasThumbnail` is false.
+    double thumbnail_width_px;
+    double thumbnail_height_px;
+    /// Whether libsession holds a rendition of this attachment: the whole picture as a JPEG or WebP
+    /// (animated WebP for an animation) within the rendition edge (2048 px on a side unless set).
+    /// It is re-encoded without metadata, or is the original itself when that is already an upright
+    /// JPEG or WebP within the edge, metadata included. Made only once asked for: the first
+    /// `fetchRendition` of a picture with none queues it and is refused, and this turns true by
+    /// update when it is made. Kept, evicted and reported as `hasThumbnail` is.
+    ///
+    /// What a viewer draws, through the media scheme's `rendition` path; export still writes the file.
+    bool has_rendition;
+    /// libsession will make no rendition of this picture: past its pixel limits, a header it cannot
+    /// read, or a re-encode that failed. Settled once it has read the cached file, so only ever true
+    /// while `availability` is `cached`, and never together with `hasRendition`. Asking again does
+    /// nothing until a libsession that decodes more replaces this one.
+    bool rendition_refused;
+    /// The sender sent the file exactly as it was, metadata included. Offered only as a file to
+    /// export, never opened in the viewer, though its thumbnail is still drawn.
+    bool original_file;
     /// On the file server: an outgoing attachment's upload finished, and always true for an incoming
-    /// one. Deliberately not "the bytes are here" - libsession records no local path, because the
-    /// application chose it and a stored copy would go stale the moment the file moved.
+    /// one. Deliberately not "the bytes are here": libsession records where it reads a file to send
+    /// from but exposes no path, because the application chose it and knows it.
     bool uploaded;
     /// Whether the bytes are here, coming, or neither. See `AttachmentAvailability`.
     ::session_bridge::AttachmentAvailability availability;
@@ -322,8 +360,8 @@ struct Attachment {
     /// depends on the other end volunteering a notification.
     std::optional<double> saved_at_ms;
 
-    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, bool has_thumbnail_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
-            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, has_thumbnail{std::move(has_thumbnail_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
+    Attachment(double index_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<double> size_bytes_, bool voice_message_, std::optional<double> width_, std::optional<double> height_, bool has_thumbhash_, std::optional<double> thumbhash_aspect_, bool has_thumbnail_, double thumbnail_width_px_, double thumbnail_height_px_, bool has_rendition_, bool rendition_refused_, bool original_file_, bool uploaded_, ::session_bridge::AttachmentAvailability availability_, double fetch_done_bytes_, double fetch_total_bytes_, std::optional<double> saved_at_ms_) :
+            index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, thumbhash_aspect{std::move(thumbhash_aspect_)}, has_thumbnail{std::move(has_thumbnail_)}, thumbnail_width_px{std::move(thumbnail_width_px_)}, thumbnail_height_px{std::move(thumbnail_height_px_)}, has_rendition{std::move(has_rendition_)}, rendition_refused{std::move(rendition_refused_)}, original_file{std::move(original_file_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
 /// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
@@ -386,11 +424,17 @@ struct Message {
     /// image" (JPEG, PNG, WebP, GIF, AVIF, `image/pjpeg`, case-insensitive). It does not say whether
     /// this client can draw them, which is the screens' decision to make.
     bool gallery_viewable;
+    /// Whether this message is shown as a gallery: libsession's decision, stored on this device only
+    /// and changed by `setGallery`. On by default for a `galleryViewable` message stored by this
+    /// libsession; a database from earlier builds may hold such sets stored as lists. Never true when
+    /// `galleryViewable` is false. A client that cannot draw every attachment as a picture shows a
+    /// list regardless and leaves this alone.
+    bool gallery;
     std::optional<::session_bridge::Reply> reply_to;
     std::optional<::session_bridge::Deletion> deleted;
 
-    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::vector<::session_bridge::Attachment> attachments_, bool gallery_viewable_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
-            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, attachments{std::move(attachments_)}, gallery_viewable{std::move(gallery_viewable_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
+    Message(double id_, std::string conversation_id_, std::string author_, double timestamp_, std::string body_, bool outgoing_, ::session_bridge::SendState send_state_, std::optional<::session_bridge::SendState> sync_state_, std::vector<::session_bridge::Attachment> attachments_, bool gallery_viewable_, bool gallery_, std::optional<::session_bridge::Reply> reply_to_, std::optional<::session_bridge::Deletion> deleted_) :
+            id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, attachments{std::move(attachments_)}, gallery_viewable{std::move(gallery_viewable_)}, gallery{std::move(gallery_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
 };
 
 /// A page of history.
@@ -444,6 +488,11 @@ struct BoolResult {
             value{std::move(value_)} {}
 };
 
+/// The answer to a seed read once the recovery password is hidden: see `hideRecoveryPassword`.
+struct SeedHiddenResult {
+    static constexpr std::string_view type_tag = "seedHidden";
+};
+
 /// Where an export landed, which is not always where it was asked to go: a collision becomes
 /// `name (1)`.
 struct PathResult {
@@ -465,7 +514,58 @@ struct ByteCountResult {
             bytes{std::move(bytes_)} {}
 };
 
-/// A thumbnail's side in device pixels, as libsession clamped it.
+/// What sending a file as an attachment will do with it, decided from its header alone as the send
+/// decides it: libsession's `image::SendPlan`.
+///
+/// - `reencoded`: a picture libsession decodes, sent re-encoded and shrunk to fit. Only the send
+///   tells whether its pixels decode and whether it then fits; it is refused there if not.
+/// - `as-is`: not a picture, and not labelled one, within the file server's limit.
+/// - `original-cannot-decode`: sent as it is, flagged as the original file: a picture this build
+///   does not decode (HEIC off Apple), or a file labelled a picture that is not one libvips reads.
+/// - `original-animated-png`: sent as it is, flagged as the original file, since re-encoding would
+///   keep only its first frame.
+/// - `too-large-to-decode`: refused, a picture past the decode limits.
+/// - `too-large-for-server`: refused, over the file server's limit and not shrinkable.
+/// - `unreadable`: refused, a picture whose header is damaged.
+/// - `missing`: refused, no regular file at the path.
+enum class SendPlan {
+    reencoded,
+    as_is,
+    original_cannot_decode,
+    original_animated_png,
+    too_large_to_decode,
+    too_large_for_server,
+    unreadable,
+    missing,
+};
+
+template <>
+struct EnumTraits<SendPlan> {
+    static constexpr std::string_view name = "SendPlan";
+    static constexpr std::array<std::string_view, 8> names{"reencoded", "as-is", "original-cannot-decode", "original-animated-png", "too-large-to-decode", "too-large-for-server", "unreadable", "missing"};
+
+    static constexpr std::string_view to_string(SendPlan value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<SendPlan> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<SendPlan>(i);
+        return std::nullopt;
+    }
+};
+
+struct SendPlanResult {
+    static constexpr std::string_view type_tag = "sendPlan";
+
+    ::session_bridge::SendPlan plan;
+
+    explicit SendPlanResult(::session_bridge::SendPlan plan_) :
+            plan{std::move(plan_)} {}
+};
+
+/// A thumbnail's height in device pixels, as libsession clamped it.
 struct EdgeResult {
     static constexpr std::string_view type_tag = "edge";
 
@@ -495,6 +595,48 @@ struct ConfigSizesResult {
             sizes{std::move(sizes_)} {}
 };
 
+/// Whether the attached network can carry traffic: libsession's `ConnectionStatus`, as
+/// `Network::on_status_changed` reports it.
+///
+/// `connected` means both the transport and the router are up -- a path exists -- which is the
+/// readiness `AccountInfo.networkAttached` does not say: that one turns true when a network is
+/// attached, before anything has been reached through it. `disconnected` covers both a network
+/// that lost its connections and no network at all: none attached yet, a client opened to stay
+/// offline, or one torn down by a discard. `unknown` is libsession's state before either layer has
+/// reported, and also its answer when the two disagree in a way it cannot name.
+enum class NetworkStatus {
+    unknown,
+    connecting,
+    connected,
+    disconnected,
+};
+
+template <>
+struct EnumTraits<NetworkStatus> {
+    static constexpr std::string_view name = "NetworkStatus";
+    static constexpr std::array<std::string_view, 4> names{"unknown", "connecting", "connected", "disconnected"};
+
+    static constexpr std::string_view to_string(NetworkStatus value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<NetworkStatus> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<NetworkStatus>(i);
+        return std::nullopt;
+    }
+};
+
+struct NetworkStatusResult {
+    static constexpr std::string_view type_tag = "networkStatus";
+
+    ::session_bridge::NetworkStatus status;
+
+    explicit NetworkStatusResult(::session_bridge::NetworkStatus status_) :
+            status{std::move(status_)} {}
+};
+
 /// What a Response carries when the command succeeded.
 using Result = std::variant<
         EmptyResult,
@@ -507,10 +649,13 @@ using Result = std::variant<
         HexResult,
         PrefResult,
         BoolResult,
+        SeedHiddenResult,
         PathResult,
         ByteCountResult,
+        SendPlanResult,
         EdgeResult,
-        ConfigSizesResult>;
+        ConfigSizesResult,
+        NetworkStatusResult>;
 
 struct Response {
     double id;
@@ -536,49 +681,80 @@ struct ResponseFrame {
             response{std::move(response_)} {}
 };
 
+/// Which of the two lists a conversation sits in.
+///
+/// `none` is an answer rather than a missing one: a hidden conversation is in neither list, and so
+/// is one the app has not been shown.
+enum class ConversationList {
+    none,
+    conversations,
+    requests,
+};
+
+template <>
+struct EnumTraits<ConversationList> {
+    static constexpr std::string_view name = "ConversationList";
+    static constexpr std::array<std::string_view, 3> names{"none", "conversations", "requests"};
+
+    static constexpr std::string_view to_string(ConversationList value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<ConversationList> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<ConversationList>(i);
+        return std::nullopt;
+    }
+};
+
+/// Where a conversation was, and where it belongs now: enough to apply without consulting
+/// anything, because the order is libsession's and the two lists are not sorted alike.
+///
+/// Each one places a row next to another, so they hold only when applied in the order given and
+/// none is skipped.
+struct ListPlacement {
+    /// The list the app was last told this row is in, which is the one to take it out of. `none`
+    /// when it was told of none: a row it has not been shown, or one that was hidden.
+    ::session_bridge::ConversationList from;
+    /// Where it belongs now. `none` means neither list, which is what hiding does.
+    ::session_bridge::ConversationList to;
+    /// The row it now follows in `to`; unset means first. Always unset when `to` is `none`.
+    std::optional<std::string> after;
+
+    ListPlacement(::session_bridge::ConversationList from_, ::session_bridge::ConversationList to_, std::optional<std::string> after_) :
+            from{std::move(from_)}, to{std::move(to_)}, after{std::move(after_)} {}
+};
+
 struct ConversationAddedSessionEvent {
     static constexpr std::string_view type_tag = "conversation-added";
 
     ::session_bridge::Conversation conversation;
+    ::session_bridge::ListPlacement placement;
 
-    explicit ConversationAddedSessionEvent(::session_bridge::Conversation conversation_) :
-            conversation{std::move(conversation_)} {}
+    ConversationAddedSessionEvent(::session_bridge::Conversation conversation_, ::session_bridge::ListPlacement placement_) :
+            conversation{std::move(conversation_)}, placement{std::move(placement_)} {}
 };
 
 struct ConversationUpdatedSessionEvent {
     static constexpr std::string_view type_tag = "conversation-updated";
 
     ::session_bridge::Conversation conversation;
+    ::session_bridge::ListPlacement placement;
 
-    explicit ConversationUpdatedSessionEvent(::session_bridge::Conversation conversation_) :
-            conversation{std::move(conversation_)} {}
+    ConversationUpdatedSessionEvent(::session_bridge::Conversation conversation_, ::session_bridge::ListPlacement placement_) :
+            conversation{std::move(conversation_)}, placement{std::move(placement_)} {}
 };
 
+/// `list` is the one the app was last told it is in: `none` when it was never shown in one.
 struct ConversationRemovedSessionEvent {
     static constexpr std::string_view type_tag = "conversation-removed";
 
     std::string conversation_id;
+    ::session_bridge::ConversationList list;
 
-    explicit ConversationRemovedSessionEvent(std::string conversation_id_) :
-            conversation_id{std::move(conversation_id_)} {}
-};
-
-struct ConversationListReplacedSessionEvent {
-    static constexpr std::string_view type_tag = "conversation-list-replaced";
-
-    std::vector<::session_bridge::Conversation> conversations;
-
-    explicit ConversationListReplacedSessionEvent(std::vector<::session_bridge::Conversation> conversations_) :
-            conversations{std::move(conversations_)} {}
-};
-
-struct RequestListReplacedSessionEvent {
-    static constexpr std::string_view type_tag = "request-list-replaced";
-
-    std::vector<::session_bridge::Conversation> conversations;
-
-    explicit RequestListReplacedSessionEvent(std::vector<::session_bridge::Conversation> conversations_) :
-            conversations{std::move(conversations_)} {}
+    ConversationRemovedSessionEvent(std::string conversation_id_, ::session_bridge::ConversationList list_) :
+            conversation_id{std::move(conversation_id_)}, list{std::move(list_)} {}
 };
 
 /// Messages arrived or changed, oldest first.
@@ -623,15 +799,21 @@ struct HistoryReplacedSessionEvent {
 /// separately and ends each with its own outcome, so one attachment can be downloading and exporting
 /// at once. An export of a file over libsession's `requested_cache_max_size` runs a transfer of its
 /// own that nothing joins; the bridge leaves that size unset.
+///
+/// `upload` is a file of a message of ours going to the file server, reported for `sendMessage`
+/// and `retrySend` alike. libsession uploads a message's files one at a time in index order, and
+/// only those not yet up: a retry reports nothing for a file an earlier attempt finished. An upload
+/// that fails ends the message's attempt, so the files after it report nothing at all.
 enum class AttachmentTransfer {
     download,
     export_,
+    upload,
 };
 
 template <>
 struct EnumTraits<AttachmentTransfer> {
     static constexpr std::string_view name = "AttachmentTransfer";
-    static constexpr std::array<std::string_view, 2> names{"download", "export"};
+    static constexpr std::array<std::string_view, 3> names{"download", "export", "upload"};
 
     static constexpr std::string_view to_string(AttachmentTransfer value) {
         return names[static_cast<std::size_t>(value)];
@@ -650,7 +832,7 @@ struct EnumTraits<AttachmentTransfer> {
 /// Two fields rather than a code with a success value, because "it worked" and "here is which of
 /// several ways it failed" are different questions and only one of them has an answer to match on.
 struct AttachmentOutcome {
-    /// The bytes arrived and verified.
+    /// The bytes arrived and verified; for an upload, the file server accepted the file.
     bool ok;
     /// Why it failed. Unset when `ok`.
     std::optional<std::string> error;
@@ -677,6 +859,11 @@ struct AttachmentOutcome {
 ///
 /// Both count *encrypted* bytes - what is actually being moved - and so do not agree with
 /// `Attachment.sizeBytes`, which is the plaintext length.
+///
+/// An upload names the message id `sendMessage` answers, and none of a send's reaches the stream
+/// before that answer does: the bridge holds any that come first. A file whose upload never
+/// started, because one before it failed, gets no report at all. Like a download, an upload's
+/// first report is 0 of 0, meaning it has started.
 struct AttachmentProgressSessionEvent {
     static constexpr std::string_view type_tag = "attachment-progress";
 
@@ -689,6 +876,21 @@ struct AttachmentProgressSessionEvent {
 
     AttachmentProgressSessionEvent(::session_bridge::AttachmentTransfer transfer_, double message_id_, double index_, double done_bytes_, double total_bytes_, std::optional<::session_bridge::AttachmentOutcome> outcome_) :
             transfer{std::move(transfer_)}, message_id{std::move(message_id_)}, index{std::move(index_)}, done_bytes{std::move(done_bytes_)}, total_bytes{std::move(total_bytes_)}, outcome{std::move(outcome_)} {}
+};
+
+/// The attached network's status changed. One per change, in the order libsession made them, and
+/// never two of the same in a row from libsession itself; the answer to `getNetworkStatus` can
+/// repeat the last one, which is harmless because each carries the whole state.
+///
+/// A network that goes away reports `disconnected` on the way out, which a discard does. Closing
+/// the bridge reports nothing: there is nobody left to tell.
+struct NetworkStatusChangedSessionEvent {
+    static constexpr std::string_view type_tag = "network-status-changed";
+
+    ::session_bridge::NetworkStatus status;
+
+    explicit NetworkStatusChangedSessionEvent(::session_bridge::NetworkStatus status_) :
+            status{std::move(status_)} {}
 };
 
 /// libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
@@ -707,9 +909,11 @@ struct LogSessionEvent {
 /// Change notifications, one per libsession callback, and what `SessionClient.onEvent` delivers.
 ///
 /// Every one of these carries the whole new state rather than an id to go and fetch. That is what
-/// makes a display bindable, applying the same event twice harmless, and startup race-free:
-/// whatever arrives between construction and the first query lands on top of the answer without
-/// contradicting it.
+/// makes a display bindable and applying the same event twice harmless.
+///
+/// A conversation's place in its list is the exception: `placement` puts it after another row, so
+/// the lists are only right when every event is applied, in the order the stream gives, on top of
+/// an answer to `getConversations` and `getMessageRequests` read earlier on the same stream.
 ///
 /// The shim emits these and the app reads them, with nothing in between rewriting an arm - which
 /// is why there is one type rather than a wire one and an app one.
@@ -720,12 +924,11 @@ using SessionEvent = std::variant<
         ConversationAddedSessionEvent,
         ConversationUpdatedSessionEvent,
         ConversationRemovedSessionEvent,
-        ConversationListReplacedSessionEvent,
-        RequestListReplacedSessionEvent,
         MessagesAddedSessionEvent,
         MessagesUpdatedSessionEvent,
         HistoryReplacedSessionEvent,
         AttachmentProgressSessionEvent,
+        NetworkStatusChangedSessionEvent,
         LogSessionEvent>;
 
 struct EventFrame {
@@ -804,6 +1007,9 @@ struct CheckRecoveryPhraseCommand {
             phrase{std::move(phrase_)}, language{std::move(language_)} {}
 };
 
+/// Restore from a seed in hex: 16 bytes (32 characters), as every recovery password QR code
+/// carries, or the full 32 bytes. A 16-byte seed is the lower half, the upper half zero -- the
+/// same seed the 13 words decode to.
 struct RestoreAccountFromSeedCommand {
     static constexpr std::string_view type_tag = "restoreAccountFromSeed";
 
@@ -845,6 +1051,8 @@ struct KeepAccountCommand {
     static constexpr std::string_view type_tag = "keepAccount";
 };
 
+/// The recovery password's words, answered with a `mnemonic` result, or `seedHidden` once
+/// `hideRecoveryPassword` has been called on this device.
 struct GetSeedMnemonicCommand {
     static constexpr std::string_view type_tag = "getSeedMnemonic";
 
@@ -852,6 +1060,30 @@ struct GetSeedMnemonicCommand {
 
     explicit GetSeedMnemonicCommand(std::optional<std::string> language_) :
             language{std::move(language_)} {}
+};
+
+/// The account seed as lowercase hex, answered with a `hex` result: what a recovery password's
+/// QR code carries. `seedHidden` instead once `hideRecoveryPassword` has been called.
+///
+/// **16 bytes (32 characters) when the seed's upper half is zero**, which is every account the
+/// 13 words describe, and 32 bytes otherwise. The short form is the one every existing client
+/// puts in that QR and reads back from it, so a code drawn from this scans anywhere.
+/// `restoreAccountFromSeed` takes either length.
+struct GetSeedHexCommand {
+    static constexpr std::string_view type_tag = "getSeedHex";
+};
+
+/// Hides the recovery password on this device for good, answered with an empty result once it is
+/// stored. From then on `getSeedMnemonic` and `getSeedHex` answer `seedHidden`, so nothing above
+/// the bridge can read the seed back out; the account itself, and every key derived from the
+/// seed, carry on as before. There is no way back, as on every legacy client.
+struct HideRecoveryPasswordCommand {
+    static constexpr std::string_view type_tag = "hideRecoveryPassword";
+};
+
+/// Whether `hideRecoveryPassword` has been called on this device, answered with a `bool`.
+struct GetRecoveryPasswordHiddenCommand {
+    static constexpr std::string_view type_tag = "getRecoveryPasswordHidden";
 };
 
 struct SetDisplayNameCommand {
@@ -985,6 +1217,15 @@ struct AttachNetworkCommand {
 /// makes this a warm rather than a second network.
 struct WarmNetworkCacheCommand {
     static constexpr std::string_view type_tag = "warmNetworkCache";
+};
+
+/// Whether the attached network can carry traffic now. `disconnected` where none is attached.
+///
+/// Asked once and then followed by `network-status-changed`, the way every list here is: a
+/// renderer that reloads, or a store that subscribes after the network came up, has missed the
+/// events that said so.
+struct GetNetworkStatusCommand {
+    static constexpr std::string_view type_tag = "getNetworkStatus";
 };
 
 /// How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
@@ -1140,17 +1381,74 @@ struct GetMessagesCommand {
             conversation_id{std::move(conversation_id_)}, limit{std::move(limit_)}, before{std::move(before_)}, include_deleted{std::move(include_deleted_)} {}
 };
 
+/// A file to send with a message. Sending files needs `cacheDir`.
+///
+/// Without `takeFile`, libsession copies it beneath the cache directory once the message is stored,
+/// off the calling thread, and reads only that copy from then on: `path` may change or go once the
+/// attachment reads `cached`. Until it uploads, `fetchMedia` and `exportAttachment` serve the copy.
+/// A picture libsession decodes is sent re-encoded to fit the file server, and the stored
+/// attachment then describes what was sent.
+struct OutgoingAttachment {
+    std::string path;
+    /// Inferred from the filename's extension when unset.
+    std::optional<std::string> content_type;
+    /// What the recipient sees it called; `path`'s own filename when unset.
+    std::optional<std::string> filename;
+    /// Hands the file to libsession instead of having it copied, refusing a symbolic link. Only for a
+    /// copy the app made: once the message is stored the file is gone from `path`, and a send
+    /// that was refused leaves it there.
+    ///
+    /// It is hard-linked under the cache directory, or copied where it cannot be, on the calling
+    /// thread during the send, so a large copy holds that call up. It waits there unencrypted.
+    ///
+    /// Until it uploads, the attachment is `cached`, and `fetchMedia` and `exportAttachment` serve it
+    /// from that copy; `absent` if the copy has gone. libsession deletes it once it has uploaded, or
+    /// its message is unsendable or deleted.
+    std::optional<bool> take_file;
+
+    OutgoingAttachment(std::string path_, std::optional<std::string> content_type_, std::optional<std::string> filename_, std::optional<bool> take_file_) :
+            path{std::move(path_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, take_file{std::move(take_file_)} {}
+};
+
+/// Stores the message and answers its id; it is then announced like any other. With attachments
+/// it is `uploading` until every file is on the file server, and goes on to the ordinary states
+/// from there. Refused, storing nothing, when a file is not a readable, non-empty file. Each
+/// file's upload reports as an `attachment-progress` of transfer `upload`.
 struct SendMessageCommand {
     static constexpr std::string_view type_tag = "sendMessage";
 
     std::string conversation_id;
     std::string body;
     std::optional<double> reply_to;
+    std::optional<std::vector<::session_bridge::OutgoingAttachment>> attachments;
 
-    SendMessageCommand(std::string conversation_id_, std::string body_, std::optional<double> reply_to_) :
-            conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, reply_to{std::move(reply_to_)} {}
+    SendMessageCommand(std::string conversation_id_, std::string body_, std::optional<double> reply_to_, std::optional<std::vector<::session_bridge::OutgoingAttachment>> attachments_) :
+            conversation_id{std::move(conversation_id_)}, body{std::move(body_)}, reply_to{std::move(reply_to_)}, attachments{std::move(attachments_)} {}
 };
 
+/// What sending the file at `path` would do with it, under the file server's limit, without
+/// sending it: for staging to refuse a file before Send. `contentType` is inferred from the
+/// extension when unset, as `sendMessage` infers it. Read on libsession's disk thread.
+struct AttachmentSendPlanCommand {
+    static constexpr std::string_view type_tag = "attachmentSendPlan";
+
+    std::string path;
+    std::optional<std::string> content_type;
+
+    AttachmentSendPlanCommand(std::string path_, std::optional<std::string> content_type_) :
+            path{std::move(path_)}, content_type{std::move(content_type_)} {}
+};
+
+/// The most the file server takes in one upload, in encrypted, padded bytes: the limit
+/// `attachmentSendPlan` holds a file to, so a file's own size has to be smaller to fit. Belongs to
+/// the attached network's file server and changes only with `attachNetwork`; before a network is
+/// attached it is libsession's default for the built-in servers.
+struct GetAttachmentUploadLimitCommand {
+    static constexpr std::string_view type_tag = "getAttachmentUploadLimit";
+};
+
+/// Resumes a send that failed, uploading the files not yet up first. Each of those reports as an
+/// `attachment-progress` of transfer `upload`, as `sendMessage`'s do.
 struct RetrySendCommand {
     static constexpr std::string_view type_tag = "retrySend";
 
@@ -1168,6 +1466,21 @@ struct DeleteMessageCommand {
 
     DeleteMessageCommand(double message_id_, ::session_bridge::Deletion scope_) :
             message_id{std::move(message_id_)}, scope{std::move(scope_)} {}
+};
+
+/// Shows a message as a gallery, or as a list. Answers false, changing nothing, for a message
+/// that does not exist or, when `gallery` is true, one that is not `galleryViewable`; turning it
+/// off is always allowed. A change is announced as messages-updated; asking for what is already
+/// stored answers true and announces nothing. Fetches nothing: getting a gallery's pictures is
+/// still the caller's `downloadAttachment`.
+struct SetGalleryCommand {
+    static constexpr std::string_view type_tag = "setGallery";
+
+    double message_id;
+    bool gallery;
+
+    SetGalleryCommand(double message_id_, bool gallery_) :
+            message_id{std::move(message_id_)}, gallery{std::move(gallery_)} {}
 };
 
 /// Fetch an attachment into libsession's cache, reporting progress as it goes.
@@ -1247,9 +1560,9 @@ struct GetThumbnailEdgeCommand {
     static constexpr std::string_view type_tag = "getThumbnailEdge";
 };
 
-/// The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
-/// clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
-/// app opened the bridge with. Thumbnails already made keep the size they were made at.
+/// The height of the thumbnails made from now on, in device pixels, kept on this device.
+/// libsession clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to
+/// what the app opened the bridge with. Thumbnails already made keep the size they were made at.
 struct SetThumbnailEdgeCommand {
     static constexpr std::string_view type_tag = "setThumbnailEdge";
 
@@ -1289,9 +1602,11 @@ struct TestAttachment {
     std::string content_type;
     /// Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false.
     std::optional<std::vector<std::byte>> thumbhash;
+    /// Sent as the sender's original file, which is what leaves `originalFile` true.
+    std::optional<bool> original_file;
 
-    TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_) :
-            content_type{std::move(content_type_)}, thumbhash{std::move(thumbhash_)} {}
+    TestAttachment(std::string content_type_, std::optional<std::vector<std::byte>> thumbhash_, std::optional<bool> original_file_) :
+            content_type{std::move(content_type_)}, thumbhash{std::move(thumbhash_)}, original_file{std::move(original_file_)} {}
 };
 
 /// Builds, encrypts and delivers a v1 DM as if it had arrived from the swarm. The sender is
@@ -1345,7 +1660,7 @@ struct EchoTestFrameCommand {
 ///
 /// Responses ride the same stream as change events rather than resolving on a separate channel,
 /// because their relative order is load-bearing. libsession's contract is that a display can be
-/// built by asking once and then applying events; that only holds if a list_replaced produced
+/// built by asking once and then applying events; that only holds if a placement produced
 /// before the answer to getConversations is also applied before it. Two channels - a promise and
 /// a callback - give no such guarantee across an IPC or JSI boundary, and the failure would be a
 /// stale row that reappears on a race nobody can reproduce. One FIFO stream carries libsession's
@@ -1364,9 +1679,13 @@ using Command = std::variant<
         DiscardAccountCommand,
         KeepAccountCommand,
         GetSeedMnemonicCommand,
+        GetSeedHexCommand,
+        HideRecoveryPasswordCommand,
+        GetRecoveryPasswordHiddenCommand,
         SetDisplayNameCommand,
         AttachNetworkCommand,
         WarmNetworkCacheCommand,
+        GetNetworkStatusCommand,
         SetPollIntervalCommand,
         PollOnceCommand,
         SetPushTokenCommand,
@@ -1383,8 +1702,11 @@ using Command = std::variant<
         DeleteConversationCommand,
         GetMessagesCommand,
         SendMessageCommand,
+        AttachmentSendPlanCommand,
+        GetAttachmentUploadLimitCommand,
         RetrySendCommand,
         DeleteMessageCommand,
+        SetGalleryCommand,
         DownloadAttachmentCommand,
         ExportAttachmentCommand,
         SetAutoDownloadCommand,

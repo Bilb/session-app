@@ -1,3 +1,6 @@
+import { ArrowDown } from '@tamagui/lucide-icons-2/icons/ArrowDown'
+import { ArrowUp } from '@tamagui/lucide-icons-2/icons/ArrowUp'
+import { Ban } from '@tamagui/lucide-icons-2/icons/Ban'
 import { BellOff } from '@tamagui/lucide-icons-2/icons/BellOff'
 import { Bookmark } from '@tamagui/lucide-icons-2/icons/Bookmark'
 import { Check } from '@tamagui/lucide-icons-2/icons/Check'
@@ -20,6 +23,7 @@ import { FileArchive } from '@tamagui/lucide-icons-2/icons/FileArchive'
 import { FileAudio } from '@tamagui/lucide-icons-2/icons/FileAudio'
 import { FileCode } from '@tamagui/lucide-icons-2/icons/FileCode'
 import { FileImage } from '@tamagui/lucide-icons-2/icons/FileImage'
+import { FilePlus } from '@tamagui/lucide-icons-2/icons/FilePlus'
 import { FileSpreadsheet } from '@tamagui/lucide-icons-2/icons/FileSpreadsheet'
 import { FileText } from '@tamagui/lucide-icons-2/icons/FileText'
 import { FileVideo } from '@tamagui/lucide-icons-2/icons/FileVideo'
@@ -37,16 +41,23 @@ import { LockKeyhole } from '@tamagui/lucide-icons-2/icons/LockKeyhole'
 import { Mail } from '@tamagui/lucide-icons-2/icons/Mail'
 import { MessageSquare } from '@tamagui/lucide-icons-2/icons/MessageSquare'
 import { MessageSquareWarning } from '@tamagui/lucide-icons-2/icons/MessageSquareWarning'
+import { Mic } from '@tamagui/lucide-icons-2/icons/Mic'
+import { Moon } from '@tamagui/lucide-icons-2/icons/Moon'
+import { PackageCheck } from '@tamagui/lucide-icons-2/icons/PackageCheck'
 import { PaintbrushVertical } from '@tamagui/lucide-icons-2/icons/PaintbrushVertical'
 import { Pin } from '@tamagui/lucide-icons-2/icons/Pin'
 import { Play } from '@tamagui/lucide-icons-2/icons/Play'
 import { Plus } from '@tamagui/lucide-icons-2/icons/Plus'
+import { QrCode } from '@tamagui/lucide-icons-2/icons/QrCode'
+import { Reply } from '@tamagui/lucide-icons-2/icons/Reply'
 import { RotateCw } from '@tamagui/lucide-icons-2/icons/RotateCw'
 import { Search } from '@tamagui/lucide-icons-2/icons/Search'
 import { Settings } from '@tamagui/lucide-icons-2/icons/Settings'
 import { Share2 } from '@tamagui/lucide-icons-2/icons/Share2'
+import { SunMedium } from '@tamagui/lucide-icons-2/icons/SunMedium'
 import { Trash2 } from '@tamagui/lucide-icons-2/icons/Trash2'
 import { TriangleAlert } from '@tamagui/lucide-icons-2/icons/TriangleAlert'
+import { UserRound } from '@tamagui/lucide-icons-2/icons/UserRound'
 import { UserRoundPlus } from '@tamagui/lucide-icons-2/icons/UserRoundPlus'
 import { UsersRound } from '@tamagui/lucide-icons-2/icons/UsersRound'
 import { Video } from '@tamagui/lucide-icons-2/icons/Video'
@@ -69,6 +80,9 @@ import { isLayoutRtl } from './layoutDirection'
  * the values are: every name has a glyph, and a glyph nobody named does not compile.
  */
 const GLYPHS = {
+  arrowDown: ArrowDown,
+  arrowUp: ArrowUp,
+  ban: Ban,
   bellOff: BellOff,
   bookmark: Bookmark,
   check: Check,
@@ -91,6 +105,7 @@ const GLYPHS = {
   fileAudio: FileAudio,
   fileCode: FileCode,
   fileImage: FileImage,
+  filePlus: FilePlus,
   fileSpreadsheet: FileSpreadsheet,
   fileText: FileText,
   fileVideo: FileVideo,
@@ -108,16 +123,23 @@ const GLYPHS = {
   mail: Mail,
   messageSquare: MessageSquare,
   messageSquareWarning: MessageSquareWarning,
+  mic: Mic,
+  moon: Moon,
+  packageCheck: PackageCheck,
   paintbrush: PaintbrushVertical,
   pin: Pin,
   play: Play,
   plus: Plus,
+  qrCode: QrCode,
+  reply: Reply,
   rotateCw: RotateCw,
   search: Search,
   settings: Settings,
   share2: Share2,
+  sunMedium: SunMedium,
   trash: Trash2,
   triangleAlert: TriangleAlert,
+  userRound: UserRound,
   userRoundPlus: UserRoundPlus,
   usersRound: UsersRound,
   video: Video,
@@ -134,7 +156,8 @@ const GLYPHS = {
  * belong on the other side. A media timeline does not: `play` points along the recording, and the
  * platforms' own players keep it pointing the same way in every locale, so mirroring it would make
  * this the only app on the device that disagrees. A picture of an object never does - a folded
- * page corner is a convention, not a direction.
+ * page corner is a convention, not a direction. `reply` points back up the conversation toward the
+ * message answered, which is reading order.
  *
  * Here rather than at the call sites, because `IconName` is closed: one set keyed by it settles
  * each glyph once instead of a judgement repeated wherever one is drawn.
@@ -143,7 +166,7 @@ const GLYPHS = {
  * optical weight, and flipping one gives a worse result than drawing the other - so a caller that
  * needs the pair chooses between them with `isLayoutRtl()` and they are deliberately absent here.
  */
-const MIRRORED_IN_RTL: ReadonlySet<IconName> = new Set(['list'])
+const MIRRORED_IN_RTL: ReadonlySet<IconName> = new Set(['list', 'reply'])
 
 /**
  * One icon, drawn from the set the app has agreed on.

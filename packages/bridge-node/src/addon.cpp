@@ -1,12 +1,15 @@
 #include <napi.h>
 #include <session_bridge/client_bridge.hpp>
+#include <session_bridge/decode_plan.hpp>
 #include <session_bridge/gen/napi.hpp>
 #include <session_bridge/media_url.hpp>
+#include <session_bridge/utf8_path.hpp>
 
 #include <cstdint>
 #include <cstring>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <unordered_map>
 
@@ -29,6 +32,9 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
                         InstanceMethod<&SessionBridge::FetchMedia>("fetchMedia"),
                         InstanceMethod<&SessionBridge::FetchThumbhash>("fetchThumbhash"),
                         InstanceMethod<&SessionBridge::FetchThumbnail>("fetchThumbnail"),
+                        InstanceMethod<&SessionBridge::FetchRendition>("fetchRendition"),
+                        InstanceMethod<&SessionBridge::FetchStagedThumbnail>(
+                                "fetchStagedThumbnail"),
                         InstanceMethod<&SessionBridge::DatabasesReplaced>("databasesReplaced"),
                         InstanceMethod<&SessionBridge::Close>("close"),
                 });
@@ -45,9 +51,11 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         Napi::Object options = info[0].As<Napi::Object>();
         session_bridge::InitOptions init;
 
-        init.db_path = options.Get("dbPath").As<Napi::String>().Utf8Value();
+        init.db_path =
+                session_bridge::utf8_path(options.Get("dbPath").As<Napi::String>().Utf8Value());
         if (options.Has("cacheDir"))
-            init.cache_dir = options.Get("cacheDir").As<Napi::String>().Utf8Value();
+            init.cache_dir = session_bridge::utf8_path(
+                    options.Get("cacheDir").As<Napi::String>().Utf8Value());
 
         if (options.Has("rawKey") && !options.Get("rawKey").IsUndefined()) {
             Napi::Value raw = options.Get("rawKey");
@@ -197,6 +205,21 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         _bridge->call(std::move(*request));
     }
 
+    struct Ref {
+        double message_id;
+        double index;
+    };
+
+    /// The `(messageId, index)` pair every attachment fetch takes.
+    static auto ref_of(const char* usage) {
+        return [usage](const Napi::CallbackInfo& info) {
+            if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsNumber())
+                throw Napi::TypeError::New(info.Env(), usage);
+            return Ref{info[0].As<Napi::Number>().DoubleValue(),
+                       info[1].As<Napi::Number>().DoubleValue()};
+        };
+    }
+
     /// A media request not yet settled. Only ever touched on the JavaScript thread.
     struct PendingFetch {
         Napi::Promise::Deferred deferred;
@@ -208,10 +231,13 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
     ///
     /// Its own thread-safe function per request: these are as rare as a picture coming on
     /// screen, and one shared across them would have to outlive them all to be released safely.
-    template <typename Answer, typename Begin, typename Build>
+    ///
+    /// `parse` reads the arguments, throwing on a wrong one, before anything is allocated for the
+    /// request; `begin` gets what it returned.
+    template <typename Answer, typename Parse, typename Begin, typename Build>
     Napi::Value Fetch(
             const Napi::CallbackInfo& info,
-            const char* usage,
+            Parse parse,
             const char* resource,
             Begin begin,
             Build build) {
@@ -222,11 +248,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
             deferred.Reject(Napi::Error::New(env, "the bridge is closed").Value());
             return deferred.Promise();
         }
-        if (info.Length() < 2 || !info[0].IsNumber() || !info[1].IsNumber())
-            throw Napi::TypeError::New(env, usage);
-
-        const double message_id = info[0].As<Napi::Number>().DoubleValue();
-        const double index = info[1].As<Napi::Number>().DoubleValue();
+        auto args = parse(info);
 
         auto tsfn = Napi::ThreadSafeFunction::New(
                 env, Napi::Function::New(env, [](const Napi::CallbackInfo&) {}), resource, 0, 1);
@@ -237,7 +259,7 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
         _fetches->emplace(id, PendingFetch{deferred, tsfn});
 
         // Holds the map rather than `this`: a queued answer can outlive the wrapper.
-        begin(message_id, index, [fetches = _fetches, id, tsfn, build](Answer answer) mutable {
+        begin(std::move(args), [fetches = _fetches, id, tsfn, build](Answer answer) mutable {
             auto* payload = new Answer(std::move(answer));
             auto status = tsfn.BlockingCall(
                     payload,
@@ -270,10 +292,10 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
     Napi::Value FetchMedia(const Napi::CallbackInfo& info) {
         return Fetch<session_bridge::Media>(
                 info,
-                "fetchMedia(messageId, index)",
+                ref_of("fetchMedia(messageId, index)"),
                 "sessionBridgeMedia",
-                [this](double message_id, double index, session_bridge::MediaHandler cb) {
-                    _bridge->fetch_media(message_id, index, std::move(cb));
+                [this](Ref ref, session_bridge::MediaHandler cb) {
+                    _bridge->fetch_media(ref.message_id, ref.index, std::move(cb));
                 },
                 [](Napi::Env env, const session_bridge::Media& media) {
                     // Copied, not wrapped: Electron >= 21 refuses external buffers
@@ -294,10 +316,10 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
     Napi::Value FetchThumbhash(const Napi::CallbackInfo& info) {
         return Fetch<session_bridge::Thumbhash>(
                 info,
-                "fetchThumbhash(messageId, index)",
+                ref_of("fetchThumbhash(messageId, index)"),
                 "sessionBridgeThumbhash",
-                [this](double message_id, double index, session_bridge::ThumbhashHandler cb) {
-                    _bridge->fetch_thumbhash(message_id, index, std::move(cb));
+                [this](Ref ref, session_bridge::ThumbhashHandler cb) {
+                    _bridge->fetch_thumbhash(ref.message_id, ref.index, std::move(cb));
                 },
                 [](Napi::Env env, const session_bridge::Thumbhash& thumbhash) {
                     auto rgba = Napi::Uint8Array::New(env, thumbhash.rgba.size());
@@ -315,10 +337,52 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
     Napi::Value FetchThumbnail(const Napi::CallbackInfo& info) {
         return Fetch<session_bridge::Media>(
                 info,
-                "fetchThumbnail(messageId, index)",
+                ref_of("fetchThumbnail(messageId, index)"),
                 "sessionBridgeThumbnail",
-                [this](double message_id, double index, session_bridge::MediaHandler cb) {
-                    _bridge->fetch_thumbnail(message_id, index, std::move(cb));
+                [this](Ref ref, session_bridge::MediaHandler cb) {
+                    _bridge->fetch_thumbnail(ref.message_id, ref.index, std::move(cb));
+                },
+                [](Napi::Env env, const session_bridge::Media& media) {
+                    auto bytes = Napi::Uint8Array::New(env, media.bytes.size());
+                    std::memcpy(bytes.Data(), media.bytes.data(), media.bytes.size());
+                    return bytes;
+                });
+    }
+
+    /// `fetchRendition(messageId, index) -> Promise<{ contentType, bytes }>`, by the same route,
+    /// typed by what the bytes are.
+    Napi::Value FetchRendition(const Napi::CallbackInfo& info) {
+        return Fetch<session_bridge::Media>(
+                info,
+                ref_of("fetchRendition(messageId, index)"),
+                "sessionBridgeRendition",
+                [this](Ref ref, session_bridge::MediaHandler cb) {
+                    _bridge->fetch_rendition(ref.message_id, ref.index, std::move(cb));
+                },
+                [](Napi::Env env, const session_bridge::Media& media) {
+                    auto bytes = Napi::Uint8Array::New(env, media.bytes.size());
+                    std::memcpy(bytes.Data(), media.bytes.data(), media.bytes.size());
+
+                    Napi::Object result = Napi::Object::New(env);
+                    result.Set("contentType", media.content_type);
+                    result.Set("bytes", bytes);
+                    return result;
+                });
+    }
+
+    /// `fetchStagedThumbnail(path) -> Promise<Uint8Array>`: libsession's thumbnail of a file staged
+    /// to send, by the same route.
+    Napi::Value FetchStagedThumbnail(const Napi::CallbackInfo& info) {
+        return Fetch<session_bridge::Media>(
+                info,
+                [](const Napi::CallbackInfo& args) {
+                    if (args.Length() < 1 || !args[0].IsString())
+                        throw Napi::TypeError::New(args.Env(), "fetchStagedThumbnail(path)");
+                    return args[0].As<Napi::String>().Utf8Value();
+                },
+                "sessionBridgeStagedThumbnail",
+                [this](std::string path, session_bridge::MediaHandler cb) {
+                    _bridge->fetch_staged_thumbnail(std::move(path), std::move(cb));
                 },
                 [](Napi::Env env, const session_bridge::Media& media) {
                     auto bytes = Napi::Uint8Array::New(env, media.bytes.size());
@@ -359,7 +423,8 @@ class SessionBridge : public Napi::ObjectWrap<SessionBridge> {
     uint32_t _databases_replaced = 0;
 };
 
-/// `parseMediaUrl(url) -> { kind, messageId, index } | null`, the shim's parser.
+/// `parseMediaUrl(url) -> { kind, messageId, index } | { kind: 'staged', path } | null`, the
+/// shim's parser.
 ///
 /// Desktop serves the scheme with its own TypeScript parser; this is here so the one both mobile
 /// loaders call can be held to the same vectors.
@@ -372,6 +437,10 @@ Napi::Value ParseMediaUrl(const Napi::CallbackInfo& info) {
         return env.Null();
     Napi::Object result = Napi::Object::New(env);
     result.Set("kind", std::string{session_bridge::media_url_kind_name(parsed->kind)});
+    if (parsed->kind == session_bridge::MediaUrlKind::staged) {
+        result.Set("path", parsed->path);
+        return result;
+    }
     result.Set("messageId", parsed->message_id);
     result.Set("index", parsed->index);
     return result;
@@ -394,6 +463,25 @@ Napi::Value ServableContentType(const Napi::CallbackInfo& info) {
     return Napi::String::New(env, *served);
 }
 
+/// `planDecode(bytes) -> { edgePx, firstFrameOnly, exceedsWholeDecodeCeiling, measured }`, the
+/// shim's plan, which desktop main serves an original by. Synchronous: it reads a header and
+/// decodes no pixel.
+Napi::Value PlanDecode(const Napi::CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsTypedArray() ||
+        info[0].As<Napi::TypedArray>().TypedArrayType() != napi_uint8_array)
+        throw Napi::TypeError::New(env, "planDecode(bytes: Uint8Array)");
+    auto bytes = info[0].As<Napi::Uint8Array>();
+    const auto plan = session_bridge::decode_plan(std::span<const std::byte>{
+            reinterpret_cast<const std::byte*>(bytes.Data()), bytes.ElementLength()});
+    Napi::Object result = Napi::Object::New(env);
+    result.Set("edgePx", plan.edge_px);
+    result.Set("firstFrameOnly", plan.first_frame_only);
+    result.Set("exceedsWholeDecodeCeiling", plan.exceeds_whole_decode_ceiling);
+    result.Set("measured", plan.measured);
+    return result;
+}
+
 }  // namespace
 
 static Napi::Object InitAll(Napi::Env env, Napi::Object exports) {
@@ -401,6 +489,7 @@ static Napi::Object InitAll(Napi::Env env, Napi::Object exports) {
     exports.Set(
             "servableContentType",
             Napi::Function::New<ServableContentType>(env, "servableContentType"));
+    exports.Set("planDecode", Napi::Function::New<PlanDecode>(env, "planDecode"));
     return SessionBridge::Init(env, exports);
 }
 

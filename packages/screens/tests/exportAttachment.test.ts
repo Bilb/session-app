@@ -18,6 +18,11 @@ function attachment(index: number, fields: Partial<Attachment> = {}): Attachment
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: true,
     availability: 'cached',
     fetchDoneBytes: 0,
@@ -78,6 +83,20 @@ describe('exporting one attachment', () => {
 
     expect(choose).toHaveBeenCalledWith('b.jpg', 'image/jpeg')
     expect(write).toHaveBeenCalledWith({ messageId: 7, index: 1 }, '/chosen/b.jpg')
+  })
+
+  it('files a picture sent as the original file as a file, not as a photo', async () => {
+    const choose = vi.fn(() => Promise.resolve(null))
+    installFiles({ chooseExportLocation: choose })
+    const original = attachment(0, {
+      filename: 'harbour.jpg',
+      contentType: 'image/jpeg',
+      originalFile: true,
+    })
+
+    await exportOne(message([original]), 0, { exportAttachment: vi.fn() }, feedback())
+
+    expect(choose).toHaveBeenCalledWith('harbour.jpg', undefined)
   })
 
   it('names a nameless attachment by when it was sent and its place in the message', async () => {

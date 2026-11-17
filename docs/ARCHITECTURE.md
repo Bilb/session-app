@@ -44,8 +44,8 @@ crosses is a plain object of exactly the type a screen renders - the C++ builds 
 between. Two decisions are worth knowing before changing anything:
 
 **Responses ride the same stream as events.** libsession's contract is that a display can be
-built by asking once and then applying events. That only holds if a `conversation-list-replaced`
-produced _before_ the answer to `getConversations` is also applied before it. A promise
+built by asking once and then applying events. That only holds if a placement produced _before_
+the answer to `getConversations` is also applied before it. A promise
 resolving on one channel while events arrive on another gives no such guarantee across IPC or
 JSI, and the failure would be a stale row appearing on a race nobody can reproduce. One FIFO
 stream carries libsession's own ordering through to TypeScript; the facade still hands callers
@@ -54,7 +54,14 @@ is unsafe: an already-resolved C++ promise settles as a microtask ahead of event
 on the CallInvoker, and half of the shim's commands answer synchronously.
 
 **Every event carries whole state.** Never an id to go and fetch. That is what makes a display
-bindable, applying the same event twice harmless, and startup race-free.
+bindable and applying the same event twice harmless.
+
+A conversation's position is the exception. A changed row comes with libsession's placement: the
+list it belongs in and the row it now follows, since the two lists are not sorted alike and the
+app must not sort them. A placement is relative, so the lists are right only when every event is
+applied in stream order on top of lists read earlier on the same stream. The store therefore
+stores each list's answer the moment its own promise resolves, and reads a list again when a
+placement names a row it does not hold (`listsOutOfStep`).
 
 Numbers are `number` on both sides: every 64-bit value is a unix-millisecond timestamp, a sqlite
 rowid or a byte count, all far inside 2^53, and the C++ carries them as doubles.
@@ -130,8 +137,10 @@ first if the cache does not hold it, and answers with where it landed: a collisi
 The sender's placeholder is an image too, so it comes by the same road: `session-media://thumbhash/`
 answers from `ClientBridge::fetch_thumbhash`, which decodes the ThumbHash on the attachment's row.
 So does the thumbnail a tile draws: `session-media://thumbnail/` answers from
-`ClientBridge::fetch_thumbnail`, the JPEG libsession made of a cached picture, from its cache only.
-One authority per image rather than one URL with a flag, so a file and its stand-ins cache
+`ClientBridge::fetch_thumbnail`, the JPEG libsession made of a cached picture, or of one we send
+from its own copy before the upload; never a download.
+And the copy the viewer draws: `session-media://rendition/` answers from
+`ClientBridge::fetch_rendition`, typed by its bytes as a JPEG or a WebP. One authority per image rather than one URL with a flag, so a file and its stand-ins cache
 separately, and nothing decodes an image in JavaScript on either platform. The sender's content type is a claim,
 so desktop serves an attachment only when that type is on the viewable list and the leading bytes
 are the same family, and every response carries a `sandbox` CSP: a file opened as a document gets
@@ -283,16 +292,18 @@ screen reader and a driver (role, name, hint, disabled, busy, focusable) per sta
 `desktop` and a `native` side; `null` on a side means absent on purpose. Render tests assert it.
 An e2e spec compares `app.describe(id)` with `toMatchObject` against its platform's side.
 
-**No source greps.** A test asserts what is drawn, never what a file contains.
-`packages/ui/tests/nativeOnly.contract.test.ts` keeps what only a native tree shows and no driver
-reads, each with the reason.
+**No new source grep where a drawn check can fail instead:** assert what is drawn, not what a
+file contains. The greps that stay say why, one by one: `packages/ui/tests/nativeOnly.contract.test.ts`
+for what only a native tree shows and no driver reads, and the repo-wide `*.contract.test.ts`
+checks (copy, logical edges, named tokens).
 
 `tests/e2e/harness/ISessionApp.ts` is the platform-neutral driver interface. Its rule: every
 member takes and returns primitives, enums or plain data - no Playwright `Locator`, no Appium
 element. Anything one platform cannot do belongs somewhere narrower until every platform can.
 `describe(id, at?)` reads one element as assistive technology does, as an `AccessibleNode`;
 `audit(scope?)` returns the platform checker's serious and critical findings, axe's on desktop.
-On iOS they are XCTest's `performAccessibilityAudit`'s, and on Android a rule set's over the tree
+On iOS they are XCTest's `performAccessibilityAudit`'s, which cover the whole screen whatever the
+`scope`, and on Android a rule set's over the tree
 (a stop says something, takes 48dp, and sits in no other stop); both phones also size targets
 from `bounds`.
 `frame(id, at?)` and `tapPoint(x, y)` place an element and touch one point, in CSS px, dp or pt:
@@ -305,8 +316,11 @@ resource id, iOS's accessibility identifier) and reading them from the page sour
 bundle itself: Metro inlines every `EXPO_PUBLIC_` variable, so the fake and its fixture
 are chosen per bundle, and a launch with other values restarts Metro. It reads the devices from
 `SESSION_E2E_{ANDROID,IOS}_{PHONE,TABLET}`, Appium from `SESSION_E2E_APPIUM_URL` and Metro's
-port from `SESSION_E2E_METRO_PORT`. There is no CI job for it: it runs against a local emulator
-or simulator.
+port from `SESSION_E2E_METRO_PORT`. Locally it runs against your own emulator or simulator, with
+Appium installed by hand; in CI, `tests/e2e/devices/` boots the devices and installs the pinned
+Appium and driver. On Xcode 27, iOS needs XCUITest driver
+12.22.8 or later (`appium driver install xcuitest@12.22.8`; 13 needs Appium 4): Xcode 27 replaced
+Simulator.app with DeviceHub, and an older driver fails every session while opening its window.
 
 `showcase-audit.spec.ts` audits the `showcase` fixture at two widths on desktop, and on a phone and
 a tablet of each mobile platform, in the default theme.
@@ -315,11 +329,46 @@ a tablet of each mobile platform, in the default theme.
 each scenario, a real message from a fake fixture, in `apps/desktop/src/renderer/catalog/scenarios/`)
 draws its variants as rows and its forced states (hover, press, focus) as columns, in several
 themes side by side on one page. A story says what it is sensitive to (accent, right to left,
-width), and that decides which extra pages it gets. The `pr` tier draws two themes; `nightly`
-every theme and accent. The desktop app opens the catalog instead of the app under the
+width), and that decides which extra pages it gets. The `pr` tier draws two themes in the default
+accent with the forced states, plus one unforced page in every accent for a story that draws the
+accent; `nightly` draws every theme and accent, every night. The desktop app opens the catalog instead of the app under the
 `componentCatalog` flag; `catalog.spec.ts` captures each page and runs axe over it, inside the image
 `tests/e2e/catalog/Dockerfile` pins (fonts, fontconfig, the libraries Electron draws with) so a
-capture is the same on any machine, and the `catalog` workflow uploads the captures to Argos.
+capture is the same on any Linux x86_64 host, and the `catalog` workflow uploads the captures to Argos.
+A capture paints only what lies inside the window, so each page is laid out in a 3000x2400 window
+and the window then grows to hold the page, the height alone unless the page is wider too
+(`tests/e2e/catalog/captureWindow.ts`). A page past the cap there is left out and fails the run
+rather than coming out black below the fold; the Xvfb screen in `capture.sh` is sized to the cap.
+
+**Comparing the catalog locally.** `pnpm catalog:compare [base-ref]` answers "which pages does my
+change move?" before a push, on any host, macOS included. It captures the catalog twice on this
+machine: at the base (default: the merge base with `origin/main`), in a worktree under
+`test-results/catalog-compare/` installed from pnpm's store (inside the repository because pnpm
+uses its store only from the same filesystem, and a tmpfs `/tmp` would download every package into
+memory), and in the working tree as it is, uncommitted changes included. Each
+side builds its own desktop app and runs its own `catalog.spec.ts`, as each side's CI build does.
+The two sets are diffed as Argos diffs (argos-ci.com/docs/diff-algorithm): odiff's colour measure
+through pixelmatch; two pictures of different sizes on a canvas the larger width by the larger
+height, one smaller in both dimensions first enlarged to fit keeping its aspect ratio (sharp's
+`contain`, Lanczos-3), the rest transparent, which odiff takes as white; then Argos's two passes on
+that canvas, anti-aliasing ignored, each with its minimum, the larger count deciding. A change of
+size alone decides nothing. `test-results/catalog-compare/report/index.html` lists the changed,
+added and removed pages with a slider, a flip, side by side and the diff, both sides drawn on one
+canvas so neither shows past the other's edge. It exits 0 when nothing differs, 1 when something
+does and 2 when it could not compare or was interrupted, so it can gate a script. A capture whose
+spec passed and wrote every page it listed is cached under `test-results/catalog-compare/cache/`,
+keyed by commit, tier, host and build environment (the repo-root `.env` and every `EXPO_PUBLIC_*`
+variable), so a second run against the same base captures only the working tree; `--refresh`
+captures again, `--tier nightly` compares every page. Ctrl-C stops the whole command, removing
+the base's worktree and any half-written capture.
+
+Both sides are drawn by this machine, so its fonts and rendering cancel out: the pictures are not
+the ones Argos holds, and a difference only Linux draws (a font fallback, say) is Argos's to find.
+Every launch is hidden: `SESSION_E2E_HIDDEN=1` makes desktop main create its window unshown but
+painting, larger than the screen, at 1x, and on macOS out of the Dock so that nothing takes focus
+(`apps/desktop/src/main/hiddenRun.ts`; a packaged build ignores it). The harness stops a build that
+shows its window anyway, and a base from before hidden runs is given that change to desktop main
+before it is built.
 
 `sessionTest` is the only way to declare a test and the only thing that opens or closes a
 client. Its `clients` descriptor decides the platforms _and_ the tags, so a spec asking for two
@@ -412,9 +461,9 @@ Two things cost real time on a first clone, and neither is discoverable from a f
 ~/pro/contribs/libsession-util/.git/modules/<path>` per submodule borrows the objects already on
   disk; a plain recursive init downloads about a gigabyte.
 - **gmplib.org drops connections often enough to matter**, and it is where gmp comes from.
-  `-DLOCAL_MIRROR=https://oxen.rocks/deps` is tried ahead of every dependency's own mirror, so one
-  flag takes the whole static build off the upstream hosts rather than just gmp. The hashes are
-  checked either way.
+  `-DLOCAL_MIRROR=https://builds.session.codes/deps` is tried ahead of every dependency's own
+  mirror, so one flag takes the whole static build off the upstream hosts rather than just gmp.
+  Every libsession build here passes it; the hashes are checked either way.
 
 Which compiler, and why, is in the decision log. How to build and run each client is the `run`
 skill's.
@@ -429,6 +478,76 @@ Every shared file is checked two or three ways per run, with no synthetic profil
 ## Decision log
 
 Append one paragraph per decision. Undocumented decisions are what rot.
+
+- **2026-10-29 - libsession sends from its own copy of every file.** A file sent without
+  `takeFile` is copied beneath the cache directory once the message is stored, on libsession's
+  disk thread, so nothing reads the person's file after that: a desktop send draws its own
+  pictures while they upload, as a mobile one does, and a file moved or deleted after Send no
+  longer fails the message. Sending files needs a cache directory. The cost is one copy of each
+  file a desktop send carries.
+
+- **2026-10-28 - libsession makes a rendition only when a viewer asks for one.** The first
+  `fetch_rendition` of a picture with none queues it, ahead of other derived images since somebody
+  is looking, and is refused; `Attachment.hasRendition` turns true by update once it is made.
+  Nothing else asks, so a picture the viewer can open only through a rendition (AVIF) opens on it
+  anyway: the viewer shows it loading and loads the rendition url out of sight, which is the ask
+  on every platform, and draws the rendition once it lands. The fake makes one only when asked.
+
+- **2026-10-16 - A send names its files by path, and libsession reads them.** No bytes cross
+  for a send either: `sendMessage` carries each staged pick's path, the name it was picked under
+  and its declared type, and libsession stores the message `uploading`, refuses on the spot a
+  path that is not a readable, non-empty file, and reads only its own copy of each file from
+  then on. A mobile pick is the app's own copy, so it goes with `takeFile` and becomes
+  libsession's: moved into its storage and deleted when the message no longer needs it. A desktop
+  pick is the person's own file, so it never does: libsession copies it into the same storage
+  off the calling thread, and the person's file can then go. Desktop main admits a send only for paths the preload
+  resolved from a `File` picked or dropped in that window, counted per pick and released as the
+  tray lets go, and strips `takeFile` whatever the page said: libsession copies whatever path
+  it is given, so without that a page script could send any file this user can read. Staging
+  refuses a file past the file server's limit unless it is a picture this build re-encodes, which
+  libsession shrinks until it fits; HEIC counts only on iOS and macOS, where ImageIO decodes it.
+
+- **2026-10-17 - One decode budget for an original or a rendition, on every platform.**
+  `bridge-core`'s `decode_bound.hpp` holds the budget (3072x2048 pixels) and the 100 MP
+  whole-decode ceiling, past which a GIF or PNG is not decoded at all, since a decoder may hold it
+  at source size.
+  `decode_plan` reads a picture's header with libsession's `image::probe`, decoding nothing, into a
+  plan: the longest edge to decode at, whether to draw it still, and whether it is past the
+  ceiling. Anything past the budget is drawn still, its first frame; an animation within it
+  animates, at a few canvases rather than one per frame (one on iOS, about four on Android, where
+  Fresco prepares frames ahead). A GIF is measured by its declared screen as well as its frames,
+  because libnsgif ignores a screen past 2048 and every other decoder allocates it. Bytes whose
+  header libsession cannot read are unmeasured: the largest square the budget allows, still.
+
+  Android plans at decode time, from the bytes Fresco holds, read in place, and decodes under a copy
+  of the request with the plan applied: `ResizeOptions` capping the sample and `forceStaticImage`,
+  or a failed load past the ceiling, where Skia may hold a GIF's frame or an interlaced PNG at
+  source size however it samples. For a still, Fresco's own 2048 cap is the tighter bound. iOS
+  applies the same rules through ImageIO's reading of the header and refuses past the ceiling,
+  since ImageIO holds both whole. Chromium can be told neither a size nor a first frame, so desktop
+  main serves an original past the budget as libsession's rendition wherever there is one. Without
+  one it serves the original whole, as before, which stays the case for what libsession never
+  renders (an APNG, an animation of too many frames, a large animated WebP, a GIF of 58 to 100 MP);
+  past the ceiling the thumbnail stands in instead, else a failed, uncached load. A viewer open on
+  the file takes the rendition once it lands. A rendition, a thumbnail, a video and
+  an unmeasured picture pass. The fake mirrors the plan in TypeScript, reading only a JPEG's frame
+  header since it serves nothing else, and `DECODE_PLAN_VECTORS` holds it and the C++ to one table.
+
+- **2026-10-16 - The viewer draws libsession's rendition; an original file is only exported.**
+  libsession makes a rendition of a displayable picture it caches, when a viewer asks (see
+  2026-10-28): the whole picture as a JPEG, or a WebP when it has transparency or moves, at most 2048 px and with
+  no metadata, reported as `Attachment.hasRendition`. The viewer draws it once there is one and the
+  file until then; export always writes the file. It is served like a thumbnail, from the cache
+  only, under its own `rendition` authority, and typed by its bytes because libsession says only
+  that it is one of the two. Neither mobile loader caches one, as neither caches an original. An
+  animation's rendition is an animated WebP, so Android links Fresco's animated WebP decoder,
+  which the Expo template leaves out, and iOS reads the WebP's own frame timing, which
+  `RCTAnimatedImage` would otherwise take as a GIF's and play once at ten frames a second.
+
+  A picture its sender sent as the original file, metadata included, is `Attachment.originalFile`:
+  never opened in the viewer, left out of its paging, and exported as a plain file rather than to
+  Photos, though its row and its album tile still draw its thumbnail. libsession makes it no
+  rendition.
 
 - **2026-10-08 - Mobile exports go where the legacy clients put them.** libsession writes the
   export into the app's cache, the files port admits only that staged path, and the staged file
@@ -810,32 +929,49 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   follow drawn media in one process needs a per-database epoch in the URL instead.
 
 - **2026-10-09 - A tile draws libsession's thumbnail; only the viewer draws the file.**
-  libsession makes a square JPEG of each displayable picture it caches - cropped to cover, EXIF
-  orientation applied, first frame of an animation, alpha on a checkerboard, quality 90 - on a
-  worker, and reports it as `Attachment.hasThumbnail` in a later `messages-updated`. Its side is at
-  most the client's thumbnail edge, which each app opens the bridge with as `ALBUM_WIDTH` times its
-  display density and `setThumbnailEdge` can store over, clamped to 64-1024 so a decoded one stays
-  within 4 MiB. It lives in the original's cache entry and is evicted with it. Generating it there
-  rather than in each loader gives every platform the same picture from one decoder, libvips under
-  libsession's own loader whitelist, and leaves the loaders two paths: a thumbnail, checked to be a
-  JPEG and reduced while decoding but never below its view, a file row's glyph far less than a tile
-  (Fresco's decoder and downsampling on Android, the same as an original's, asked for 4/3 the view
-  because Fresco's JPEG sample can land up to that far below its target; ImageIO's maximum pixel
-  size on iOS, only where the view needs half of it or less), cached by URL and view size; and the
-  viewer's original, which keeps the pixel budget, the GIF/PNG refusal, animation and Fresco's
-  downsampling. Drawing never starts a download: a tile's URL used to be the original's, and
-  resolving it fetched the file, which under `image-attachments` or `all` spent data on any older
-  message that scrolled past. Now every URL is served from the cache only (`attachment_data_cached`,
-  refused as "is not downloaded"), and a file arrives only by libsession's own rule when its message
-  does, or when somebody taps. This supersedes the 2026-09-15 entry's sentence on progress: drawing
-  a picture reports none. A viewer whose file was evicted just before it loaded draws its
-  unavailable state rather than downloading again. A tile has no failed face: a thumbnail exists
-  only of a picture that decoded, so one that does not load was evicted under it and the placeholder
-  is the truth. The fake serves thumbnails `pnpm fake-media:fetch` makes of its dev photographs at
-  720 px.
+  libsession makes a JPEG of each displayable picture it caches in the picture's own shape - cropped
+  to its centre at 21:9 when wider than that either way up, then the client's thumbnail edge tall
+  and never enlarged, EXIF orientation applied, first frame of an animation, alpha on a
+  checkerboard, quality 90 - on a worker, and reports it as `Attachment.hasThumbnail` in a later
+  `messages-updated`, with its size as `thumbnailWidthPx` and `thumbnailHeightPx` so a tile can be
+  shaped before it loads. A staged file's thumbnail is made the same way. Its height is the client's
+  thumbnail edge, which each app opens the bridge with as `thumbnailEdgePxFor`: the wide layout's
+  tallest tile times the densest display's scale, since a tablet can switch layout while running.
+  `setThumbnailEdge` can store over it, clamped to 64-1024 so a decoded one stays within about 9.3
+  MiB. A tile draws it with `fit="cover"`. It lives in the original's cache entry and is
+  evicted with it. Generating it there rather than in each loader gives every platform the same
+  picture from one decoder, libvips under libsession's own loader whitelist, and leaves the loaders
+  two paths: a thumbnail, checked to be a JPEG and reduced while decoding but never below its view,
+  a file row's glyph far less than a tile (Fresco's decoder and downsampling on Android, the same as
+  an original's, asked for 4/3 the view because Fresco's JPEG sample can land up to that far below
+  its target; ImageIO's maximum pixel size on iOS, only where the view needs half of it or less),
+  cached by URL and view size; and the viewer's original, which keeps the pixel budget, the GIF/PNG
+  refusal, animation and Fresco's downsampling. Drawing never starts a download: a tile's URL used
+  to be the original's, and resolving it fetched the file, which under `image-attachments` or `all`
+  spent data on any older message that scrolled past. Now every URL is served from the cache only
+  (`attachment_data_cached`, refused as "is not downloaded"), and a file arrives only by
+  libsession's own rule when its message does, or when somebody taps. This supersedes the 2026-09-15
+  entry's sentence on progress: drawing a picture reports none. A viewer whose file was evicted just
+  before it loaded draws its unavailable state rather than downloading again. A tile has no failed
+  face: a thumbnail exists only of a picture that decoded, so one that does not load was evicted
+  under it and the placeholder is the truth. The fake serves thumbnails `pnpm fake-media:fetch`
+  makes of its dev photographs the same way at 720 px tall, 960x720 for every one, which is the size
+  it reports.
 
-- **2026-10-26 - The device tier runs on self-hosted runners.** `devices` boots fresh emulators on
-  session-qa-2 and fresh simulators on debuggernaut, each with an adb server, Metro port and Appium
-  of its own beside a developer's on the same host. Android runs on every pull request that can
-  change what a phone draws; iOS only nightly, because the Mac is shared and its builds are long.
-  This supersedes the 2026-09-04 entry for the device tier; the full tier stays manual.
+- **2026-10-19 - A message's gallery/list choice is libsession's, stored per message.**
+  `Message.gallery` carries libsession's decision, stored on this device and never synced. It is on
+  by default for a `galleryViewable` message stored by this libsession; a database from earlier
+  builds may hold such sets stored as lists, and is not migrated. The view switch calls
+  `setGallery`, which announces the change as `messages-updated` so only that message redraws. The
+  screens keep no choice of their own: one held in screen state was lost when the conversation
+  closed. Where libsession says gallery and this client cannot draw the set (AVIF, `image/pjpeg`),
+  the list wins and the stored value is left alone, so a build that can draw it still shows the
+  gallery.
+
+- **2026-11-17 - The device tier runs on self-hosted runners.** `devices` boots fresh emulators on
+  the runner labelled `session-devices` and fresh simulators on the one labelled `session-ios`,
+  each with an adb server, Metro port and Appium of its own beside a developer's on the same host.
+  The label holds one runner, so device jobs on a host never run side by side: their ports are
+  fixed. Android runs on every pull request that can change what a phone draws; iOS only nightly,
+  because the Mac is shared and its builds are long. This supersedes the 2026-09-04 entry for the
+  device tier; the full tier stays manual.

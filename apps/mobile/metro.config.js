@@ -37,5 +37,14 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ]
 config.resolver.disableHierarchicalLookup = true
+/**
+ * Not crawled: `pnpm catalog:compare` checks a second copy of the repo out under it, installed
+ * modules included, and watching the whole workspace would index all of it.
+ */
+const testResults = path.join(workspaceRoot, 'test-results') + path.sep
+config.resolver.blockList = [
+  ...[config.resolver.blockList ?? []].flat(),
+  new RegExp(`^${testResults.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+]
 
 module.exports = config

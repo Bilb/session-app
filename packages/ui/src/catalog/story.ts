@@ -10,6 +10,12 @@ interface Sensitivity {
   rtl?: boolean | undefined
   /** Lays itself out by the width it is given. */
   responsive?: boolean | undefined
+  /**
+   * Draws a role whose colour each theme picks for itself rather than by light or dark alone --
+   * `surfaceInk` on `surfaceInverted`, say -- so a pull request draws it in every theme, not only
+   * the two classic ones.
+   */
+  theme?: boolean | undefined
 }
 
 export interface Story<P> {
@@ -22,6 +28,8 @@ export interface Story<P> {
   sensitive?: Sensitivity | undefined
   /** The cell's width, in px, where the page does not set one. */
   width: number
+  /** Reads `CatalogPictures`, so its page waits for the showcase's photographs. */
+  pictures?: boolean | undefined
   render: (props: P) => ReactNode
 }
 

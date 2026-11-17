@@ -1,3 +1,4 @@
+import { ALBUM_WIDTH } from '@session/basic-types'
 import { act } from '@testing-library/react'
 import { createElement } from 'react'
 import { userEvent } from '@testing-library/user-event'
@@ -48,6 +49,11 @@ function picture(index: number, filename?: string): Attachment {
     voiceMessage: false,
     hasThumbhash: false,
     hasThumbnail: false,
+    thumbnailWidthPx: 0,
+    thumbnailHeightPx: 0,
+    hasRendition: false,
+    renditionRefused: false,
+    originalFile: false,
     uploaded: true,
     availability: 'absent',
     fetchDoneBytes: 0,
@@ -70,6 +76,7 @@ function album(
   return (
     <MessageAlbum
       message={shown}
+      width={ALBUM_WIDTH}
       onOpen={onOpen}
       fetchFor={(attachment) => ({
         state: states[attachment.index] ?? 'idle',
@@ -164,6 +171,7 @@ describe('an album’s tiles', () => {
         media: {
           urlFor: () => null,
           thumbhashUrlFor: () => null,
+          renditionUrlFor: () => null,
           thumbnailUrlFor: ({ index }) => `file:///thumbnail-${String(index)}.jpg`,
         },
       }),

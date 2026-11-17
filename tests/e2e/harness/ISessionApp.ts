@@ -1,17 +1,6 @@
 import type { ElementId } from '@session/test-ids'
 
 /**
- * What a test may ask of a running client, whichever one it is.
- *
- * Every member here must use platform-neutral signatures only - primitives, enums and plain
- * data. No Playwright Locator and no Appium element type may appear in this file. Anything
- * one platform cannot do today belongs in a narrower interface until every platform can
- * satisfy it, at which point it is promoted here.
- *
- * That rule is what keeps a flow spec honest: if it can only be written against one
- * platform's vocabulary, it is not a shared flow.
- */
-/**
  * One element as assistive technology reads it, in terms every platform's tree can answer.
  *
  * Desktop reads ARIA, Android UiAutomator2's node, iOS XCUITest's element: each driver maps its
@@ -49,6 +38,17 @@ export interface AuditIssue {
   message: string
 }
 
+/**
+ * What a test may ask of a running client, whichever one it is.
+ *
+ * Every member here must use platform-neutral signatures only - primitives, enums and plain
+ * data. No Playwright Locator and no Appium element type may appear in this file. Anything
+ * one platform cannot do today belongs in a narrower interface until every platform can
+ * satisfy it, at which point it is promoted here.
+ *
+ * That rule is what keeps a flow spec honest: if it can only be written against one
+ * platform's vocabulary, it is not a shared flow.
+ */
 export interface ISessionApp {
   readonly platform: 'desktop' | 'android' | 'ios'
   /** Which account this client is signed into, for failure messages and screenshots. */
@@ -83,7 +83,8 @@ export interface ISessionApp {
    */
   describe(id: ElementId, at?: number): Promise<AccessibleNode | null>
   /**
-   * What the platform's own checker finds serious or critical on screen, or under `scope`.
+   * What the platform's own checker finds serious or critical on screen, or under `scope`
+   * (on iOS, XCTest's own findings always cover the whole screen).
    *
    * Only those two impacts, so an empty answer is the pass a spec asserts: lesser findings are
    * the checker's opinion rather than a barrier to anyone.

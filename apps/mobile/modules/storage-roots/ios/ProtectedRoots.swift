@@ -23,6 +23,9 @@ enum ProtectedRoots {
     let logs: URL
     /// Decrypted copies of attachments on their way to the share sheet.
     let exports: URL
+    /// Copies of what was picked, until a send takes them. Not in Caches: iOS may empty that while
+    /// they are still staged.
+    let staged: URL
     /// False when the app-group container was unavailable and Application Support was used.
     let inAppGroup: Bool
   }
@@ -52,6 +55,7 @@ enum ProtectedRoots {
         data: container.appendingPathComponent("session", isDirectory: true),
         logs: container.appendingPathComponent("logs", isDirectory: true),
         exports: exports,
+        staged: container.appendingPathComponent("staged", isDirectory: true),
         inAppGroup: true
       )
     }
@@ -62,6 +66,7 @@ enum ProtectedRoots {
       data: support.appendingPathComponent("session", isDirectory: true),
       logs: support.appendingPathComponent("logs", isDirectory: true),
       exports: exports,
+      staged: support.appendingPathComponent("staged", isDirectory: true),
       inAppGroup: false
     )
   }
@@ -72,7 +77,7 @@ enum ProtectedRoots {
   @discardableResult
   static func ensure() -> [String] {
     var failures: [String] = []
-    for root in [paths.data, paths.logs, paths.exports] {
+    for root in [paths.data, paths.logs, paths.exports, paths.staged] {
       do {
         try FileManager.default.createDirectory(
           at: root,

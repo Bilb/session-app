@@ -1,10 +1,13 @@
 import { friendsWithAttachments } from './attachments'
 import { backlog } from './backlog'
 import type { FakeSessionClient } from './FakeSessionClient'
+import { dateStates } from './dates'
 import { crowd, newcomer, type FakeSetup } from './fixtures'
 import { photoFileNames, thumbnailFileNames } from './media'
 import { rowShowcase } from './rows'
 import { showcase } from './showcase'
+import { keyMissing, keyUnavailable, type DatabaseKeyError } from '../databaseKey'
+import { transcripts } from './transcripts'
 import type { SessionClient } from '../types'
 import { unopenable } from './unopenable'
 import type { FakeWorld } from './world'
@@ -23,6 +26,8 @@ export const FAKE_FIXTURES = [
   'newcomer',
   'crowd',
   'rows',
+  'dates',
+  'transcripts',
 ] as const
 
 export type FakeFixture = (typeof FAKE_FIXTURES)[number]
@@ -45,8 +50,44 @@ export interface FakeDevEnv {
   EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY?: string | undefined
   /** N runs the fake's clock N times slower. See `driveFakeClock`. */
   EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN?: string | undefined
-  /** `1` serves a database that will not open, for the failure screen. */
+  /** One of `FAKE_FAILED_STARTS`: a start that fails, and how, for the failure screen. */
   EXPO_PUBLIC_SESSION_FAKE_FAILED_START?: string | undefined
+}
+
+/**
+ * The ways `EXPO_PUBLIC_SESSION_FAKE_FAILED_START` can fail a start, each refused as the real path
+ * refuses it, so the startup-failure screen draws each class it tells apart:
+ *
+ * - `1`: SQLite's "file is not a database", a database opened with the wrong key. Unreadable.
+ * - `corrupt`: "database disk image is malformed". Unreadable.
+ * - `locked`: "database is locked", another process holding it. Transient.
+ * - `full`: "database or disk is full". Transient.
+ * - `key-unavailable`: the key is stored but the keychain will not give it up now. Transient.
+ * - `key-missing`: the key is gone and the database is still there. Unreadable.
+ *
+ * Clear Device works on every one of them: a discard lifts the refusal.
+ */
+const FAKE_FAILED_STARTS = {
+  '1': 'file is not a database',
+  corrupt: 'database disk image is malformed',
+  locked: 'database is locked',
+  full: 'database or disk is full',
+  'key-unavailable': keyUnavailable('the keychain is locked (the fake)'),
+  'key-missing': keyMissing(),
+} as const satisfies Record<string, string | DatabaseKeyError>
+
+type FakeFailedStart = keyof typeof FAKE_FAILED_STARTS
+
+/** Unset or empty as undefined; a value that is not one of `FAKE_FAILED_STARTS` is loud. */
+function fakeFailedStart(raw: string | undefined): string | DatabaseKeyError | undefined {
+  const text = raw?.trim()
+  if (text === undefined || text === '') return undefined
+  if (Object.hasOwn(FAKE_FAILED_STARTS, text)) return FAKE_FAILED_STARTS[text as FakeFailedStart]
+  // Loud rather than a working start: a typo would otherwise look like the failure not happening.
+  throw new Error(
+    `EXPO_PUBLIC_SESSION_FAKE_FAILED_START=${text} is not a failure; use one of ` +
+      Object.keys(FAKE_FAILED_STARTS).join(', '),
+  )
 }
 
 /**
@@ -100,6 +141,10 @@ export function pickFakeFixture(env: FakeDevEnv): FakeSetup & { fixture: FakeFix
       return { fixture, ...crowd({ peers: peers ?? 100, history: history ?? 1 }) }
     case 'rows':
       return { fixture, ...rowShowcase() }
+    case 'dates':
+      return { fixture, ...dateStates() }
+    case 'transcripts':
+      return { fixture, ...transcripts() }
     case 'friends':
       return { fixture, ...friendsWithAttachments(['Alice', 'Bob'], { history: 4 }) }
   }
@@ -160,6 +205,7 @@ export interface DevFake {
  * really arrive are drawn right.
  */
 export function startDevFake(env: FakeDevEnv, photos: DevPhotos): DevFake {
+  const failure = fakeFailedStart(env.EXPO_PUBLIC_SESSION_FAKE_FAILED_START)
   const missing = [...photoFileNames(), ...thumbnailFileNames()].filter((name) => !photos.has(name))
   if (missing.length > 0) {
     throw new Error(
@@ -174,13 +220,15 @@ export function startDevFake(env: FakeDevEnv, photos: DevPhotos): DevFake {
 
   driveFakeClock(world, env.EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN)
 
+  // The real bridge attaches the network it was opened with as soon as there is an account. The
+  // fake is opened with none, so the dev entry asks here: a fixture with an account goes online at
+  // once, and `newcomer` once onboarding makes one.
+  void alice.attachNetwork({ netid: 'mainnet' })
+
   // The failure screen is otherwise reachable only with a database somebody has already broken.
   // `unopenable` refuses with libsession's own reason and lets a discard through, so the screen's
   // Clear Device works here too.
-  const served =
-    env.EXPO_PUBLIC_SESSION_FAKE_FAILED_START === '1'
-      ? unopenable(alice, 'file is not a database')
-      : alice
+  const served = failure === undefined ? alice : unopenable(alice, failure)
 
   return { world, alice, served }
 }

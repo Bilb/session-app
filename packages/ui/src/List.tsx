@@ -1,7 +1,16 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useState } from 'react'
 import { FlatList } from 'react-native'
+import { isWeb } from 'tamagui'
 
 import { SPACING } from '@session/theme-tokens'
+
+import {
+  ListFocus,
+  ListFocusContext,
+  ListRowKey,
+  type ListFocusEntry,
+  type ListRowMenu,
+} from './listFocus'
 
 /**
  * A long list, drawn a screenful at a time.
@@ -41,6 +50,19 @@ export interface ListProps<T> {
   fitsContent?: boolean
   /** Around the rows, inside the scroller. */
   paddingHorizontal?: keyof typeof SPACING
+  /** The row to open on. Only with `itemHeight`, which is what places it before it is drawn. */
+  initialScrollIndex?: number | undefined
+  /**
+   * Makes the list one tab stop on the desktop, with Up and Down moving between rows; a no-op on
+   * native. The stop is whatever in each row calls `useListStop`; this says which row Tab enters
+   * on before any has been focused.
+   */
+  rovingFocus?: ListFocusEntry | undefined
+  /**
+   * With `rovingFocus`: opens a row's menu, against the element that is its stop, on Enter or
+   * Space on that element, or the Menu key or Shift+F10 anywhere in the row.
+   */
+  onRowMenu?: ListRowMenu | undefined
 }
 
 const FILLS = { flex: 1 } as const
@@ -58,10 +80,36 @@ export function List<T>({
   onEndReached,
   fitsContent = false,
   paddingHorizontal,
+  initialScrollIndex,
+  rovingFocus,
+  onRowMenu,
 }: ListProps<T>) {
+  // TODO(#533): keyboard on iPad and the iPad app on Mac. Full Keyboard Access reaches a row only
+  // as a full-width accessibility element with the button trait, which hides the row's own
+  // controls (they would become custom actions); a bubble-shaped highlight and Up/Down need
+  // native code.
+  const [focus] = useState(() =>
+    rovingFocus === undefined || !isWeb ? null : new ListFocus(rovingFocus, inverted ?? false),
+  )
+
+  useLayoutEffect(() => {
+    focus?.setKeys(data.map(keyExtractor))
+  }, [focus, data, keyExtractor])
+
+  useLayoutEffect(() => {
+    if (focus !== null) focus.rowMenu = onRowMenu ?? null
+  }, [focus, onRowMenu])
+
   const renderRow = useCallback(
-    ({ item, index }: { item: T; index: number }) => renderItem(item, index),
-    [renderItem],
+    ({ item, index }: { item: T; index: number }) =>
+      focus === null ? (
+        renderItem(item, index)
+      ) : (
+        <ListRowKey.Provider value={keyExtractor(item, index)}>
+          {renderItem(item, index)}
+        </ListRowKey.Provider>
+      ),
+    [focus, renderItem, keyExtractor],
   )
 
   const contentContainerStyle = useMemo(
@@ -81,14 +129,18 @@ export function List<T>({
     [itemHeight],
   )
 
-  return (
+  const list = (
     <FlatList
       style={fitsContent ? FITS_CONTENT : FILLS}
       {...(contentContainerStyle === undefined ? {} : { contentContainerStyle })}
+      {...(focus === null ? {} : { ref: focus.attach })}
       data={data}
       renderItem={renderRow}
       keyExtractor={keyExtractor}
       {...(itemHeight === undefined ? {} : { getItemLayout })}
+      {...(itemHeight === undefined || initialScrollIndex === undefined
+        ? {}
+        : { initialScrollIndex })}
       {...(empty == null ? {} : { ListEmptyComponent: empty })}
       {...(header == null ? {} : { ListHeaderComponent: header })}
       {...(inverted === undefined ? {} : { inverted })}
@@ -101,5 +153,10 @@ export function List<T>({
       {...(testID === undefined ? {} : { testID })}
       {...(onEndReached === undefined ? {} : { onEndReached, onEndReachedThreshold: 0.5 })}
     />
+  )
+  return focus === null ? (
+    list
+  ) : (
+    <ListFocusContext.Provider value={focus}>{list}</ListFocusContext.Provider>
   )
 }

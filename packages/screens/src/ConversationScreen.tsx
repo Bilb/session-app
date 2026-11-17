@@ -1,26 +1,83 @@
-import type { ConversationId } from '@session/client'
-import { useConversation, useMessages, useSessionActions } from '@session/state'
-import { tr } from '@session/localization'
+import { requirePorts } from '@session/app'
+import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
+import type { ConversationId, Message } from '@session/client'
+import {
+  useAttachmentUploadLimit,
+  useConversation,
+  useMessages,
+  useSessionActions,
+} from '@session/state'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, Input, List, Screen, Separator, Text, XStack, YStack } from '@session/ui'
-import { useMemo, useState } from 'react'
+import { DropOverlay, DropZone, elementMenuAnchor, List, Screen, Text, YStack } from '@session/ui'
+import { useCallback, useMemo, useState } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
-import { createViewChoices } from './viewChoices'
-import { ConversationUiContext, type ConversationUi } from './conversationUi'
+import { Composer } from './Composer'
+import { outgoingAttachment } from './staging'
+import { useShowAfter } from './useShowAfter'
+import { useStaging } from './useStaging'
+import { ConversationUiContext, useConversationUi, type ConversationUi } from './conversationUi'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
+import { MessageMenu, type MessageMenuTarget } from './MessageMenu'
 import { MessageRow } from './MessageRow'
 import { AutoDownloadPrompt } from './AutoDownloadPrompt'
 import { BackButton } from './BackButton'
-import { conversationTitle } from './conversationTitle'
-import { useTopBarInsets } from './shell/pane'
+import { ConversationHeader } from './ConversationHeader'
+import { conversationAvatarName, conversationTitle } from './conversationTitle'
+import { DateHeaderRow } from './DateHeaderRow'
+import { showsDateHeader } from './dateHeaders'
+import { TranscriptWidth } from './TranscriptWidth'
+
+const messageKey = (message: Message) => String(message.id)
+
+/** The messages, oldest first, each under its date where the day changes. */
+function Transcript({
+  conversationId,
+  messages,
+}: {
+  conversationId: ConversationId
+  messages: readonly Message[]
+}) {
+  const { openMenu } = useConversationUi()
+  // A row's key is its message's id; see `messageKey`.
+  const openRowMenu = useCallback(
+    (key: string, row: unknown) => {
+      elementMenuAnchor(row, (anchor) => {
+        if (anchor !== null) openMenu(Number(key), anchor)
+      })
+    },
+    [openMenu],
+  )
+  return (
+    // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
+    <List
+      data={messages}
+      keyExtractor={messageKey}
+      onRowMenu={openRowMenu}
+      // TODO: enter on the oldest unread message once libsession reports where reading stopped;
+      // it only gives a conversation's unread count.
+      rovingFocus="last"
+      renderItem={(message, index) => (
+        <YStack paddingHorizontal="$md" paddingBottom="$sm">
+          {showsDateHeader(messages[index - 1], message) ? (
+            <DateHeaderRow timestampMs={message.timestamp} />
+          ) : null}
+          <MessageRow conversationId={conversationId} messageId={message.id} index={index} />
+        </YStack>
+      )}
+    />
+  )
+}
 
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
-  const topBarInsets = useTopBarInsets()
   const conversation = useConversation(conversationId)
   const { messages, ready } = useMessages(conversationId)
+  const showLoading = useShowAfter(!ready)
   const actions = useSessionActions()
-  const [draft, setDraft] = useState('')
+  const staging = useStaging((file) => actions.attachmentSendPlan(file.path, file.contentType))
+  const [dropping, setDropping] = useState(false)
+  const uploadLimitBytes = useAttachmentUploadLimit()
   // Unset means nobody has been asked what this conversation should fetch unprompted, which is
   // not the same as having been asked and said no. Asked once, on the first attachment fetched.
   // A request made while the conversation is still loading is held, and asked once it is known
@@ -28,18 +85,10 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const [prompting, setPrompting] = useState(false)
   const autoDownload = conversation?.autoDownload
   const asking = prompting && conversation !== undefined && autoDownload === undefined
-  /**
-   * Which shape each message's attachments were last asked for, keyed by message id.
-   *
-   * Here rather than in the message row, because the transcript is a windowed list: a row
-   * scrolled far enough away is unmounted, and state held inside one is a choice that undoes
-   * itself the moment somebody scrolls down and back. Dropped with the conversation, which is the
-   * right scope - it is a way of reading one message, not a setting.
-   */
-  const [views] = useState(createViewChoices)
   // One viewer and one sheet for the whole transcript, so two can never be open at once.
   const [viewer, setViewer] = useState<ViewerTarget | null>(null)
   const [sheet, setSheet] = useState<number | null>(null)
+  const [menu, setMenu] = useState<MessageMenuTarget | null>(null)
 
   // Memoised so typing in the composer does not re-render every message through the context.
   const ui = useMemo(
@@ -48,94 +97,75 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
       requestAutoDownloadPrompt: () => {
         if (autoDownload === undefined) setPrompting(true)
       },
-      views,
       openViewer: (messageId, index) => {
         setViewer({ messageId, index })
       },
       openSheet: setSheet,
+      openMenu: (messageId, anchor) => {
+        setMenu({ messageId, anchor })
+      },
     }),
-    [conversationId, autoDownload, views],
+    [conversationId, autoDownload],
   )
-
-  function send(): void {
-    const body = draft.trim()
-    if (body.length === 0) return
-    // Cleared straight away: libsession stores the row before the promise settles, so the
-    // message appears on its own and there is nothing to put back if this fails.
-    setDraft('')
-    void actions.send(conversationId, body)
-  }
 
   // The id stands in for the conversation as well as for the name: opening one from a route
   // beats the store hydrating it, and a header that says nothing for a moment is a header
   // that flickers.
-  const title = conversationTitle(conversation ?? { id: conversationId })
+  const named = conversation ?? { id: conversationId }
+  const title = conversationTitle(named)
 
   return (
     <ConversationUiContext.Provider value={ui}>
       <Screen testID={ELEMENT.conversation.screen}>
-        <XStack
-          paddingHorizontal="$md"
-          paddingVertical="$sm"
-          gap="$sm"
-          alignItems="center"
-          testID={ELEMENT.conversation.header}
-          {...topBarInsets}
+        <ConversationHeader
+          id={conversationId}
+          title={title}
+          avatarName={conversationAvatarName(named)}
+          back={<BackButton testID={ELEMENT.conversation.back} />}
+        />
+
+        <DropZone
+          // Refused while a send is out, as the tray's + is: the tray is the message's until then.
+          accepting={!staging.sending}
+          onActive={setDropping}
+          onDrop={(items, skipped) => {
+            void staging.take(requirePorts().files.droppedFiles(items), skipped + items.length)
+          }}
+          overlay={
+            // A conversation is reached only after the start that reads the limit.
+            dropping && uploadLimitBytes !== null ? (
+              <DropOverlay
+                title={tr('attachmentsAdd')}
+                hint={PENDING_COPY.attachmentsDropHint(
+                  MAX_ATTACHMENTS_PER_MESSAGE,
+                  isolate(formatBytes(uploadLimitBytes)),
+                )}
+                testID={ELEMENT.conversation.dropOverlay}
+              />
+            ) : undefined
+          }
         >
-          <BackButton testID={ELEMENT.conversation.back} />
-          <Text
-            size="$bodyLarge"
-            weight="semibold"
-            numberOfLines={1}
-            testID={ELEMENT.conversation.headerName}
-          >
-            {title}
-          </Text>
-        </XStack>
+          {ready ? (
+            <TranscriptWidth flex={1}>
+              <Transcript conversationId={conversationId} messages={messages} />
+            </TranscriptWidth>
+          ) : (
+            <YStack flex={1} padding="$md" alignItems="center" justifyContent="center">
+              {showLoading ? <Text tone="secondary">{tr('loading')}</Text> : null}
+            </YStack>
+          )}
 
-        <Separator borderColor="$bordersColor" />
-
-        {ready ? (
-          // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
-          <List
-            data={messages}
-            keyExtractor={(message) => String(message.id)}
-            renderItem={(message, index) => (
-              <YStack paddingHorizontal="$md" paddingBottom="$sm">
-                <MessageRow conversationId={conversationId} messageId={message.id} index={index} />
-              </YStack>
-            )}
+          <Composer
+            staging={staging}
+            onSend={(body, files) => {
+              const { picksAreCopies } = requirePorts().files
+              return actions.send(conversationId, {
+                body,
+                attachments: files.map((file) => outgoingAttachment(file, { picksAreCopies })),
+              })
+            }}
           />
-        ) : (
-          <YStack flex={1} padding="$md">
-            <Text tone="secondary">{tr('loading')}</Text>
-          </YStack>
-        )}
-
-        <XStack
-          padding="$md"
-          gap="$sm"
-          alignItems="center"
-          borderTopWidth={1}
-          borderTopColor="$bordersColor"
-        >
-          <Input
-            grow
-            value={draft}
-            onChangeText={setDraft}
-            placeholder={tr('message')}
-            onSubmit={send}
-            testID={ELEMENT.conversation.composerInput}
-          />
-          <Button
-            size="md"
-            onPress={send}
-            disabled={draft.trim().length === 0}
-            testID={ELEMENT.conversation.sendButton}
-          >
-            {tr('send')}
-          </Button>
-        </XStack>
+        </DropZone>
 
         <AttachmentSheet
           conversationId={conversationId}
@@ -154,6 +184,13 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
                 }}
                 onClose={() => {
                   setViewer(null)
+                }}
+              />
+              <MessageMenu
+                conversationId={conversationId}
+                target={menu}
+                onClose={() => {
+                  setMenu(null)
                 }}
               />
               {conversation === undefined ? null : (
@@ -183,6 +220,6 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
  */
 export function ConversationScreen({ conversationId }: { conversationId: string }) {
   // A wide layout keeps this mounted and changes only the id; the key gives each conversation
-  // its own draft, attachment views and open overlays.
+  // its own draft and open overlays.
   return <Conversation key={conversationId} conversationId={conversationId} />
 }

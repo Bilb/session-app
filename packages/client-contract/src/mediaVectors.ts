@@ -8,20 +8,29 @@
 export interface MediaUrlVector {
   url: string
   /** What it parses to, or null for a URL that must be refused. */
-  parsed: {
-    kind: 'attachment' | 'thumbhash' | 'thumbnail'
-    messageId: number
-    index: number
-  } | null
+  parsed: ParsedAttachmentVector | ParsedStagedVector | null
+}
+
+interface ParsedAttachmentVector {
+  kind: 'attachment' | 'thumbhash' | 'thumbnail' | 'rendition'
+  messageId: number
+  index: number
+}
+
+interface ParsedStagedVector {
+  kind: 'staged'
+  path: string
 }
 
 const S = 'session-media://'
+const STAGED = `${S}staged/`
 
 export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: `${S}attachment/1/0`, parsed: { kind: 'attachment', messageId: 1, index: 0 } },
   { url: `${S}attachment/42/7`, parsed: { kind: 'attachment', messageId: 42, index: 7 } },
   { url: `${S}thumbhash/42/0`, parsed: { kind: 'thumbhash', messageId: 42, index: 0 } },
   { url: `${S}thumbnail/42/1`, parsed: { kind: 'thumbnail', messageId: 42, index: 1 } },
+  { url: `${S}rendition/42/3`, parsed: { kind: 'rendition', messageId: 42, index: 3 } },
   {
     url: `${S}attachment/9007199254740991/0`,
     parsed: { kind: 'attachment', messageId: Number.MAX_SAFE_INTEGER, index: 0 },
@@ -43,6 +52,9 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   // An authority it does not serve, or one with more in it than the word.
   { url: `${S}thumbnails/42/1`, parsed: null },
   { url: `${S}Thumbnail/42/1`, parsed: null },
+  { url: `${S}renditions/42/1`, parsed: null },
+  { url: `${S}Rendition/42/1`, parsed: null },
+  { url: `${S}rendition/0/1`, parsed: null },
   { url: `${S}thumbnail:80/42/1`, parsed: null },
   { url: `${S}42/1`, parsed: null },
   { url: `${S}attachment:80/42/1`, parsed: null },
@@ -93,6 +105,72 @@ export const MEDIA_URL_VECTORS: readonly MediaUrlVector[] = [
   { url: S, parsed: null },
   { url: '', parsed: null },
   { url: 'not a url', parsed: null },
+
+  // A staged file: the absolute path as one segment, every byte outside the unreserved set
+  // escaped in uppercase hex.
+  {
+    url: `${STAGED}%2Fhome%2Fa%2Fphoto.jpg`,
+    parsed: { kind: 'staged', path: '/home/a/photo.jpg' },
+  },
+  {
+    url: `${STAGED}%2Fhome%2Fa%2F%D0%A4%D0%BE%D1%82%D0%BE%2F%C3%A7%C3%A0%20%E6%97%A5%E6%9C%AC.jpg`,
+    parsed: {
+      kind: 'staged',
+      path: '/home/a/\u0424\u043e\u0442\u043e/\u00e7\u00e0 \u65e5\u672c.jpg',
+    },
+  },
+  {
+    url: `${STAGED}%2Ftmp%2F%F0%9F%93%B7.png`,
+    parsed: { kind: 'staged', path: '/tmp/\u{1f4f7}.png' },
+  },
+  {
+    url: `${STAGED}C%3A%5CUsers%5CZo%C3%AB%5Cx.png`,
+    parsed: { kind: 'staged', path: 'C:\\Users\\Zo\u00eb\\x.png' },
+  },
+  { url: `${STAGED}C%3A%2Fx.png`, parsed: { kind: 'staged', path: 'C:/x.png' } },
+  { url: `${STAGED}%2Fa~b_c-d.e`, parsed: { kind: 'staged', path: '/a~b_c-d.e' } },
+  { url: `${STAGED}%2F100%25.jpg`, parsed: { kind: 'staged', path: '/100%.jpg' } },
+  { url: `${STAGED}c%3A%5Cx.png`, parsed: { kind: 'staged', path: 'c:\\x.png' } },
+
+  // One spelling per path: lowercase hex, an escaped unreserved byte, a raw reserved one.
+  { url: `${STAGED}%2fhome%2Fa.jpg`, parsed: null },
+  { url: `${STAGED}%2F%41.jpg`, parsed: null },
+  { url: `${STAGED}/etc/passwd`, parsed: null },
+  { url: `${STAGED}%2Fa b.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%2`, parsed: null },
+  { url: `${STAGED}%2Fa%GG`, parsed: null },
+  // UTF-8 only: NUL, overlong, surrogate, past U+10FFFF, truncated.
+  { url: `${STAGED}%2Fa%00.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%C0%AF.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%ED%A0%80.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%F4%90%80%80.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%E2%82`, parsed: null },
+  { url: `${STAGED}%2Fa%FF`, parsed: null },
+  // Absolute paths only, and none that reaches across a network or climbs out.
+  { url: `${STAGED}a.jpg`, parsed: null },
+  { url: `${STAGED}%5C%5Cserver%5Cshare%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%5C%5C%3F%5CC%3A%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%2F%2Fhost%2Fa.jpg`, parsed: null },
+  // Either slash separates on Windows, in any pairing.
+  { url: `${STAGED}%2F%5Chost%5Cshare%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%2F%5C%3F%5CC%3A%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}%5C%2Fhost%2Fa.jpg`, parsed: null },
+  { url: `${STAGED}%5Ca.jpg`, parsed: null },
+  { url: `${STAGED}C%3Ax.png`, parsed: null },
+  { url: `${STAGED}%2Fa%2F..%2Fb.jpg`, parsed: null },
+  { url: `${STAGED}%2Fa%2F.%2Fb.jpg`, parsed: null },
+  { url: `${STAGED}C%3A%5Ca%5C..%5Cb.jpg`, parsed: null },
+  { url: STAGED, parsed: null },
+  { url: `${S}staged`, parsed: null },
+  { url: `${STAGED}%2Fa.jpg?x=1`, parsed: null },
+  { url: `${STAGED}%2Fa.jpg#f`, parsed: null },
+  { url: `${STAGED}%2Fa.jpg\n`, parsed: null },
+  { url: `${S}Staged/%2Fa.jpg`, parsed: null },
+  { url: `${STAGED}%2F${'a'.repeat(4096)}`, parsed: null },
+  {
+    url: `${STAGED}%2F${'a'.repeat(4095)}`,
+    parsed: { kind: 'staged', path: `/${'a'.repeat(4095)}` },
+  },
 ]
 
 function ascii(text: string, length = 16): Uint8Array {
@@ -127,16 +205,17 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'image/gif', bytes: GIF89, served: 'image/gif' },
   { declared: 'image/webp', bytes: WEBP, served: 'image/webp' },
   { declared: 'image/bmp', bytes: BMP, served: 'image/bmp' },
-  { declared: 'image/apng', bytes: PNG, served: 'image/png' },
   { declared: 'video/mp4', bytes: MP4, served: 'video/mp4' },
   { declared: 'video/webm', bytes: WEBM, served: 'video/webm' },
   { declared: 'video/ogg', bytes: OGG, served: 'video/ogg' },
   { declared: 'Image/PNG; charset=binary', bytes: PNG, served: 'image/png' },
   { declared: '  image/png  ', bytes: PNG, served: 'image/png' },
   // Only space, tab, CR and LF are trimmed off a declared type, on every platform.
+  { declared: '\t\r\n image/png \n', bytes: PNG, served: 'image/png' },
   { declared: '\u00a0image/png', bytes: PNG, served: null },
-  { declared: '\fimage/png\v', bytes: PNG, served: null },
-  // A NUL ends no type: one carrying it is on no list.
+  { declared: '\fimage/png', bytes: PNG, served: null },
+  { declared: 'image/png\v', bytes: PNG, served: null },
+  // A NUL does not end the essence, so a type carrying one names nothing.
   { declared: 'image/png\0', bytes: PNG, served: null },
   { declared: 'image/png\0.exe', bytes: PNG, served: null },
 
@@ -149,6 +228,8 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'image/svg+xml', bytes: PNG, served: null },
 
   // A type that is not viewable.
+  // An APNG is a file, whatever its bytes.
+  { declared: 'image/apng', bytes: PNG, served: null },
   { declared: 'application/octet-stream', bytes: PNG, served: null },
   { declared: 'text/html', bytes: PNG, served: null },
   { declared: '', bytes: PNG, served: null },
@@ -165,4 +246,60 @@ export const SERVABLE_VECTORS: readonly ServableVector[] = [
   { declared: 'image/png', bytes: PNG.subarray(0, 4), served: null },
   { declared: 'image/webp', bytes: ascii('RIFF', 4), served: null },
   { declared: 'video/mp4', bytes: MP4.subarray(0, 7), served: null },
+]
+
+export interface DecodePlanVector {
+  /** The type the header was read as, and its size; 0 by 0 when unread. */
+  type: string
+  width: number
+  height: number
+  plan: {
+    edgePx: number
+    firstFrameOnly: boolean
+    exceedsWholeDecodeCeiling: boolean
+    measured: boolean
+  }
+}
+
+const WHOLE = { edgePx: 0, firstFrameOnly: false, exceedsWholeDecodeCeiling: false, measured: true }
+
+/** Past the budget: reduced to `edgePx` and drawn still. */
+function reduced(edgePx: number, exceedsWholeDecodeCeiling = false): DecodePlanVector['plan'] {
+  return { edgePx, firstFrameOnly: true, exceedsWholeDecodeCeiling, measured: true }
+}
+
+/**
+ * How a loader draws a picture from its header: the shim's `decode_plan` in C++, which Android
+ * applies and desktop main serves by, and the fake's mirror of it.
+ */
+export const DECODE_PLAN_VECTORS: readonly DecodePlanVector[] = [
+  // A phone screenshot, the largest iPad screen, and the budget's own size.
+  { type: 'image/png', width: 1179, height: 2556, plan: WHOLE },
+  { type: 'image/jpeg', width: 2752, height: 2064, plan: WHOLE },
+  { type: 'image/gif', width: 3072, height: 2048, plan: WHOLE },
+  { type: 'image/webp', width: 3072, height: 2048, plan: WHOLE },
+  { type: 'image/jpeg', width: 3073, height: 2048, plan: reduced(3072) },
+  // A 12 MP photo, reduced to the budget's area at its own aspect.
+  { type: 'image/jpeg', width: 4032, height: 3024, plan: reduced(2896) },
+  { type: 'image/jpeg', width: 3024, height: 4032, plan: reduced(2896) },
+  // A long thin picture keeps its long edge far past the square's.
+  { type: 'image/png', width: 1440, height: 30000, plan: reduced(11448) },
+  { type: 'image/gif', width: 4000, height: 4000, plan: reduced(2508) },
+  { type: 'image/webp', width: 4096, height: 4096, plan: reduced(2508) },
+  // A 48 MP camera frame saved as PNG is within the whole-decode ceiling.
+  { type: 'image/png', width: 8064, height: 6048, plan: reduced(2896) },
+
+  // A GIF or PNG past the ceiling; a JPEG or WebP never is, being reduced as it decodes.
+  { type: 'image/png', width: 16384, height: 16384, plan: reduced(2508, true) },
+  { type: 'image/gif', width: 12000, height: 10000, plan: reduced(2747, true) },
+  { type: 'image/jpeg', width: 16384, height: 16384, plan: reduced(2508) },
+  { type: 'image/webp', width: 16383, height: 16383, plan: reduced(2508) },
+
+  // Unread: the largest square, still.
+  {
+    type: '',
+    width: 0,
+    height: 0,
+    plan: { edgePx: 2508, firstFrameOnly: true, exceedsWholeDecodeCeiling: false, measured: false },
+  },
 ]

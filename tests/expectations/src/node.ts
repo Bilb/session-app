@@ -1,5 +1,6 @@
 /** A role in the vocabulary every driver maps its own tree onto. */
-export type ExpectedRole = 'button' | 'image' | 'text' | 'link' | 'textbox' | 'progressbar' | 'none'
+export type ExpectedRole =
+  'button' | 'image' | 'text' | 'link' | 'textbox' | 'progressbar' | 'menu' | 'menuitem' | 'none'
 
 /**
  * What one element is to a screen reader and a driver. A field left out is not asserted; `null`

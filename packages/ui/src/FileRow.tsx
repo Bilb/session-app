@@ -14,12 +14,14 @@ import type {
 import type { ElementId } from '@session/test-ids'
 
 import { AttachmentTile } from './AttachmentTile'
-import { fileFormat, fileGlyph, nameDirection, splitFilename } from './attachmentFile'
+import { fileFormat, fileGlyph, nameDirection } from './attachmentFile'
 import {
   fileRowAccessibleName,
   fileRowActions,
+  fileRowAnswers,
   listedFileRowActions,
   type FileRowAction,
+  type FileRowReply,
 } from './fileRowAccessibility'
 import {
   FILE_GLYPH_SIDE,
@@ -28,20 +30,24 @@ import {
   FILE_ROW_GAP,
   fileLeadHeight,
   fileRowControl,
+  fileRowMarker,
   fileRowTone,
   type FileRowState,
 } from './fileRowState'
 import { FetchHint } from './FetchHint'
+import { FileName } from './FileName'
 import { Icon } from './Icon'
 import { inkFor } from './ink'
 import { useForcedFocus } from './interactionOverride'
 import { focusRing, heldButton, keyboardPress } from './keyboardPress'
+import { useListTabIndex } from './listFocus'
 import { pressHint } from './pressHint'
-import { ProgressRing } from './ProgressRing'
+import { ProgressRing, TRANSFER_RING_SIDE_PX, TRANSFER_RING_THICKNESS } from './ProgressRing'
 import { StateLayer } from './StateLayer'
 import { Text } from './Text'
 import { useFontScale } from './useFontScale'
 import { tileRadius } from './attachmentTileStyle'
+import { useMenuLongPress } from './menuLongPress'
 
 export interface FileRowTestIDs {
   row?: ElementId | undefined
@@ -100,6 +106,19 @@ export type FileRowProps = WithFilename &
      * lead square and the thumbnail keep their own fill either way.
      */
     onAccent?: boolean | undefined
+    /**
+     * False leaves the trailing control out in every state, its marker and progress ring included,
+     * and the name takes the room: for the one row of a message, whose footer's verb is its only
+     * control so that it stays where the album's would be. The row's press and the lead square's
+     * open still work; `actionLabel` and `onAction` are ignored, and the keyboard reaches the verb
+     * in the footer. Absent means the control is drawn.
+     */
+    hasControl?: boolean | undefined
+    /**
+     * Reply to the row's message, for a screen reader on native, where the row is one element and
+     * its actions are all a reader can reach: listed after the row's own, never in place of them.
+     */
+    reply?: FileRowReply | undefined
   }
 
 /**
@@ -109,12 +128,6 @@ export type FileRowProps = WithFilename &
 const CAPTION_BIDI = isWeb ? ({ unicodeBidi: 'plaintext' } as const) : undefined
 
 /**
- * Drawn inside the touch target rather than filling it, so it reads as a gauge and not a button.
- */
-const RING_SIDE = 28
-const RING_THICKNESS = 3
-
-/**
  * The row as the one accessibility element, on native alone: iOS hides whatever an element holds,
  * so the lead square's and the control's verbs are its actions. On the web it would be a button
  * holding theirs, whose children ARIA makes presentational.
@@ -122,12 +135,14 @@ const RING_THICKNESS = 3
 function nativeRowElement({
   name,
   actions,
+  reply,
   pressable,
   held,
   progress,
 }: {
   name: string
   actions: FileRowAction[]
+  reply: FileRowReply | undefined
   pressable: boolean
   held: boolean
   progress: number | undefined
@@ -150,11 +165,14 @@ function nativeRowElement({
     // iOS's double-tap calls this alone; without it VoiceOver taps the row's middle, which has no
     // press when the verb is the control's.
     ...(activate === undefined ? {} : { onAccessibilityTap: activate.run }),
-    accessibilityActions: listedFileRowActions(actions, Platform.OS).map(
+    accessibilityActions: fileRowAnswers(listedFileRowActions(actions, Platform.OS), reply).map(
       ({ name: action, label }) => ({ name: action, label }),
     ),
     onAccessibilityAction: (event: { nativeEvent: { actionName: string } }) => {
-      actions.find((action) => action.name === event.nativeEvent.actionName)?.run()
+      const { actionName } = event.nativeEvent
+      fileRowAnswers(actions, reply)
+        .find((action) => action.name === actionName)
+        ?.run()
     },
   } as const
 }
@@ -182,7 +200,9 @@ function Trailing({
   onAccent: boolean
 }) {
   const control = fileRowControl(state)
+  const menuLongPress = useMenuLongPress()
   const forcedFocus = useForcedFocus()
+  const tabIndex = useListTabIndex()
 
   // The square is held whatever the state, so the name's width does not change when a transfer
   // ends and the controls stay in one column down a list of rows.
@@ -193,7 +213,16 @@ function Trailing({
     justifyContent: 'center',
   } as const
 
-  if (control === null) return <YStack {...square} />
+  if (control === null) {
+    const marker = fileRowMarker(state)
+    return (
+      <YStack {...square} aria-hidden>
+        {marker === null ? null : (
+          <Icon name={marker} size="sm" {...inkFor('secondary', onAccent)} />
+        )}
+      </YStack>
+    )
+  }
 
   const ring = focusRing({ onAccent, offset: 0, radius: '$full' })
   // While a transfer runs, a disabled button showing progress, since the bridge has no cancel. The
@@ -211,14 +240,15 @@ function Trailing({
       {...(!isWeb
         ? {}
         : held
-          ? heldButton(actionLabel, ring)
+          ? heldButton(actionLabel, ring, tabIndex)
           : {
               role: 'button' as const,
               ...(actionLabel === undefined ? {} : { 'aria-label': actionLabel }),
-              ...keyboardPress(onAction, ring),
+              ...keyboardPress(onAction, ring, tabIndex),
             })}
       {...forcedFocus}
       {...(isWeb ? { 'aria-disabled': held } : {})}
+      {...menuLongPress}
       onPress={
         held
           ? undefined
@@ -232,8 +262,8 @@ function Trailing({
       {held ? (
         <ProgressRing
           progress={progress ?? 0}
-          size={RING_SIDE}
-          thickness={RING_THICKNESS}
+          size={TRANSFER_RING_SIDE_PX}
+          thickness={TRANSFER_RING_THICKNESS}
           color={onAccent ? '$onAccent' : '$primaryColor'}
         />
       ) : (
@@ -253,9 +283,10 @@ function Trailing({
  * most likely to be read on a bad day - a transfer that failed, a file somebody needs off the
  * device and into a folder.
  *
- * **Every state draws the same three columns at the same height.** A row that grew a progress bar
+ * **Every state draws the same columns at the same height.** A row that grew a progress bar
  * while it downloaded would move everything below it in the transcript, at the moment somebody is
- * reading it; only the glyph, the words and the trailing control change.
+ * reading it; only the glyph, the words and the trailing control change. A row drawn without its
+ * control has two columns in every state rather than three.
  *
  * The caption is the size at rest, both counts while fetching, and the reason when there is one.
  */
@@ -274,8 +305,9 @@ export function FileRow({
   onAction,
   testIDs,
   onAccent = false,
+  hasControl = true,
+  reply,
 }: FileRowProps) {
-  const { head, tail } = splitFilename(filename)
   const format = fileFormat(filename)
   // On the name and the caption together, so the two share an edge.
   const direction = { direction: nameDirection(filename) }
@@ -283,6 +315,8 @@ export function FileRow({
   const nameInk = inkFor(tone.name, onAccent)
   const fontScale = useFontScale()
   const forcedFocus = useForcedFocus()
+  const tabIndex = useListTabIndex()
+  const menuLongPress = useMenuLongPress()
   // While fetching, the lead square stays a disabled button rather than losing its stop, which
   // would drop focus on it to the page.
   const held = state === 'fetching'
@@ -294,7 +328,7 @@ export function FileRow({
     pressLabel,
     onOpen,
     openLabel,
-    onAction: control === null || control === 'progress' ? undefined : onAction,
+    onAction: !hasControl || control === null || control === 'progress' ? undefined : onAction,
     actionLabel,
   })
 
@@ -312,7 +346,8 @@ export function FileRow({
       </YStack>
     ) : (
       <AttachmentTile
-        side={FILE_GLYPH_SIDE}
+        width={FILE_GLYPH_SIDE}
+        height={FILE_GLYPH_SIDE}
         uri={thumbnail.uri}
         thumbhash={thumbnail.thumbhash}
         testID={testIDs?.thumbnail}
@@ -328,10 +363,13 @@ export function FileRow({
       // A group in every state: tamagui remounts a view that gains or drops one, dropping focus.
       group="row"
       testID={testIDs?.row}
-      {...(onPress === undefined ? {} : { '$platform-web': { cursor: 'pointer' }, onPress })}
+      {...(onPress === undefined
+        ? {}
+        : { '$platform-web': { cursor: 'pointer' }, onPress, ...menuLongPress })}
       {...nativeRowElement({
         name: fileRowAccessibleName(filename, format, caption),
         actions,
+        reply,
         pressable: onPress !== undefined,
         held,
         progress,
@@ -357,15 +395,16 @@ export function FileRow({
                   role: 'button' as const,
                   'aria-label': filename,
                   ...pressHint(openLabel),
-                  ...keyboardPress(onOpen, leadRing),
+                  ...keyboardPress(onOpen, leadRing, tabIndex),
                 })}
-            {...(leadHeld && isWeb ? heldButton(filename, leadRing) : {})}
+            {...(leadHeld && isWeb ? heldButton(filename, leadRing, tabIndex) : {})}
             {...forcedFocus}
             {...(isWeb ? { 'aria-disabled': leadHeld } : {})}
             position="relative"
             group="tile"
             $platform-web={{ cursor: 'pointer' }}
             testID={testIDs?.lead}
+            {...menuLongPress}
             onPress={
               leadHeld
                 ? undefined
@@ -399,27 +438,7 @@ export function FileRow({
       </YStack>
 
       <YStack flex={1} minWidth={0} gap="$3xs" style={direction}>
-        {/* Two runs: the head gives up whatever width the row is short of and the tail cannot,
-            so a long name loses its middle instead of its extension. See `splitFilename`.
-
-            The id and the label are on the pair, never on a run: split between two elements the
-            name stops being one string, and both a screen reader and a test then read half. */}
-        <XStack minWidth={0} aria-label={filename} testID={testIDs?.name}>
-          <Text
-            size="$body"
-            weight="semibold"
-            {...nameInk}
-            numberOfLines={1}
-            ellipsizeMode="tail"
-            flexShrink={1}
-            minWidth={0}
-          >
-            {head}
-          </Text>
-          <Text size="$body" weight="semibold" {...nameInk} numberOfLines={1} flexShrink={0}>
-            {tail}
-          </Text>
-        </XStack>
+        <FileName name={filename} size="$body" ink={nameInk} testID={testIDs?.name} />
         {/* Sized to its words, so the column's direction places it rather than each platform's
             own alignment of a line of text. */}
         <Text
@@ -435,14 +454,16 @@ export function FileRow({
         </Text>
       </YStack>
 
-      <Trailing
-        state={state}
-        progress={progress}
-        actionLabel={actionLabel}
-        onAction={onAction}
-        testID={testIDs?.action}
-        onAccent={onAccent}
-      />
+      {hasControl ? (
+        <Trailing
+          state={state}
+          progress={progress}
+          actionLabel={actionLabel}
+          onAction={onAction}
+          testID={testIDs?.action}
+          onAccent={onAccent}
+        />
+      ) : null}
     </XStack>
   )
 }

@@ -1,18 +1,33 @@
+import { flag } from '@session/app'
 import { formatBytes } from '@session/basic-types'
-import { PENDING_COPY, tr } from '@session/localization'
+import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { Button, buttonHeight, Icon, inkFor, ROW_TOUCH_TARGET, Text, XStack } from '@session/ui'
+import {
+  Button,
+  buttonHeight,
+  ButtonProgress,
+  Icon,
+  type IconName,
+  inkFor,
+  ROW_TOUCH_TARGET,
+  SPACE_SCALE,
+  Text,
+  XStack,
+} from '@session/ui'
 
 import type { AttachmentSet } from './attachmentSet'
 import { sharedCaption } from './attachmentSetCaption'
+import { layoutLine } from './layoutLine'
 import type { AttachmentView } from './attachmentView'
+import type { SendingFooter } from './useAttachmentFooter'
 
 const ACTION_SIZE = 'sm'
 
 /**
- * The verb's height, the tallest thing on the line, and fixed.
+ * The verb's side, the tallest thing on the line, and fixed: the verb is a glyph in every state,
+ * and a running transfer's ring is drawn in the same frame.
  *
- * A number rather than letting the text set it: the whole point is that the height does not
+ * A number rather than letting the caption set it: the whole point is that the height does not
  * change between states, and a line of copy that wraps in one locale would change it.
  */
 const FOOTER_HEIGHT = buttonHeight(ACTION_SIZE)
@@ -31,10 +46,28 @@ const ROW_HEIGHT = Math.max(FOOTER_HEIGHT, ROW_TOUCH_TARGET)
  * The footer's targets cover the overhang and win over anything drawn under it, so whatever holds
  * the footer leaves at least this much empty above the line.
  */
-export const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
+const ROW_OVERHANG = (ROW_HEIGHT - FOOTER_HEIGHT) / 2
+
+/**
+ * The space above the footer's line, wherever it is drawn: under an album or a list in a message,
+ * and under the sheet's list, so the two look alike. It clears the overhang too.
+ */
+export const FOOTER_CLEARANCE = SPACE_SCALE['2xs'] + ROW_OVERHANG
 
 /** Each button takes the row's full height on touch. */
 const ACTION_SLOP = ROW_OVERHANG
+
+/**
+ * The least the caption keeps beside the two buttons: a size such as "2.4 MB", which leads any
+ * caption that has one, or its start.
+ */
+const CAPTION_MIN_WIDTH_PX = 48
+
+/**
+ * The narrowest the footer is drawn: the view switch and the verb, both square, and the caption's
+ * least between them. What a message holding one narrow picture is no narrower than.
+ */
+export const FOOTER_MIN_WIDTH_PX = 2 * FOOTER_HEIGHT + 2 * SPACE_SCALE.xs + CAPTION_MIN_WIDTH_PX
 
 /**
  * The other shape, as the one button offers it: the gallery from the list, and the list back.
@@ -56,22 +89,26 @@ const SWITCH_TO = {
   },
 } as const
 
+/** The verb's glyph, saying what its word, the button's name, says. */
+function verbIcon(set: AttachmentSet, sending: boolean): IconName {
+  if (sending || set.state === 'failed') return 'rotateCw'
+  return set.state === 'ready' ? 'download' : 'cloudDownload'
+}
+
 function caption(set: AttachmentSet): string {
-  const shared = sharedCaption(set)
-  if (shared !== null) return shared
-  if (set.state === 'fetching') {
-    return `${formatBytes(set.doneBytes)} / ${formatBytes(set.totalBytes)}`
-  }
-  return set.sizeBytes === undefined ? '' : formatBytes(set.sizeBytes)
+  return (
+    sharedCaption(set) ?? layoutLine(' / ', formatBytes(set.doneBytes), formatBytes(set.totalBytes))
+  )
 }
 
 /**
  * The one thing this state offers, or null where it offers nothing.
  *
- * Null rather than a disabled word, and the height does not move either way. There is no verb
- * while a transfer runs because nothing can stop one yet - the bridge has no cancel - and none on
- * a set of several that has arrived, because exporting them needs a directory to put them in and
- * offering one Export that quietly writes the first is worse than offering none.
+ * Null rather than a disabled glyph, and the height does not move either way. There is no verb
+ * while a transfer runs because nothing can stop one yet - the bridge has no cancel - so its ring
+ * stands in the verb's place instead. There is none on a set of several that has arrived, because
+ * exporting them needs a directory to put them in and offering one Export that quietly writes the
+ * first is worse than offering none.
  */
 function verb(set: AttachmentSet): string | null {
   if (set.state === 'fetching' || set.state === 'unavailable') return null
@@ -79,6 +116,42 @@ function verb(set: AttachmentSet): string | null {
   // TODO: offer Export for a set of several once `FilesPort` can pick a folder to put them in.
   if (set.state === 'ready') return set.count === 1 ? PENDING_COPY.export : null
   return tr('download')
+}
+
+/**
+ * A running download or upload, in the verb's frame.
+ *
+ * The ring waits, turning round a closed track, until a byte has moved: the first report of a
+ * transfer is 0 of 0, which means beginning rather than 0%, and a set some sender declared no size
+ * for, or ours with a file whose upload has not begun, has no total to read a share of at all.
+ * When bytes move its gap opens and the fill starts.
+ */
+function TransferRing({
+  doneBytes,
+  totalBytes,
+  label,
+}: {
+  doneBytes: number
+  totalBytes: number
+  label: string
+}) {
+  const shared = {
+    size: ACTION_SIZE,
+    label,
+    still: flag('disableAnimations'),
+    testID: ELEMENT.conversation.attachmentProgress,
+  } as const
+  if (doneBytes === 0 || totalBytes === 0) return <ButtonProgress {...shared} indeterminate />
+  return (
+    <ButtonProgress
+      {...shared}
+      progress={doneBytes / totalBytes}
+      valueText={PENDING_COPY.attachmentsDownloadProgress(
+        isolate(formatBytes(doneBytes)),
+        isolate(formatBytes(totalBytes)),
+      )}
+    />
+  )
 }
 
 /**
@@ -97,16 +170,26 @@ export function AttachmentFooter({
   view,
   onView,
   onAccent = false,
+  sending,
 }: {
   set: AttachmentSet
   onAction: () => void
+  /**
+   * Set while our message's files are still uploading or failed to: the line is then about the
+   * upload, its ring stands in the verb's place while it runs, and its one verb is the message's
+   * retry.
+   *
+   * That Retry is not drawn destructive: the danger colour on the tonal fill is 3.3 to 4.1:1 in
+   * the four themes. The caption and the message's own state already say it failed.
+   */
+  sending?: SendingFooter | undefined
   /** Drawn on a bubble you sent rather than on the page; the buttons keep their own fill. */
   onAccent?: boolean | undefined
   /** The shape being drawn. Absent where the reader has no choice about it. */
   view?: AttachmentView | undefined
   onView?: ((view: AttachmentView) => void) | undefined
 }) {
-  const action = verb(set)
+  const action = sending === undefined ? verb(set) : sending.retryable ? tr('retry') : null
   return (
     <XStack
       height={ROW_HEIGHT}
@@ -139,20 +222,35 @@ export function AttachmentFooter({
         numberOfLines={1}
         testID={ELEMENT.conversation.attachmentState}
       >
-        {caption(set)}
+        {sending === undefined ? caption(set) : sending.caption}
       </Text>
-      {action === null ? null : (
+      {sending === undefined && set.state === 'fetching' ? (
+        <TransferRing
+          doneBytes={set.doneBytes}
+          totalBytes={set.totalBytes}
+          label={tr('downloading')}
+        />
+      ) : sending?.uploading !== undefined ? (
+        <TransferRing
+          doneBytes={sending.uploading.doneBytes}
+          totalBytes={sending.uploading.totalBytes}
+          label={tr('uploading')}
+        />
+      ) : action === null ? null : (
+        // A glyph at every width, named by its word: the footer never has to choose between the
+        // word and the caption, and the line is the same at every width a message is drawn.
         <Button
           variant="tonal"
           size={ACTION_SIZE}
+          circular
+          icon={<Icon name={verbIcon(set, sending !== undefined)} size="sm" color="$textPrimary" />}
+          accessibilityLabel={action}
           hitSlop={ACTION_SLOP}
-          destructive={set.state === 'failed'}
+          destructive={sending === undefined && set.state === 'failed'}
           onAccent={onAccent}
           onPress={onAction}
           testID={ELEMENT.conversation.attachmentAction}
-        >
-          {action}
-        </Button>
+        />
       )}
     </XStack>
   )

@@ -4,17 +4,32 @@ import type {
   ConfigSize,
   ConversationId,
   Message,
+  OutgoingMessage,
+  SendPlan,
   SessionClient,
 } from '@session/client'
-import { BRIDGE_UNAVAILABLE, SessionClientError } from '@session/client'
+import { SessionClientError } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
-import { emptyState, type MessageWindow, type SessionState, type StoredAppearance } from './types'
+import { classifyStartupFailure, type StartupFailureKind } from './startupFailure'
+import {
+  emptyState,
+  type ListName,
+  type MessageWindow,
+  type SessionState,
+  type StoredAppearance,
+} from './types'
 
 /** Where the account's theme and accent are kept, as libsession preferences. */
 const THEME_PREF = 'appearance.theme'
 const ACCENT_PREF = 'appearance.accent'
+
+/** What the recovery password screen shows: the words, and the seed its QR code carries. */
+export interface RecoveryPassword {
+  words: string[]
+  seedHex: string
+}
 
 export interface CacheSettings {
   /** Empty when the bridge was opened without one. */
@@ -59,22 +74,31 @@ export interface SessionActions {
    */
   getConfigSizes: () => Promise<ConfigSize[]>
   /**
-   * Stores the account's theme and accent and shows them.
-   *
-   * Nothing calls it yet. TODO: the Appearance screen.
+   * Stores the account's theme and accent and shows them. The rail's light/dark toggle calls it;
+   * the Appearance screen, once built, will too.
    */
   setAppearance: (appearance: StoredAppearance) => Promise<void>
   /**
+   * The recovery password, handed straight to the caller and never kept in the store: a string in
+   * JavaScript cannot be wiped, so the fewer places hold it the better, and none of them a log.
+   */
+  getRecoveryPassword: () => Promise<RecoveryPassword>
+  /** Hides the recovery password on this device for good. See `recoveryPasswordHidden`. */
+  hideRecoveryPassword: () => Promise<void>
+  /**
    * Subscribes first, then asks - never the other way round.
    *
-   * Anything that arrives between the two is applied on top of the answer, which is safe
-   * precisely because every event carries whole state. Asking first and subscribing after
-   * is what loses a change that lands in the gap.
+   * What arrives before an answer is already in it, and what arrives after is applied on top of
+   * it: responses and events share one ordered stream. Asking first and subscribing after is
+   * what loses a change that lands in the gap.
    */
   hydrate: () => Promise<void>
   loadHistory: (id: ConversationId) => Promise<void>
   loadOlder: (id: ConversationId) => Promise<void>
-  send: (id: ConversationId, body: string, replyTo?: number) => Promise<void>
+  /** Rejects, storing nothing, when libsession refuses it: a file that cannot be read, say. */
+  send: (id: ConversationId, message: OutgoingMessage) => Promise<void>
+  /** What sending the file at `path` would do with it: whether the composer may stage it. */
+  attachmentSendPlan: (path: string, contentType?: string) => Promise<SendPlan>
   markRead: (id: ConversationId) => Promise<void>
   approve: (id: ConversationId) => Promise<void>
   /**
@@ -151,6 +175,11 @@ export interface SessionActions {
    */
   retry: (messageId: number) => Promise<boolean>
   /**
+   * Shows a message as a gallery or as a list, stored by libsession. The message redraws when the
+   * change is announced, so nothing is patched here; false is a gallery libsession refused.
+   */
+  setGallery: (messageId: number, gallery: boolean) => Promise<boolean>
+  /**
    * Fetches an attachment: one that is already cached resolves at once and reports nothing at
    * all. Whether the bytes are here is the attachment's `availability`, not this.
    *
@@ -221,6 +250,7 @@ export interface SessionStoreOptions {
 }
 
 const PAGE = 30
+const LIST_NAMES: readonly ListName[] = ['conversations', 'requests']
 
 export function createSessionStore(
   client: SessionClient,
@@ -228,6 +258,50 @@ export function createSessionStore(
 ): SessionStore {
   const log = options.log ?? ((): void => undefined)
   const store = createStore<SessionState>(() => ({ ...emptyState }))
+
+  /**
+   * One list, read and stored the moment it is answered, which also puts it back in step.
+   *
+   * A placement is relative to the list it lands on, so it has to land on the answer it came
+   * after. Responses and events share one ordered stream, and every transport delivers each frame
+   * as its own callback with the microtask queue drained in between, so storing an answer in the
+   * continuation of its own promise puts it under everything that followed it. Waiting for a
+   * second answer first would let a placement that arrived in between land on the old list and
+   * then be overwritten.
+   */
+  async function readList(list: ListName): Promise<void> {
+    if (list === 'conversations') {
+      const conversations = await client.getConversations()
+      store.setState((state) => ({
+        conversations,
+        listsOutOfStep: { ...state.listsOutOfStep, conversations: false },
+      }))
+    } else {
+      const requests = await client.getMessageRequests()
+      store.setState((state) => ({
+        requests,
+        listsOutOfStep: { ...state.listsOutOfStep, requests: false },
+      }))
+    }
+  }
+
+  /**
+   * A read already running is not asked again: the placement that failed during it came before
+   * its answer on the stream, so the answer already covers it.
+   */
+  const rereading = new Set<ListName>()
+  function rereadListsOutOfStep(): void {
+    const { listsOutOfStep } = store.getState()
+    for (const list of LIST_NAMES) {
+      if (!listsOutOfStep[list] || rereading.has(list)) continue
+      rereading.add(list)
+      readList(list)
+        .catch((error: unknown) => {
+          log('warn', 'session', `could not read the ${list} list again: ${String(error)}`)
+        })
+        .finally(() => rereading.delete(list))
+    }
+  }
 
   const unsubscribe = client.onEvent((event) => {
     // libsession's own logging, when the bridge was asked for it. Passed straight through
@@ -238,6 +312,8 @@ export function createSessionStore(
       return
     }
     store.setState((state) => applyEvent(state, event))
+    // Before the first read a placement has nothing to land on, and that read clears it.
+    if (store.getState().hydrated) rereadListsOutOfStep()
   })
 
   // A page that lands after its window was forgotten must not bring it back, even when a new load
@@ -294,9 +370,16 @@ export function createSessionStore(
     }
   }
 
+  /** A refusal as the failure screen takes it: libsession's words, and what kind they are. */
+  function startupFailure(error: unknown): { message: string; kind: StartupFailureKind } {
+    const message = error instanceof Error ? error.message : String(error)
+    const code = error instanceof SessionClientError ? error.code : undefined
+    return { message, kind: classifyStartupFailure(message, code) }
+  }
+
   const actions: SessionActions = {
     async start(): Promise<void> {
-      store.setState({ startupError: null, startupClearable: true })
+      store.setState({ startupError: null, startupFailureKind: null })
       try {
         await actions.hydrate()
       } catch (error) {
@@ -305,10 +388,9 @@ export function createSessionStore(
         // arrives here -- which is what makes "it did not start" a state the screens can render
         // rather than a promise nobody was holding. Left uncaught it was an unhandled rejection
         // and a launch screen that never went away, identical from the outside to a slow start.
-        const message = error instanceof Error ? error.message : String(error)
-        log('error', 'session', `could not start: ${message}`)
-        const noBridge = error instanceof SessionClientError && error.code === BRIDGE_UNAVAILABLE
-        store.setState({ startupError: message, startupClearable: !noBridge })
+        const { message, kind } = startupFailure(error)
+        log('error', 'session', `could not start (${kind}): ${message}`)
+        store.setState({ startupError: message, startupFailureKind: kind })
       }
     },
 
@@ -325,9 +407,9 @@ export function createSessionStore(
         // nothing above it can carry on, so it lands where every other one does, with its own
         // reason. Rejects as well, so a caller that goes on to something only a clear allows --
         // ending the process -- does not.
-        const message = error instanceof Error ? error.message : String(error)
-        log('error', 'session', `could not clear the device: ${message}`)
-        store.setState({ startupError: message })
+        const { message, kind } = startupFailure(error)
+        log('error', 'session', `could not clear the device (${kind}): ${message}`)
+        store.setState({ startupError: message, startupFailureKind: kind })
         throw error
       }
       store.setState({ ...emptyState })
@@ -356,7 +438,8 @@ export function createSessionStore(
       }
 
       const account = await client.getAccountInfo()
-      store.setState({ account })
+      const attachmentUploadLimitBytes = await client.getAttachmentUploadLimit()
+      store.setState({ account, attachmentUploadLimitBytes })
 
       // Logged, not just held, because the account ID is what someone else needs in order to
       // write to this device, and reading it off a screen is not always possible - a headless
@@ -372,26 +455,36 @@ export function createSessionStore(
           : 'no account on this device yet',
       )
 
+      // Applied the moment it is answered rather than with the lists below: a status event that
+      // lands while those are still loading is newer than this answer and must stay on top of it.
+      const askNetworkStatus = async (): Promise<void> => {
+        const networkStatus = await client.getNetworkStatus()
+        store.setState({ networkStatus })
+      }
+
       if (!account.haveAccount) {
         // **Everything derived goes, not just the account.** `setState` merges, so setting only
         // the account left the previous one's conversations, requests and message windows sitting
         // in the store -- which is fine on a first launch, where there were none, and is a leak
         // between accounts the moment onboarding can be backed out of and started again.
         store.setState({ ...emptyState, account, hydrated: true })
+        await askNetworkStatus()
         return
       }
 
-      const [conversations, requests, theme, accent] = await Promise.all([
-        client.getConversations(),
-        client.getMessageRequests(),
+      const [theme, accent, hidden] = await Promise.all([
         client.getPref(THEME_PREF),
         client.getPref(ACCENT_PREF),
+        client.getRecoveryPasswordHidden(),
+        readList('conversations'),
+        readList('requests'),
+        askNetworkStatus(),
       ])
 
       // In the same update as `hydrated`, so the screen the account opens on is drawn once, in its
       // theme. Both or neither: an accent without its theme is half a choice.
       const appearance = theme === undefined || accent === undefined ? null : { theme, accent }
-      store.setState({ conversations, requests, appearance, hydrated: true })
+      store.setState({ appearance, recoveryPasswordHidden: hidden, hydrated: true })
     },
 
     async setAppearance(appearance): Promise<void> {
@@ -399,6 +492,23 @@ export function createSessionStore(
       await client.setPref(THEME_PREF, appearance.theme)
       await client.setPref(ACCENT_PREF, appearance.accent)
       store.setState({ appearance })
+    },
+
+    async getRecoveryPassword(): Promise<RecoveryPassword> {
+      const [words, seedHex] = await Promise.all([client.getSeedMnemonic(), client.getSeedHex()])
+      // Hidden on this device: there is nothing to show, which the page reports as a failed load.
+      if (words === null || seedHex === null) throw new Error('The recovery password is hidden')
+      return { words, seedHex }
+    },
+
+    async hideRecoveryPassword(): Promise<void> {
+      if (store.getState().account?.haveAccount !== true) return
+      await client.hideRecoveryPassword()
+      // Read back, not assumed: the page goes back to Settings only once it is gone for good.
+      if (!(await client.getRecoveryPasswordHidden())) {
+        throw new Error('The recovery password was not hidden')
+      }
+      store.setState({ recoveryPasswordHidden: true })
     },
 
     async loadHistory(id): Promise<void> {
@@ -431,11 +541,15 @@ export function createSessionStore(
       })
     },
 
-    async send(id, body, replyTo): Promise<void> {
+    async send(id, message): Promise<void> {
       // No optimistic row: libsession stores the message before this resolves and announces
       // it as message-added, so inventing one here would only produce a duplicate to
       // reconcile.
-      await client.sendMessage(id, { body, ...(replyTo === undefined ? {} : { replyTo }) })
+      await client.sendMessage(id, message)
+    },
+
+    attachmentSendPlan(path, contentType): Promise<SendPlan> {
+      return client.attachmentSendPlan(path, contentType)
     },
 
     async markRead(id): Promise<void> {
@@ -455,6 +569,10 @@ export function createSessionStore(
 
     async retry(messageId): Promise<boolean> {
       return client.retrySend(messageId)
+    },
+
+    async setGallery(messageId, gallery): Promise<boolean> {
+      return client.setGallery(messageId, gallery)
     },
 
     async downloadAttachment(ref): Promise<void> {

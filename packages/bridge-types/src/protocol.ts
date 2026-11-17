@@ -6,9 +6,14 @@ import type {
   ConfigSize,
   Conversation,
   ConversationId,
+  ConversationList,
   Deletion,
+  ListPlacement,
   Message,
   MessageCursor,
+  NetworkStatus,
+  OutgoingAttachment,
+  SendPlan,
 } from './domain'
 import type { FileServerConfig, RouterKind, SeedNode } from './sessionBridgeOptions'
 
@@ -34,6 +39,8 @@ interface TestAttachment {
   contentType: string
   /** Unset is a sender who sent no ThumbHash, which is what leaves `hasThumbhash` false. */
   thumbhash?: Uint8Array
+  /** Sent as the sender's original file, which is what leaves `originalFile` true. */
+  originalFile?: boolean
 }
 
 /**
@@ -45,7 +52,7 @@ interface TestAttachment {
  *
  * Responses ride the same stream as change events rather than resolving on a separate channel,
  * because their relative order is load-bearing. libsession's contract is that a display can be
- * built by asking once and then applying events; that only holds if a list_replaced produced
+ * built by asking once and then applying events; that only holds if a placement produced
  * before the answer to getConversations is also applied before it. Two channels - a promise and
  * a callback - give no such guarantee across an IPC or JSI boundary, and the failure would be a
  * stale row that reappears on a race nobody can reproduce. One FIFO stream carries libsession's
@@ -100,6 +107,11 @@ export type Command =
    * the app's memory and a second copy of the same secret buys nothing.
    */
   | { type: 'checkRecoveryPhrase'; phrase: SecretBytes; language?: string }
+  /**
+   * Restore from a seed in hex: 16 bytes (32 characters), as every recovery password QR code
+   * carries, or the full 32 bytes. A 16-byte seed is the lower half, the upper half zero -- the
+   * same seed the 13 words decode to.
+   */
   | { type: 'restoreAccountFromSeed'; hexSeed: string }
   /**
    * Throws away the account and everything stored under it, and starts again from nothing.
@@ -131,7 +143,30 @@ export type Command =
    * onboards calls this once after `createAccount` and is done.
    */
   | { type: 'keepAccount' }
+  /**
+   * The recovery password's words, answered with a `mnemonic` result, or `seedHidden` once
+   * `hideRecoveryPassword` has been called on this device.
+   */
   | { type: 'getSeedMnemonic'; language?: string }
+  /**
+   * The account seed as lowercase hex, answered with a `hex` result: what a recovery password's
+   * QR code carries. `seedHidden` instead once `hideRecoveryPassword` has been called.
+   *
+   * **16 bytes (32 characters) when the seed's upper half is zero**, which is every account the
+   * 13 words describe, and 32 bytes otherwise. The short form is the one every existing client
+   * puts in that QR and reads back from it, so a code drawn from this scans anywhere.
+   * `restoreAccountFromSeed` takes either length.
+   */
+  | { type: 'getSeedHex' }
+  /**
+   * Hides the recovery password on this device for good, answered with an empty result once it is
+   * stored. From then on `getSeedMnemonic` and `getSeedHex` answer `seedHidden`, so nothing above
+   * the bridge can read the seed back out; the account itself, and every key derived from the
+   * seed, carry on as before. There is no way back, as on every legacy client.
+   */
+  | { type: 'hideRecoveryPassword' }
+  /** Whether `hideRecoveryPassword` has been called on this device, answered with a `bool`. */
+  | { type: 'getRecoveryPasswordHidden' }
   | { type: 'setDisplayName'; name: string }
   /**
    * Attach a network, or replace the one attached. Declining to attach is how an app stays
@@ -164,6 +199,14 @@ export type Command =
    * makes this a warm rather than a second network.
    */
   | { type: 'warmNetworkCache' }
+  /**
+   * Whether the attached network can carry traffic now. `disconnected` where none is attached.
+   *
+   * Asked once and then followed by `network-status-changed`, the way every list here is: a
+   * renderer that reloads, or a store that subscribes after the network came up, has missed the
+   * events that said so.
+   */
+  | { type: 'getNetworkStatus' }
   /**
    * How often libsession polls the swarm, in milliseconds. Its default is 20 seconds, which is a
    * long time to wait for a test and about right for a person.
@@ -207,9 +250,46 @@ export type Command =
       before?: MessageCursor
       includeDeleted: boolean
     }
-  | { type: 'sendMessage'; conversationId: ConversationId; body: string; replyTo?: number }
+  /**
+   * Stores the message and answers its id; it is then announced like any other. With attachments
+   * it is `uploading` until every file is on the file server, and goes on to the ordinary states
+   * from there. Refused, storing nothing, when a file is not a readable, non-empty file. Each
+   * file's upload reports as an `attachment-progress` of transfer `upload`.
+   */
+  | {
+      type: 'sendMessage'
+      conversationId: ConversationId
+      body: string
+      replyTo?: number
+      attachments?: OutgoingAttachment[]
+    }
+  /**
+   * What sending the file at `path` would do with it, under the file server's limit, without
+   * sending it: for staging to refuse a file before Send. `contentType` is inferred from the
+   * extension when unset, as `sendMessage` infers it. Read on libsession's disk thread.
+   */
+  | { type: 'attachmentSendPlan'; path: string; contentType?: string }
+  /**
+   * The most the file server takes in one upload, in encrypted, padded bytes: the limit
+   * `attachmentSendPlan` holds a file to, so a file's own size has to be smaller to fit. Belongs to
+   * the attached network's file server and changes only with `attachNetwork`; before a network is
+   * attached it is libsession's default for the built-in servers.
+   */
+  | { type: 'getAttachmentUploadLimit' }
+  /**
+   * Resumes a send that failed, uploading the files not yet up first. Each of those reports as an
+   * `attachment-progress` of transfer `upload`, as `sendMessage`'s do.
+   */
   | { type: 'retrySend'; messageId: number }
   | { type: 'deleteMessage'; messageId: number; scope: Deletion }
+  /**
+   * Shows a message as a gallery, or as a list. Answers false, changing nothing, for a message
+   * that does not exist or, when `gallery` is true, one that is not `galleryViewable`; turning it
+   * off is always allowed. A change is announced as messages-updated; asking for what is already
+   * stored answers true and announces nothing. Fetches nothing: getting a gallery's pictures is
+   * still the caller's `downloadAttachment`.
+   */
+  | { type: 'setGallery'; messageId: number; gallery: boolean }
   // Attachments. Nothing here carries bytes: a transfer is reported by `attachment-progress`
   // events, and the file itself is reached by the media scheme each platform resolves natively.
   /**
@@ -257,9 +337,9 @@ export type Command =
   | { type: 'getAttachmentCacheSize' }
   | { type: 'getThumbnailEdge' }
   /**
-   * The side of the thumbnails made from now on, in device pixels, kept on this device. libsession
-   * clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to what the
-   * app opened the bridge with. Thumbnails already made keep the size they were made at.
+   * The height of the thumbnails made from now on, in device pixels, kept on this device.
+   * libsession clamps it to 64 to 1024. Unset forgets the stored value, which puts the edge back to
+   * what the app opened the bridge with. Thumbnails already made keep the size they were made at.
    */
   | { type: 'setThumbnailEdge'; edgePx?: number }
   /**
@@ -332,6 +412,8 @@ export type Result =
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
   | { type: 'bool'; value: boolean }
+  /** The answer to a seed read once the recovery password is hidden: see `hideRecoveryPassword`. */
+  | { type: 'seedHidden' }
   /**
    * Where an export landed, which is not always where it was asked to go: a collision becomes
    * `name (1)`.
@@ -339,9 +421,11 @@ export type Result =
   | { type: 'path'; path: string }
   /** Unset only in answer to `getAttachmentCacheLimit`, where it means no limit. */
   | { type: 'byteCount'; bytes?: number }
-  /** A thumbnail's side in device pixels, as libsession clamped it. */
+  | { type: 'sendPlan'; plan: SendPlan }
+  /** A thumbnail's height in device pixels, as libsession clamped it. */
   | { type: 'edge'; edgePx: number }
   | { type: 'configSizes'; sizes: ConfigSize[] }
+  | { type: 'networkStatus'; status: NetworkStatus }
 
 export interface Response {
   id: number
@@ -363,9 +447,11 @@ export interface Response {
  * Change notifications, one per libsession callback, and what `SessionClient.onEvent` delivers.
  *
  * Every one of these carries the whole new state rather than an id to go and fetch. That is what
- * makes a display bindable, applying the same event twice harmless, and startup race-free:
- * whatever arrives between construction and the first query lands on top of the answer without
- * contradicting it.
+ * makes a display bindable and applying the same event twice harmless.
+ *
+ * A conversation's place in its list is the exception: `placement` puts it after another row, so
+ * the lists are only right when every event is applied, in the order the stream gives, on top of
+ * an answer to `getConversations` and `getMessageRequests` read earlier on the same stream.
  *
  * The shim emits these and the app reads them, with nothing in between rewriting an arm - which
  * is why there is one type rather than a wire one and an app one.
@@ -374,11 +460,10 @@ export interface Response {
  * carry: libsession stores nothing about one in flight, and the report is the only record there is.
  */
 export type SessionEvent =
-  | { type: 'conversation-added'; conversation: Conversation }
-  | { type: 'conversation-updated'; conversation: Conversation }
-  | { type: 'conversation-removed'; conversationId: ConversationId }
-  | { type: 'conversation-list-replaced'; conversations: Conversation[] }
-  | { type: 'request-list-replaced'; conversations: Conversation[] }
+  | { type: 'conversation-added'; conversation: Conversation; placement: ListPlacement }
+  | { type: 'conversation-updated'; conversation: Conversation; placement: ListPlacement }
+  /** `list` is the one the app was last told it is in: `none` when it was never shown in one. */
+  | { type: 'conversation-removed'; conversationId: ConversationId; list: ConversationList }
   /**
    * Messages arrived or changed, oldest first.
    *
@@ -412,6 +497,11 @@ export type SessionEvent =
    *
    * Both count *encrypted* bytes - what is actually being moved - and so do not agree with
    * `Attachment.sizeBytes`, which is the plaintext length.
+   *
+   * An upload names the message id `sendMessage` answers, and none of a send's reaches the stream
+   * before that answer does: the bridge holds any that come first. A file whose upload never
+   * started, because one before it failed, gets no report at all. Like a download, an upload's
+   * first report is 0 of 0, meaning it has started.
    */
   | {
       type: 'attachment-progress'
@@ -422,6 +512,15 @@ export type SessionEvent =
       totalBytes: number
       outcome?: AttachmentOutcome
     }
+  /**
+   * The attached network's status changed. One per change, in the order libsession made them, and
+   * never two of the same in a row from libsession itself; the answer to `getNetworkStatus` can
+   * repeat the last one, which is harmless because each carries the whole state.
+   *
+   * A network that goes away reports `disconnected` on the way out, which a discard does. Closing
+   * the bridge reports nothing: there is nobody left to tell.
+   */
+  | { type: 'network-status-changed'; status: NetworkStatus }
   /**
    * libsession's own log lines, forwarded when the bridge was opened with a log level. Worth
    * having because the state machine reports what happened and never why.
