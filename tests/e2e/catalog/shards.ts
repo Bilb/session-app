@@ -16,7 +16,7 @@ export interface CatalogPageSummary {
  * the Playwright driver take the rest. Two catalog runners share the CI host, so a shard per
  * core would overcommit it when both capture at once.
  */
-export const CORES_PER_SHARD = 3
+const CORES_PER_SHARD = 3
 /** The most measured; each shard also holds an X server and a window up to 3600x8000. */
 export const MAX_SHARDS = 8
 
