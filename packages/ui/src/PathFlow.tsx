@@ -502,7 +502,7 @@ function useSettledLayout(
   heightPx: number,
   relayoutMs: number,
   countryOrder: readonly string[],
-): { base: FlowLayout; layout: FlowLayout } {
+): { base: FlowLayout; layout: FlowLayout; laidOutAtMs: number } {
   const [held, setHeld] = useState(() => settle(paths, widthPx, heightPx, countryOrder))
   const latest = useRef({ paths, widthPx, heightPx, countryOrder })
   useEffect(() => {
@@ -533,7 +533,7 @@ function useSettledLayout(
     }, waitMs)
     return () => clearTimeout(id)
   }, [keys, held, resized, urgent, relayoutMs])
-  return { base: held.layout, layout }
+  return { base: held.layout, layout, laidOutAtMs: held.atMs }
 }
 
 /** The same array while its contents are: a caller's inline list would redraw a memoised layer. */
@@ -995,9 +995,15 @@ interface NativeSpritesProps extends PacketSpritesProps {
   host: PathSprites
   width: number
   height: number
+  /**
+   * When the bars were last laid out. It is part of each request's id, because an animator takes a
+   * request's trip once: a new layout hands it the trip again on the lines where they now are,
+   * rather than leaving a request under way on lines that have moved.
+   */
+  laidOutAtMs: number
 }
 
-/** The requests in flight, run by the platform's own animator: handed over once each. */
+/** The requests in flight, run by the platform's own animator: handed over once each per layout. */
 const NativeSprites = memo(function NativeSprites({
   host: Host,
   layout,
@@ -1007,6 +1013,7 @@ const NativeSprites = memo(function NativeSprites({
   ringColor,
   width,
   height,
+  laidOutAtMs,
 }: NativeSpritesProps) {
   const kinds = useMemo(() => new Map(paths.map((p) => [p.key, p.kind])), [paths])
   // Re-rendered with each snapshot, about once a second: a request home since then goes.
@@ -1018,7 +1025,8 @@ const NativeSprites = memo(function NativeSprites({
     if (!kind || !pts) continue
     const tripMs = pathFlowTripMs(packet.hopMs, kind, onionLayers && packet.quiet !== true)
     if (nowMs - packet.startMs > tripMs + RING_MS) continue
-    sprites.push(spriteOf(packet, kind, pts, layout.barWidth, onionLayers, ringColor))
+    const sprite = spriteOf(packet, kind, pts, layout.barWidth, onionLayers, ringColor)
+    sprites.push({ ...sprite, id: `${sprite.id}@${laidOutAtMs}` })
   }
   return <Host sprites={sprites} width={width} height={height} />
 })
@@ -1239,13 +1247,11 @@ export function PathFlow({
   const [mostPaths, setMostPaths] = useState(Math.max(1, drawn.length, expectedPaths ?? 0))
   if (drawn.length > mostPaths) setMostPaths(drawn.length)
   const heightPx = widthPx > 0 ? pathFlowHeight(widthPx, Math.max(mostPaths, drawn.length)) : 0
-  const { base, layout: settled } = useSettledLayout(
-    drawn,
-    widthPx,
-    heightPx,
-    throttled ? RELAYOUT_MS : 0,
-    countryOrder,
-  )
+  const {
+    base,
+    layout: settled,
+    laidOutAtMs,
+  } = useSettledLayout(drawn, widthPx, heightPx, throttled ? RELAYOUT_MS : 0, countryOrder)
   const buildingLayout = useMemo(
     () => layoutPathFlow(BUILDING_PATH, widthPx, heightPx),
     [widthPx, heightPx],
@@ -1334,6 +1340,7 @@ export function PathFlow({
                 ringColor={ringColor}
                 width={widthPx}
                 height={heightPx}
+                laidOutAtMs={laidOutAtMs}
               />
             ) : (
               <PacketSprites
