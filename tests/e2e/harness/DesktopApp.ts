@@ -528,6 +528,25 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
     }, windowMs)
   }
 
+  /**
+   * Lets the pointer pass through the window, so nothing in it is hovered or pressed by wherever
+   * the pointer happens to rest on the screen.
+   */
+  async ignorePointer(): Promise<void> {
+    await this.app.evaluate(({ BrowserWindow }) => {
+      BrowserWindow.getAllWindows()[0]?.setIgnoreMouseEvents(true)
+    })
+  }
+
+  /**
+   * Has the renderer drop every image decode it can. A picture decoded earlier at another size is
+   * otherwise resampled from that decode, so what it looks like depends on what was drawn before.
+   */
+  async dropDecodedImages(): Promise<void> {
+    this.cdp ??= await this.page.context().newCDPSession(this.page)
+    await this.cdp.send('Memory.simulatePressureNotification', { level: 'critical' })
+  }
+
   async close(): Promise<void> {
     await this.app.close()
     rmSync(this.dataDir, { recursive: true, force: true })

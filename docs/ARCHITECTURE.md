@@ -338,6 +338,14 @@ A capture paints only what lies inside the window, so each page is laid out in a
 and the window then grows to hold the page, the height alone unless the page is wider too
 (`tests/e2e/catalog/captureWindow.ts`). A page past the cap there is left out and fails the run
 rather than coming out black below the fold; the Xvfb screen in `capture.sh` is sized to the cap.
+The pages are split by their cell count across several apps that capture at once
+(`tests/e2e/catalog/shards.ts`): one per three cores, at most eight, or `CATALOG_SHARDS`. On Linux
+each app gets its own Xvfb screen, since stacked windows draw no faster than one. The audit verdict
+is taken once over every app's findings, so no app alone calls a known issue fixed. A page's capture
+must not depend on the pages its app drew before it: each window ignores the pointer, which would
+otherwise leave whatever it rests on hovered, and the renderer drops its decoded images before each
+page, since a photograph decoded earlier at another size is resampled from that decode.
+`CATALOG_PAGES` limits a run to some pages: page ids, `component.story`s or components.
 
 **Comparing the catalog locally.** `pnpm catalog:compare [base-ref]` answers "which pages does my
 change move?" before a push, on any host, macOS included. It captures the catalog twice on this
@@ -358,7 +366,8 @@ does and 2 when it could not compare or was interrupted, so it can gate a script
 spec passed and wrote every page it listed is cached under `test-results/catalog-compare/cache/`,
 keyed by commit, tier, host and build environment (the repo-root `.env` and every `EXPO_PUBLIC_*`
 variable), so a second run against the same base captures only the working tree; `--refresh`
-captures again, `--tier nightly` compares every page. Ctrl-C stops the whole command, removing
+captures again, `--tier nightly` compares every page, and `--pages messageQuote,messageFrame`
+compares only those. Ctrl-C stops the whole command, removing
 the base's worktree and any half-written capture.
 
 Both sides are drawn by this machine, so its fonts and rendering cancel out: the pictures are not

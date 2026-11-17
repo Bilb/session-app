@@ -100,6 +100,21 @@ interface Capture {
 }
 
 const pagesDir = (capture: string) => join(capture, 'pages')
+/** The ids the spec said it would draw, written by it as CATALOG_PAGES_OUT. */
+const manifestFile = (capture: string) => join(capture, 'pages.json')
+
+/** Empty where the spec predates the manifest. */
+function listedPages(capture: string): string[] {
+  const file = manifestFile(capture)
+  return existsSync(file) ? (JSON.parse(readFileSync(file, 'utf8')) as string[]) : []
+}
+
+const SPEC_SOURCE = 'tests/e2e/specs/catalog.spec.ts'
+
+/** Whether the spec at `sha` draws only the pages CATALOG_PAGES names; an older one draws all. */
+const specFiltersPages = (sha: string) =>
+  gitSucceeds(['cat-file', '-e', `${sha}:${SPEC_SOURCE}`]) &&
+  gitRaw(['show', `${sha}:${SPEC_SOURCE}`]).includes('CATALOG_PAGES')
 
 /** The harness that launches Electron, and the colour switch an older copy of it lacks. */
 const HARNESS_SOURCE = 'tests/e2e/harness/DesktopApp.ts'
@@ -164,6 +179,7 @@ async function buildAndCapture(
   dir: string,
   record: Omit<CaptureRecord, 'complete' | 'specPassed'>,
   label: string,
+  pages: readonly string[] | undefined,
 ): Promise<CaptureRecord> {
   if (!existsSync(join(checkout, 'node_modules/electron/dist')))
     throw new CompareFailure(
@@ -188,7 +204,7 @@ async function buildAndCapture(
 
   rmSync(dir, { recursive: true, force: true })
   mkdirSync(pagesDir(dir), { recursive: true })
-  const manifest = join(dir, 'pages.json')
+  const manifest = manifestFile(dir)
   const code = await step(
     `${label}: capture the ${record.tier} catalog, hidden`,
     [
@@ -209,6 +225,7 @@ async function buildAndCapture(
         CATALOG_TIER: record.tier,
         CATALOG_OUT: pagesDir(dir),
         CATALOG_PAGES_OUT: manifest,
+        CATALOG_PAGES: pages?.join(','),
         SESSION_E2E_HIDDEN: '1',
       },
     },
@@ -353,6 +370,7 @@ async function captureBase(
       dir,
       { sha, tier: options.tier, overlay: overlay !== null },
       'base',
+      options.pages,
     )
   } finally {
     if (options.keepWorktree) console.log(`  kept ${worktree}`)
@@ -400,6 +418,7 @@ async function main(): Promise<number> {
   const dotEnv = join(repoRoot, '.env')
   const host = {
     tier: options.tier,
+    pages: options.pages,
     platform: process.platform,
     arch: process.arch,
     environmentHash: buildEnvironmentHash(
@@ -420,6 +439,7 @@ async function main(): Promise<number> {
       dir,
       { sha: headSha, tier: options.tier, overlay: false },
       'working tree',
+      options.pages,
     )
   // Uncommitted changes are captured as they are, and never cached: no commit names them.
   const head: Capture = dirty
@@ -428,6 +448,20 @@ async function main(): Promise<number> {
         return { dir, record: await captureHead(dir), cached: false }
       })()
     : await cachedCapture(captureKey({ sha: headSha, ...host }), options, captureHead)
+
+  // A base that predates the filter drew every page; only the working tree's list then holds.
+  const baseFilters = options.pages !== undefined && specFiltersPages(baseSha)
+  const only =
+    options.pages === undefined
+      ? undefined
+      : new Set([...listedPages(head.dir), ...(baseFilters ? listedPages(base.dir) : [])])
+  const filterNotes =
+    options.pages !== undefined && !baseFilters
+      ? [
+          'The base predates --pages and captured every page; only the pages the working tree ' +
+            'drew are compared, so a page the change removes is not listed.',
+        ]
+      : []
 
   console.log('\n▶ compare')
   const { results, file } = writeReport({
@@ -445,7 +479,9 @@ async function main(): Promise<number> {
     },
     tier: options.tier,
     sensitivity: options.sensitivity,
+    only,
     warnings: [
+      ...filterNotes,
       ...captureNotes('base', base.record, base.cached),
       ...captureNotes('working tree', head.record, head.cached),
     ],
