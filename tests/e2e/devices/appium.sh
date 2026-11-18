@@ -28,10 +28,12 @@ install() {
     npm install --prefix "$ROOT" --no-audit --no-fund "appium@$APPIUM_VERSION" >/dev/null
   fi
   local name=${driver%@*} version=${driver#*@} installed
+  # Version and path from the manifest: a home moved after an install still lists the driver at its
+  # old path, and every session then fails to load it.
   installed=$("$ROOT/node_modules/.bin/appium" driver list --installed --json 2>/dev/null |
-    node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s||"{}")[process.argv[1]]?.version??""))' "$name" || true)
-  [ "$installed" = "$version" ] && return
-  [ -z "$installed" ] || "$ROOT/node_modules/.bin/appium" driver uninstall "$name" >/dev/null
+    node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const d=JSON.parse(s||"{}")[process.argv[1]];console.log(d?`${d.version} ${d.installPath}`:"")})' "$name" || true)
+  [ "${installed%% *}" = "$version" ] && [ -f "${installed#* }/package.json" ] && return
+  rm -rf "$APPIUM_HOME"
   "$ROOT/node_modules/.bin/appium" driver install "$driver" >/dev/null
 }
 
