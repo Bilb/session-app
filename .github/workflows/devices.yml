@@ -4,6 +4,8 @@ name: devices
 # and tablet each, nightly on main: a run takes about 25 minutes on the one runner it has, which
 # would hold pull requests up behind each other.
 on:
+  push:
+    branches: [debug/devices-ios]
   schedule:
     - cron: '0 16 * * *' # 02:00 Sydney (AEST), 03:00 (AEDT): after nightly-native
   workflow_dispatch:
@@ -20,7 +22,7 @@ env:
 
 jobs:
   android:
-    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'ios'
+    if: github.event_name != 'push' && (github.event_name != 'workflow_dispatch' || inputs.platform != 'ios')
     # One runner on session-qa-2 carries this label: the emulators, adb server and Metro take fixed
     # ports, so two device jobs on the host would take each other's.
     runs-on: [self-hosted, linux, x64, session-devices]
@@ -106,7 +108,7 @@ jobs:
 
   ios:
     if: >-
-      github.event_name == 'schedule' ||
+      github.event_name == 'schedule' || github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.platform != 'android')
     runs-on: [self-hosted, macOS, ARM64, session-ios]
     timeout-minutes: 180
