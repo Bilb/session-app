@@ -4,6 +4,8 @@ name: devices
 # and tablet each, nightly on main: a run takes about 25 minutes on the one runner it has, which
 # would hold pull requests up behind each other.
 on:
+  push:
+    branches: [debug/ios-shots-fix]
   schedule:
     - cron: '0 16 * * *' # 02:00 Sydney (AEST), 03:00 (AEDT): after nightly-native
   workflow_dispatch:
@@ -20,7 +22,7 @@ env:
 
 jobs:
   android:
-    if: github.event_name != 'workflow_dispatch' || inputs.platform != 'ios'
+    if: github.event_name != 'push' && (github.event_name != 'workflow_dispatch' || inputs.platform != 'ios')
     # One runner on session-qa-2 carries this label: the emulators, adb server and Metro take fixed
     # ports, so two device jobs on the host would take each other's.
     runs-on: [self-hosted, linux, x64, session-devices]
@@ -106,7 +108,7 @@ jobs:
 
   ios:
     if: >-
-      github.event_name == 'schedule' ||
+      github.event_name == 'schedule' || github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.platform != 'android')
     runs-on: [self-hosted, macOS, ARM64, session-ios]
     timeout-minutes: 180
@@ -171,7 +173,7 @@ jobs:
             SESSION_SIMULATOR="$udid" pnpm --filter @session/mobile fake-media:push --ios
           done
 
-      - run: pnpm --filter @session/e2e test:e2e:ios
+      - run: pnpm --filter @session/e2e exec playwright test --project=ios specs/composer-shots.spec.ts specs/composer-attach-native.spec.ts
 
       - if: always()
         run: |
@@ -179,7 +181,7 @@ jobs:
           tests/e2e/devices/ios.sh down
 
       - uses: actions/upload-artifact@v7
-        if: failure()
+        if: always()
         with:
           name: ios-traces
           path: |
