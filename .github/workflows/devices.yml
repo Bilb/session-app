@@ -173,7 +173,7 @@ jobs:
             SESSION_SIMULATOR="$udid" pnpm --filter @session/mobile fake-media:push --ios
           done
 
-      - run: pnpm --filter @session/e2e exec playwright test --project=ios specs/retry-shots.spec.ts specs/message-retry-native.spec.ts specs/showcase-audit.spec.ts specs/composer-attach-native.spec.ts
+      - run: pnpm --filter @session/e2e exec playwright test --project=ios specs/retry-shots.spec.ts specs/message-retry-native.spec.ts specs/showcase-audit.spec.ts specs/composer-attach-native.spec.ts specs/attachment-footer.spec.ts
 
       - if: always()
         run: |
