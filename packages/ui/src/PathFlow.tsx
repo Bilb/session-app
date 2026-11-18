@@ -425,14 +425,18 @@ function shapeOf(paths: readonly PathFlowPath[]): string {
 /**
  * The paths as last drawn: `paths` once its shape has changed, at most once per `holdMs`, the
  * first of those `phaseMs` early so that holds started together come due apart. The first paths
- * are drawn at once.
+ * are drawn at once. Unheld, the same array for as long as the shape is, as held: a caller builds
+ * a new one on every render, and everything memoised on it would be rebuilt with it.
  */
-function useHeldPaths(
+export function useHeldPaths(
   paths: readonly PathFlowPath[],
   holdMs: number,
   phaseMs: number,
 ): readonly PathFlowPath[] {
   const shape = shapeOf(paths)
+  const [same, setSame] = useState({ paths, shape })
+  const reshaped = same.shape !== shape
+  if (reshaped) setSame({ paths, shape })
   const [held, setHeld] = useState(() => ({ paths, shape, atMs: Date.now() - phaseMs }))
   const latest = useRef(paths)
   useEffect(() => {
@@ -446,7 +450,8 @@ function useHeldPaths(
     }, waitMs)
     return () => clearTimeout(id)
   }, [shape, held, holdMs])
-  return holdMs === 0 ? paths : held.paths
+  if (holdMs > 0) return held.paths
+  return reshaped ? paths : same.paths
 }
 
 /**
