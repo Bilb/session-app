@@ -112,7 +112,9 @@ sessionTest({
     await alice.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
     // A phone's prompt hides the transcript from the tree, so the view is read once it is gone.
     await alice.tap(ELEMENT.conversation.autoDownloadNo)
-    await alice.waitForVisible(ELEMENT.conversation.attachmentViewList)
+    // The tap fetched the pictures, and a picture that arrives takes its own shape, which can
+    // push the footer below the screen.
+    await alice.reveal(ELEMENT.conversation.attachmentViewList, ELEMENT.conversation.screen)
     expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(0)
   },
 })
