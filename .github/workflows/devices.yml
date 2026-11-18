@@ -4,6 +4,8 @@ name: devices
 # and tablet each, nightly on main: a run takes about 25 minutes on the one runner it has, which
 # would hold pull requests up behind each other.
 on:
+  push:
+    branches: [debug/native-specs]
   schedule:
     - cron: '0 16 * * *' # 02:00 Sydney (AEST), 03:00 (AEDT): after nightly-native
   workflow_dispatch:

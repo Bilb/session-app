@@ -93,7 +93,11 @@ sessionTest({
     if (!alice) throw new Error('the harness did not open alice')
 
     await openFirstConversation(alice)
-    await alice.waitForVisible(ALBUM_TILE_ID)
+    await alice.screenshot(`debug-tile-opened-${alice.platform}`)
+    await alice.waitForVisible(ALBUM_TILE_ID).catch(async (error: unknown) => {
+      await alice.screenshot(`debug-tile-missing-${alice.platform}`)
+      throw error
+    })
     // Off centre, where no cloud is drawn over it.
     await alice.tapAt(ALBUM_TILE_ID, LEFT_HALF)
     await alice.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)

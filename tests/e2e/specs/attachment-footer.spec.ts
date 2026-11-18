@@ -108,11 +108,19 @@ sessionTest({
 
     // Above the toggle, where the footer's row would take the touch if it reached over the tile.
     const toggle = await frameOf(alice, ELEMENT.conversation.attachmentViewList)
+    console.log(`debug ${alice.platform} toggle ${JSON.stringify(toggle)} above ${String(above)} row ${JSON.stringify(row)} tap at ${String(centreX(toggle))},${String(above - EDGE)}`)
+    await alice.screenshot(`debug-footer-before-${alice.platform}`)
     await alice.tapPoint(centreX(toggle), above - EDGE)
     await alice.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
+    await alice.screenshot(`debug-footer-prompt-${alice.platform}`)
     // A phone's prompt hides the transcript from the tree, so the view is read once it is gone.
     await alice.tap(ELEMENT.conversation.autoDownloadNo)
-    await alice.waitForVisible(ELEMENT.conversation.attachmentViewList)
+    await alice.screenshot(`debug-footer-after-no-${alice.platform}`)
+    await alice.waitForVisible(ELEMENT.conversation.attachmentViewList).catch(async (error: unknown) => {
+      await alice.screenshot(`debug-footer-missing-${alice.platform}`)
+      console.log(`debug ${alice.platform} view-list ${String(await alice.count(ELEMENT.conversation.attachmentViewList))} view-gallery ${String(await alice.count(ELEMENT.conversation.attachmentViewGallery))} tiles ${String(await alice.count(ALBUM_TILE_ID))}`)
+      throw error
+    })
     expect(await alice.count(ELEMENT.conversation.attachmentViewGallery)).toBe(0)
   },
 })

@@ -145,6 +145,7 @@ for (const platform of MOBILE_PLATFORMS) {
 
     try {
       await openFirstConversation(app)
+      await app.screenshot(`debug-threeup-opened-${platform}`)
       await app.waitForVisible(ALBUM_TILE_ID)
       await app.scroll(ELEMENT.conversation.screen, 1)
       await app.tapAt(ALBUM_TILE_ID, BESIDE_THREE_UP_CLOUD)
