@@ -15,11 +15,17 @@ const ROW_TOUCH_TARGET = 48
 /** How far inside an edge a tap lands: clear of the drawn button, which is 8 in from the row's. */
 const EDGE = 2
 
-/** iOS's tree gives each frame in whole points. */
+/**
+ * iOS's tree gives each frame in whole points, and Android lays out on whole pixels, which at a
+ * density such as 2.625 puts an edge up to a third of a dp from where it was asked to be.
+ */
 const ROUNDING = 1
 
-/** The most the row may start below what is above it: the line's gap, or the sheet's rule. */
+/** The most the row may start below what is above it: the line's gap. */
 const MAX_CLEARANCE = SPACING['2xs'] + ROUNDING
+
+/** The rule the sheet draws above its footer, between the rows and the footer's gap. */
+const SHEET_RULE = 1
 
 const FOOTER = ELEMENT.conversation.attachmentFooter
 
@@ -75,15 +81,16 @@ function expectRowHeight(app: ISessionApp, row: Frame): void {
 
 /**
  * A touch on what is above lands there only if the footer's row starts below it. Soft, so the tap
- * that follows says what the overlap does as well.
+ * that follows says what the overlap does as well. `between` is what is drawn in the gap, such as
+ * the sheet's rule.
  */
-function expectClearOf(row: Frame, aboveBottom: number): void {
+function expectClearOf(row: Frame, aboveBottom: number, between = 0): void {
   expect
     .soft(row.y - aboveBottom, 'the footer row starts below what is above it')
     .toBeGreaterThanOrEqual(-ROUNDING)
   expect
     .soft(row.y - aboveBottom, 'the row hands its growth back')
-    .toBeLessThanOrEqual(MAX_CLEARANCE)
+    .toBeLessThanOrEqual(MAX_CLEARANCE + between)
 }
 
 /** A point `EDGE` in from the row's edge must miss the button's drawn box, or it proves nothing. */
@@ -193,7 +200,7 @@ sessionTest({
     const row = await requiredInside(alice, FOOTER, sheet)
     const list = await frameOf(alice, ELEMENT.conversation.attachmentSheetList)
     expectRowHeight(alice, row)
-    expectClearOf(row, bottom(list))
+    expectClearOf(row, bottom(list), SHEET_RULE)
 
     const verb = await requiredInside(alice, FOOTER_ACTION_ID, sheet)
     await alice.tapPoint(centreX(verb), bottom(list) - EDGE)
