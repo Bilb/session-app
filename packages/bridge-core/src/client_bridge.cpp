@@ -1439,11 +1439,17 @@ struct ClientBridge::Impl {
                             hop.pubkey.hex(),
                             country ? std::optional<std::string>{*country} : std::nullopt);
                 }
-                auto destination = open.remote_is_client      ? PathDestination::file_server
-                                 : in_own_swarm(open.remote) ? PathDestination::own_swarm
-                                                             : PathDestination::storage_node;
+                // An onion-request path has no remote: it is named by the router instead.
+                auto destination =
+                        open.any_destination
+                                ? (*open.any_destination == ::session::network::PathCategory::file
+                                           ? PathDestination::any_file
+                                           : PathDestination::any_node)
+                        : open.remote_is_client      ? PathDestination::file_server
+                        : in_own_swarm(open.remote) ? PathDestination::own_swarm
+                                                    : PathDestination::storage_node;
                 paths.emplace_back(
-                        open.remote.hex(),
+                        open.any_destination ? open.id : open.remote.hex(),
                         destination,
                         open.standby,
                         std::move(hops),

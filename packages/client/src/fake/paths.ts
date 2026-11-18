@@ -3,10 +3,12 @@ import type {
   NetworkPath,
   NetworkPaths,
   PathDestination,
+  RouterKind,
 } from '@session/bridge-types'
 
 /**
- * The fake's paths: a handful shaped like Session Router's, with the countries real relays are in.
+ * The fake's paths: a handful shaped like Session Router's, with the countries real relays are in,
+ * or onion requests' where the network was attached with that router (see `onionPaths`).
  *
  * What a caller can rely on, and what the fake keeps to:
  *
@@ -239,13 +241,73 @@ function proxySessions(elapsedMs: number): NetworkPath[] {
   return out
 }
 
-/** The snapshot for a network connected `elapsedMs` ago, or none where `elapsedMs` is null. */
+/**
+ * Onion requests' paths, which are built before any destination is chosen: two for file transfers
+ * and two for everything else, as libsession keeps by default, and two more for everything else on
+ * the busy account, whose requests in flight at once outnumber two paths. Three hops each, no
+ * pings, and replaced every ten minutes under a new name, their counts starting again; staggered,
+ * so they are not all replaced at once.
+ */
+const ONION_ROTATION_MS = 600_000
+
+interface FakeOnionSpec {
+  destination: 'anyNode' | 'anyFile'
+  everyMs: number
+}
+
+const ONION_SPECS: readonly FakeOnionSpec[] = [
+  { destination: 'anyNode', everyMs: 3_000 },
+  { destination: 'anyNode', everyMs: 4_000 },
+  { destination: 'anyFile', everyMs: 41_000 },
+  { destination: 'anyFile', everyMs: 67_000 },
+]
+
+const BUSY_ONION_SPECS: readonly FakeOnionSpec[] = [
+  ...ONION_SPECS,
+  { destination: 'anyNode', everyMs: 2_000 },
+  { destination: 'anyNode', everyMs: 2_500 },
+]
+
+function onionPaths(elapsedMs: number, traffic: FakePathTraffic): NetworkPath[] {
+  const specs = traffic === 'busy' ? BUSY_ONION_SPECS : ONION_SPECS
+  return specs.map((spec, index) => {
+    const offsetMs = (index * ONION_ROTATION_MS) / specs.length
+    const build = Math.floor((elapsedMs + offsetMs) / ONION_ROTATION_MS)
+    const sinceBuildMs = (elapsedMs + offsetMs) % ONION_ROTATION_MS
+    const base = 0x700 + index * 7 + build * 13
+    const requestsSent = Math.floor(sinceBuildMs / spec.everyMs)
+    const prefix = spec.destination === 'anyFile' ? 'FP' : 'SP'
+    return {
+      remoteHex: `${prefix}-${index}-${build}`,
+      destination: spec.destination,
+      standby: false,
+      hops: hopsFor(base, 3),
+      latencyMs: 380 + ((base * 37) % 420),
+      jitterMs: 20 + ((base * 11) % 60),
+      requestsSent,
+      proxiedRequestsSent: 0,
+      ...(requestsSent > 0 ? { msSinceLastRequest: sinceBuildMs % spec.everyMs } : {}),
+      pingsAnswered: 0,
+    }
+  })
+}
+
+/**
+ * The snapshot for a network connected `elapsedMs` ago, or none where `elapsedMs` is null, as
+ * `router` builds paths: sending direct, it has none.
+ */
 export function fakeNetworkPaths(
   elapsedMs: number | null,
   traffic: FakePathTraffic = 'quiet',
+  router: RouterKind = 'session-router',
 ): NetworkPaths {
   if (elapsedMs === null) return { paths: [], nodesByCountry: [], countryAttribution: ATTRIBUTION }
   const nodesByCountry = [...NODES_BY_COUNTRY]
+  if (router === 'direct') return { paths: [], nodesByCountry, countryAttribution: ATTRIBUTION }
+  if (router === 'onion-requests') {
+    const warmMs = traffic === 'busy' ? elapsedMs + BUSY_WARM_MS : elapsedMs
+    return { paths: onionPaths(warmMs, traffic), nodesByCountry, countryAttribution: ATTRIBUTION }
+  }
   if (traffic === 'busy') {
     const warmMs = elapsedMs + BUSY_WARM_MS
     return {

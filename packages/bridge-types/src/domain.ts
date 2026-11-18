@@ -487,8 +487,12 @@ export type NetworkStatus = 'unknown' | 'connecting' | 'connected' | 'disconnect
  * `storageNode` is any other, which is a group's swarm, a contact's a message was sent to, or a
  * proxy a community request went through; `fileServer` is the file server, which is reached as a
  * client behind a relay of its own choosing rather than as a node on the network.
+ *
+ * Under onion requests a path is built before any destination is chosen and carries requests to
+ * all of them: `anyFile` is one of those kept for file transfers, `anyNode` one for everything
+ * else.
  */
-export type PathDestination = 'ownSwarm' | 'storageNode' | 'fileServer'
+export type PathDestination = 'ownSwarm' | 'storageNode' | 'fileServer' | 'anyNode' | 'anyFile'
 
 /** One relay of a path, as the path screen shows it. */
 export interface PathHop {
@@ -506,7 +510,11 @@ export interface PathHop {
  * does not time individual hops.
  */
 export interface NetworkPath {
-  /** Who the path's session is with, hex. Stays the same when the path itself is replaced. */
+  /**
+   * Who the path's session is with, hex. Stays the same when the path itself is replaced. For an
+   * `anyNode` or `anyFile` path, which has no one remote, the router's name for the path instead:
+   * a replacement has a new one.
+   */
   remoteHex: string
   destination: PathDestination
   /**
@@ -516,17 +524,23 @@ export interface NetworkPath {
   standby: boolean
   /**
    * The hops, nearest first. To a storage node there are four and the last is the node itself; to
-   * the file server there are three and the last is the relay it is reached through.
+   * the file server there are three and the last is the relay it is reached through; an `anyNode`
+   * or `anyFile` path has three, the last a relay that forwards to whatever each request names.
    */
   hops: PathHop[]
-  /** Mean round trip of the router's pings along it. Zero until the first one is answered. */
+  /**
+   * Mean round trip of the router's pings along it. Zero until the first one is answered. Onion
+   * requests send no pings, so an `anyNode` or `anyFile` path's is its requests' round trips,
+   * which include the destination's time to answer.
+   */
   latencyMs: number
-  /** Mean difference between consecutive round trips. Zero until two pings are answered. */
+  /** Mean difference between consecutive round trips, of the same kind as `latencyMs`. */
   jitterMs: number
   /**
    * Requests sent to `remoteHex` since the network started, and how many of them were passed on
    * to a server outside the network (a community, or the file server's web interface). Totals, so
-   * that two snapshots tell how many went in between; they carry over when the path is replaced.
+   * that two snapshots tell how many went in between; they carry over when the path is replaced,
+   * except on an `anyNode` or `anyFile` path, whose counts are its own.
    */
   requestsSent: number
   proxiedRequestsSent: number
@@ -537,7 +551,7 @@ export interface NetworkPath {
   msSinceLastRequest?: number
   /**
    * The router's pings answered along it since it was built. A total that starts again from zero
-   * when the path is replaced, which a change in `hops` tells.
+   * when the path is replaced, which a change in `hops` tells. Always zero under onion requests.
    */
   pingsAnswered: number
 }

@@ -641,16 +641,22 @@ struct NetworkStatusResult {
 /// `storageNode` is any other, which is a group's swarm, a contact's a message was sent to, or a
 /// proxy a community request went through; `fileServer` is the file server, which is reached as a
 /// client behind a relay of its own choosing rather than as a node on the network.
+///
+/// Under onion requests a path is built before any destination is chosen and carries requests to
+/// all of them: `anyFile` is one of those kept for file transfers, `anyNode` one for everything
+/// else.
 enum class PathDestination {
     own_swarm,
     storage_node,
     file_server,
+    any_node,
+    any_file,
 };
 
 template <>
 struct EnumTraits<PathDestination> {
     static constexpr std::string_view name = "PathDestination";
-    static constexpr std::array<std::string_view, 3> names{"ownSwarm", "storageNode", "fileServer"};
+    static constexpr std::array<std::string_view, 5> names{"ownSwarm", "storageNode", "fileServer", "anyNode", "anyFile"};
 
     static constexpr std::string_view to_string(PathDestination value) {
         return names[static_cast<std::size_t>(value)];
@@ -679,29 +685,35 @@ struct PathHop {
 /// A path the client is holding open. Every figure covers the whole path, out and back: the router
 /// does not time individual hops.
 struct NetworkPath {
-    /// Who the path's session is with, hex. Stays the same when the path itself is replaced.
+    /// Who the path's session is with, hex. Stays the same when the path itself is replaced. For an
+    /// `anyNode` or `anyFile` path, which has no one remote, the router's name for the path instead:
+    /// a replacement has a new one.
     std::string remote_hex;
     ::session_bridge::PathDestination destination;
     /// A spare the router holds ready for the same remote and sends nothing along. Each remote has
     /// one path that is not, and that one carries the request counts; a standby path's are zero.
     bool standby;
     /// The hops, nearest first. To a storage node there are four and the last is the node itself; to
-    /// the file server there are three and the last is the relay it is reached through.
+    /// the file server there are three and the last is the relay it is reached through; an `anyNode`
+    /// or `anyFile` path has three, the last a relay that forwards to whatever each request names.
     std::vector<::session_bridge::PathHop> hops;
-    /// Mean round trip of the router's pings along it. Zero until the first one is answered.
+    /// Mean round trip of the router's pings along it. Zero until the first one is answered. Onion
+    /// requests send no pings, so an `anyNode` or `anyFile` path's is its requests' round trips,
+    /// which include the destination's time to answer.
     double latency_ms;
-    /// Mean difference between consecutive round trips. Zero until two pings are answered.
+    /// Mean difference between consecutive round trips, of the same kind as `latencyMs`.
     double jitter_ms;
     /// Requests sent to `remoteHex` since the network started, and how many of them were passed on
     /// to a server outside the network (a community, or the file server's web interface). Totals, so
-    /// that two snapshots tell how many went in between; they carry over when the path is replaced.
+    /// that two snapshots tell how many went in between; they carry over when the path is replaced,
+    /// except on an `anyNode` or `anyFile` path, whose counts are its own.
     double requests_sent;
     double proxied_requests_sent;
     /// How long ago the last of `requestsSent` went, so one snapshot tells which paths are in use.
     /// Absent on a standby path and for a remote nothing has been sent to.
     std::optional<double> ms_since_last_request;
     /// The router's pings answered along it since it was built. A total that starts again from zero
-    /// when the path is replaced, which a change in `hops` tells.
+    /// when the path is replaced, which a change in `hops` tells. Always zero under onion requests.
     double pings_answered;
 
     NetworkPath(std::string remote_hex_, ::session_bridge::PathDestination destination_, bool standby_, std::vector<::session_bridge::PathHop> hops_, double latency_ms_, double jitter_ms_, double requests_sent_, double proxied_requests_sent_, std::optional<double> ms_since_last_request_, double pings_answered_) :

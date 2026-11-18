@@ -64,7 +64,8 @@ export interface PathFlowProps {
   columnTitles: readonly [string, string, string, string, string]
   /**
    * A bar's name, from its country code (`?` unknown, `FS` the file server). Where the name does
-   * not fit before the next column, the bar is labelled with the code instead.
+   * not fit before the next column, the bar is labelled with the code instead. An empty name leaves
+   * the bar unlabelled.
    */
   labelFor: (country: string) => string
   /** What each colour means, under the drawing; a kind with no path drawn is left out. */
@@ -297,7 +298,10 @@ const FlowText = memo(function FlowText({
       {buildingLabel !== null
         ? null
         : layout.bars
-            .filter((bar) => bar.column > 0 && bar.height >= LABEL_MIN_BAR)
+            .filter(
+              (bar) =>
+                bar.column > 0 && bar.height >= LABEL_MIN_BAR && labelFor(bar.country) !== '',
+            )
             .map((bar) => {
               // To the left of its bar: the destination's sits at the right margin, so every label
               // goes on the side where there is room for the destination's.

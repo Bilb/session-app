@@ -679,19 +679,22 @@ describeEcho('the generated converters', () => {
         result: {
           type: 'networkPaths',
           snapshot: {
-            paths: (['ownSwarm', 'storageNode', 'fileServer'] as const).map((destination, i) => ({
-              remoteHex: String(i).repeat(64),
-              destination,
-              standby: i === 1,
-              hops: [{ pubkeyHex: 'a'.repeat(64), country: 'DE' }, { pubkeyHex: 'b'.repeat(64) }],
-              latencyMs: 240 + i,
-              jitterMs: 12.5,
-              requestsSent: 9_007_199_254_740_991,
-              proxiedRequestsSent: 0,
-              // Present on one path only: absent is its own case, a remote nothing went to.
-              ...(i === 0 ? { msSinceLastRequest: 1_234 } : {}),
-              pingsAnswered: 2_147_483_647,
-            })),
+            // Every PathDestination once: the enum's names are what the converters spell.
+            paths: (['ownSwarm', 'storageNode', 'fileServer', 'anyNode', 'anyFile'] as const).map(
+              (destination, i) => ({
+                remoteHex: String(i).repeat(64),
+                destination,
+                standby: i === 1,
+                hops: [{ pubkeyHex: 'a'.repeat(64), country: 'DE' }, { pubkeyHex: 'b'.repeat(64) }],
+                latencyMs: 240 + i,
+                jitterMs: 12.5,
+                requestsSent: 9_007_199_254_740_991,
+                proxiedRequestsSent: 0,
+                // Present on one path only: absent is its own case, a remote nothing went to.
+                ...(i === 0 ? { msSinceLastRequest: 1_234 } : {}),
+                pingsAnswered: 2_147_483_647,
+              }),
+            ),
             nodesByCountry: [
               { country: 'DE', nodes: 412 },
               { country: 'US', nodes: 230 },

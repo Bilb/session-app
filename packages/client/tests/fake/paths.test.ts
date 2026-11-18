@@ -46,4 +46,32 @@ describe('fakeNetworkPaths', () => {
   it('holds no paths before the network has connected', () => {
     expect(fakeNetworkPaths(null, 'busy').paths).toEqual([])
   })
+
+  it('holds no paths sending direct, though it knows the network', () => {
+    const snapshot = fakeNetworkPaths(10 * MINUTE, 'quiet', 'direct')
+    expect(snapshot.paths).toEqual([])
+    expect(snapshot.nodesByCountry.length).toBeGreaterThan(0)
+  })
+
+  it("keeps onion requests' paths: three hops, two for files, no pings", () => {
+    const { paths } = fakeNetworkPaths(10 * MINUTE, 'quiet', 'onion-requests')
+    expect(paths.map((p) => p.destination).sort()).toEqual([
+      'anyFile',
+      'anyFile',
+      'anyNode',
+      'anyNode',
+    ])
+    expect(paths.every((p) => p.hops.length === 3 && !p.standby && p.pingsAnswered === 0)).toBe(
+      true,
+    )
+    expect(fakeNetworkPaths(10 * MINUTE, 'busy', 'onion-requests').paths).toHaveLength(6)
+  })
+
+  it('names a replaced onion path afresh and starts its count again', () => {
+    const at = (ms: number) => fakeNetworkPaths(ms, 'quiet', 'onion-requests').paths[0]
+    const before = at(9.9 * MINUTE)
+    const after = at(10.1 * MINUTE)
+    expect(after?.remoteHex).not.toBe(before?.remoteHex)
+    expect(after?.requestsSent ?? 0).toBeLessThan(before?.requestsSent ?? 0)
+  })
 })

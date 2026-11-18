@@ -2,6 +2,7 @@ import type { NetworkPath, NetworkPaths } from '@session/client'
 import { describe, expect, it } from 'vitest'
 
 import {
+  ANY_DESTINATION,
   BUSY_REQUESTS,
   EMPTY_TRACKER,
   expectedPathCount,
@@ -369,5 +370,51 @@ describe('expectedPathCount', () => {
   it("counts your swarm's two paths, which every account has, and no chat's", () => {
     expect(expectedPathCount([])).toBe(2)
     expect(expectedPathCount([{ kind: 'dm' }, { kind: 'dm' }])).toBe(2)
+  })
+})
+
+describe('onion paths', () => {
+  const onion = (remoteHex: string, over: Partial<NetworkPath> = {}): NetworkPath =>
+    path({
+      remoteHex,
+      destination: 'anyNode',
+      hops: [
+        { pubkeyHex: `${remoteHex}e`, country: 'DE' },
+        { pubkeyHex: `${remoteHex}r`, country: 'US' },
+        { pubkeyHex: `${remoteHex}x`, country: 'FI' },
+      ],
+      ...over,
+    })
+
+  it('draws every one, used or not, ending at the destination each request names', () => {
+    const { tracker } = trackSnapshot(
+      EMPTY_TRACKER,
+      snap(onion('SP-1'), onion('SP-2'), onion('FP-1', { destination: 'anyFile' })),
+      0,
+      1_000,
+    )
+    const used = inUse(tracker, 0)
+    expect(used.map((p) => p.key).sort()).toEqual(['FP-1', 'SP-1', 'SP-2'])
+    expect(used.find((p) => p.key === 'SP-1')?.countries).toEqual([
+      'DE',
+      'US',
+      'FI',
+      ANY_DESTINATION,
+    ])
+    expect(used.find((p) => p.key === 'FP-1')?.kind).toBe('file')
+    // The destination is no country.
+    expect(pathStats(tracker, 0).countriesCrossed).toBe(3)
+  })
+
+  it('counts a path replaced under a new name as rebuilt, and its first request as seen', () => {
+    const first = trackSnapshot(EMPTY_TRACKER, snap(onion('SP-1', { requestsSent: 40 })), 0, 1_000)
+    const next = trackSnapshot(
+      first.tracker,
+      snap(onion('SP-2', { requestsSent: 1, msSinceLastRequest: 200 })),
+      1_000,
+      1_000,
+    )
+    expect(next.tracker.rebuilt).toBe(1)
+    expect(next.requests.map((r) => r.pathKey)).toEqual(['SP-2'])
   })
 })

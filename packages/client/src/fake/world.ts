@@ -40,6 +40,7 @@ import {
   type NetworkPaths,
   type NetworkStatus,
   type OutgoingAttachment,
+  type RouterKind,
   type SendPlan,
   type SendState,
   type SessionEvent,
@@ -326,6 +327,8 @@ export class FakeAccount {
    * not the account's, so the account made next goes online on it too.
    */
   networkPlanned = false
+  /** How the accepted network sends, which decides what paths it reports. */
+  networkRouter: RouterKind = 'session-router'
   networkStatus: NetworkStatus = 'disconnected'
   /** When the network last connected, on the paths' clock; null while it is not connected. */
   connectedAtMs: number | null = null
@@ -1248,6 +1251,7 @@ export class FakeAccount {
     return fakeNetworkPaths(
       this.connectedAtMs === null ? null : now - this.connectedAtMs,
       this.world?.pathTraffic ?? 'quiet',
+      this.networkRouter,
     )
   }
 

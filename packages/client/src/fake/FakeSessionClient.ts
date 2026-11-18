@@ -210,6 +210,9 @@ export class FakeSessionClient implements SessionClient {
 
     // Recorded either way and attached only with an account, as the bridge does.
     this.account.networkPlanned = true
+    // libsession's default: Session Router where there is one, onion requests on a devnet.
+    this.account.networkRouter =
+      config.router ?? (config.netid === 'devnet' ? 'onion-requests' : 'session-router')
     this.account.goOnline()
     return Promise.resolve()
   }

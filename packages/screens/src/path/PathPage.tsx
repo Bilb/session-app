@@ -20,6 +20,7 @@ import {
 import { useEffect, useRef, useState } from 'react'
 
 import {
+  ANY_DESTINATION,
   EMPTY_TRACKER,
   expectedPathCount,
   hopMsFor,
@@ -59,9 +60,11 @@ function kindLabels(): Record<PathKind, string> {
 
 /**
  * A bar's label: the country's code on every platform, which fits every column at every width, and
- * the file server by name. An unknown country is its `?`.
+ * the file server by name. An unknown country is its `?`; an onion request's destination, which
+ * each request names for itself, has none.
  */
 function labelFor(country: string): string {
+  if (country === ANY_DESTINATION) return ''
   return country === 'FS' ? PENDING_COPY.onionRoutingPathFileServer : country
 }
 

@@ -9,8 +9,12 @@ const COUNTRY_ORDER = [
   'BG', 'JP', 'CZ', 'AE', 'IE', 'TH', 'IN', 'MY', 'KR', 'IT', 'RO', 'TR',
 ] as const // prettier-ignore
 
-/** As the path screen labels its bars: the country's code, and the file server by name. */
-const labelFor = (country: string) => (country === 'FS' ? 'File server' : country)
+/**
+ * As the path screen labels its bars: the country's code, the file server by name, and nothing
+ * for an onion request's destination (`*`), which each request names for itself.
+ */
+const labelFor = (country: string) =>
+  country === '*' ? '' : country === 'FS' ? 'File server' : country
 
 const KIND_LABELS: Record<PathFlowKind, string> = {
   swarm: 'Your messages',
@@ -66,6 +70,20 @@ const PACKETS: PathFlowPacket[] = [
   { id: 'ping-fs', pathKey: 'f1', startMs: STILL_AT_MS - 0.6 * HOP_MS, hopMs: HOP_MS, quiet: true },
 ]
 
+/**
+ * Onion requests' paths, built before any destination is chosen: three relays each, then the one
+ * unlabelled destination they share. Two for files and four for everything else, as a busy client
+ * keeps.
+ */
+const ONION: PathFlowPath[] = [
+  { key: 'SP-1', kind: 'swarm', countries: ['DE', 'US', 'FI', '*'], lit: true },
+  { key: 'SP-2', kind: 'swarm', countries: ['US', 'DE', 'DE', '*'], lit: false },
+  { key: 'SP-3', kind: 'swarm', countries: ['FI', 'NL', 'US', '*'], lit: false },
+  { key: 'SP-4', kind: 'swarm', countries: ['DE', 'FI', 'CA', '*'], lit: false },
+  { key: 'FP-1', kind: 'file', countries: ['US', 'DE', 'FI', '*'], lit: false },
+  { key: 'FP-2', kind: 'file', countries: ['DE', 'DE', 'US', '*'], lit: false },
+]
+
 /** A hop whose address is not in the country table, and a build that carries none. */
 const UNKNOWN: PathFlowPath[] = [
   { key: 'swarm', kind: 'swarm', countries: ['DE', null, 'FI', 'DE'], lit: true },
@@ -75,7 +93,8 @@ const UNKNOWN: PathFlowPath[] = [
 /**
  * The country flow, still: the requests that travel it are motion, which a capture cannot hold.
  * Lit lines against faint ones, a dashed standby, every kind's colour with its legend, a bar for an
- * unknown country, the drawing before any path is built, and a request and pings caught still.
+ * unknown country, onion requests' unlabelled destination, the drawing before any path is built,
+ * and a request and pings caught still.
  */
 export const pathFlow = defineStory<{
   paths: PathFlowPath[]
@@ -91,6 +110,7 @@ export const pathFlow = defineStory<{
     requests: { paths: QUIET, packets: PACKETS },
     busy: { paths: BUSY },
     unknown: { paths: UNKNOWN },
+    onion: { paths: ONION },
   },
   render: ({ paths, packets }) => (
     <PathFlow

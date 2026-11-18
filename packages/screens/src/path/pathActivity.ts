@@ -32,6 +32,12 @@ const STALE_POLLS = 3
 
 export type PathKind = 'swarm' | 'node' | 'community' | 'file'
 
+/**
+ * The destination column of a path built before any destination is chosen, under onion requests:
+ * one bar they all share, unlabelled, since each request names its own.
+ */
+export const ANY_DESTINATION = '*'
+
 export interface TrackedPath {
   /** The remote for its current path; the remote and a number for a standby one. */
   key: string
@@ -39,8 +45,16 @@ export interface TrackedPath {
   sessionKey: string
   /** Held ready to switch to, carrying nothing but pings. */
   standby: boolean
+  /**
+   * Built before any destination is chosen, under onion requests, and kept whether or not it is
+   * used: every one is drawn, there being only a handful.
+   */
+  anyDestination: boolean
   kind: PathKind
-  /** A country per column after "you": entry, relay, relay, destination (`FS` the file server). */
+  /**
+   * A country per column after "you": entry, relay, relay, destination (`FS` the file server,
+   * `ANY_DESTINATION` an onion request's).
+   */
   countries: (string | null)[]
   entryHex: string | null
   latencyMs: number
@@ -92,9 +106,14 @@ export const EMPTY_TRACKER: PathTracker = {
   lastPollMs: null,
 }
 
+function isAnyDestination(path: NetworkPath): boolean {
+  return path.destination === 'anyNode' || path.destination === 'anyFile'
+}
+
 function kindOf(path: NetworkPath): PathKind {
-  if (path.destination === 'fileServer') return 'file'
-  if (path.destination === 'ownSwarm') return 'swarm'
+  if (path.destination === 'fileServer' || path.destination === 'anyFile') return 'file'
+  // An onion path carries your swarm's requests along with everyone else's.
+  if (path.destination === 'ownSwarm' || path.destination === 'anyNode') return 'swarm'
   // A node a community request went through: it proxies to the server, which is what it is for.
   return path.proxiedRequestsSent > 0 ? 'community' : 'node'
 }
@@ -102,7 +121,9 @@ function kindOf(path: NetworkPath): PathKind {
 function countriesOf(path: NetworkPath): (string | null)[] {
   const hops = path.hops.map((hop) => hop.country ?? null)
   // The file server lies past the last relay we can see; its column is the server itself.
-  return path.destination === 'fileServer' ? [...hops.slice(0, 3), 'FS'] : hops.slice(0, 4)
+  if (path.destination === 'fileServer') return [...hops.slice(0, 3), 'FS']
+  if (isAnyDestination(path)) return [...hops.slice(0, 3), ANY_DESTINATION]
+  return hops.slice(0, 4)
 }
 
 /** Your own swarm first, then the file server, then the rest in a fixed order so lines stay put. */
@@ -170,6 +191,8 @@ export function trackSnapshot(
     const replaced = before !== undefined && before !== signature
     const routes = routesBefore.get(path.remoteHex)
     if (!first && routes !== undefined && !routes.has(signature)) rebuilt += 1
+    // An onion path has no remote to keep: its replacement comes under a name not seen before.
+    if (!first && isAnyDestination(path) && !previous.has(key)) rebuilt += 1
     hopSignatures.set(key, signature)
 
     totals.set(key, path.requestsSent)
@@ -210,6 +233,7 @@ export function trackSnapshot(
       key,
       sessionKey: path.remoteHex,
       standby: path.standby,
+      anyDestination: isAnyDestination(path),
       kind: kindFor(path),
       countries: countriesOf(path),
       entryHex: path.hops[0]?.pubkeyHex ?? null,
@@ -263,7 +287,7 @@ export function trackSnapshot(
 /**
  * The paths in use: those of any session that carried a request in the last minute, standby ones
  * included, and always the paths to your own swarm and to the file server, which the client keeps
- * for as long as it holds them open.
+ * for as long as it holds them open, and every onion path.
  */
 export function inUse(tracker: PathTracker, nowMs: number): TrackedPath[] {
   const busy = new Set(
@@ -274,7 +298,7 @@ export function inUse(tracker: PathTracker, nowMs: number): TrackedPath[] {
   // Your swarm has several members and the client may have talked to more than one of them; the
   // one it talked to last is always drawn, and any other only while in use, like any node.
   const swarm = tracker.paths
-    .filter((p) => p.kind === 'swarm' && !p.standby)
+    .filter((p) => p.kind === 'swarm' && !p.standby && !p.anyDestination)
     .reduce<TrackedPath | null>(
       (best, p) =>
         best === null || (p.lastRequestAtMs ?? -Infinity) > (best.lastRequestAtMs ?? -Infinity)
@@ -283,7 +307,11 @@ export function inUse(tracker: PathTracker, nowMs: number): TrackedPath[] {
       null,
     )
   return tracker.paths.filter(
-    (p) => p.sessionKey === swarm?.sessionKey || p.kind === 'file' || busy.has(p.sessionKey),
+    (p) =>
+      p.anyDestination ||
+      p.sessionKey === swarm?.sessionKey ||
+      p.kind === 'file' ||
+      busy.has(p.sessionKey),
   )
 }
 
@@ -303,7 +331,8 @@ export function pathStats(tracker: PathTracker, nowMs: number): PathStats {
   const used = inUse(tracker, nowMs)
   const countries = new Set<string>()
   for (const p of used)
-    for (const cc of p.countries) if (cc !== null && cc !== 'FS') countries.add(cc)
+    for (const cc of p.countries)
+      if (cc !== null && cc !== 'FS' && cc !== ANY_DESTINATION) countries.add(cc)
   // The paths drawn: a count over every open path would name entry nodes no line on screen uses.
   const entries = new Set(used.map((p) => p.entryHex).filter((e) => e !== null))
   const timed = used.filter((p) => p.latencyMs > 0)
