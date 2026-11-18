@@ -316,11 +316,16 @@ export function inUse(tracker: PathTracker, nowMs: number): TrackedPath[] {
 }
 
 export interface PathStats {
+  /**
+   * Every path in use is an onion request's: the timings are how long requests took to be answered
+   * rather than a path's round trip, and there is no jitter to give.
+   */
+  onionRequests: boolean
   pathsInUse: number
   countriesCrossed: number
   entryNodes: number
   rebuilt: number
-  /** Null until some path in use has answered a ping. */
+  /** Null until some path in use has answered a ping, or under onion requests a request. */
   averageMs: number | null
   fastestMs: number | null
   slowestMs: number | null
@@ -339,7 +344,9 @@ export function pathStats(tracker: PathTracker, nowMs: number): PathStats {
   const latencies = timed.map((p) => p.latencyMs)
   const mean = (xs: number[]) =>
     xs.length === 0 ? null : xs.reduce((a, b) => a + b, 0) / xs.length
+  const onionRequests = used.length > 0 && used.every((p) => p.anyDestination)
   return {
+    onionRequests,
     pathsInUse: used.length,
     countriesCrossed: countries.size,
     entryNodes: entries.size,
@@ -347,7 +354,7 @@ export function pathStats(tracker: PathTracker, nowMs: number): PathStats {
     averageMs: mean(latencies),
     fastestMs: latencies.length === 0 ? null : Math.min(...latencies),
     slowestMs: latencies.length === 0 ? null : Math.max(...latencies),
-    jitterMs: mean(timed.map((p) => p.jitterMs)),
+    jitterMs: onionRequests ? null : mean(timed.map((p) => p.jitterMs)),
   }
 }
 

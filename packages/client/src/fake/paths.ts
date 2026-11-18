@@ -245,8 +245,8 @@ function proxySessions(elapsedMs: number): NetworkPath[] {
  * Onion requests' paths, which are built before any destination is chosen: two for file transfers
  * and two for everything else, as libsession keeps by default, and two more for everything else on
  * the busy account, whose requests in flight at once outnumber two paths. Three hops each, no
- * pings, and replaced every ten minutes under a new name, their counts starting again; staggered,
- * so they are not all replaced at once.
+ * pings, a round trip only where it is not a file path, no jitter, and replaced every ten minutes
+ * under a new name, their counts starting again; staggered, so they are not all replaced at once.
  */
 const ONION_ROTATION_MS = 600_000
 
@@ -282,8 +282,9 @@ function onionPaths(elapsedMs: number, traffic: FakePathTraffic): NetworkPath[] 
       destination: spec.destination,
       standby: false,
       hops: hopsFor(base, 3),
-      latencyMs: 380 + ((base * 37) % 420),
-      jitterMs: 20 + ((base * 11) % 60),
+      // Timed from requests, file transfers left out, and no jitter, as libsession reports them.
+      latencyMs: spec.destination === 'anyFile' ? 0 : 380 + ((base * 37) % 420),
+      jitterMs: 0,
       requestsSent,
       proxiedRequestsSent: 0,
       ...(requestsSent > 0 ? { msSinceLastRequest: sinceBuildMs % spec.everyMs } : {}),

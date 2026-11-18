@@ -530,11 +530,15 @@ export interface NetworkPath {
   hops: PathHop[]
   /**
    * Mean round trip of the router's pings along it. Zero until the first one is answered. Onion
-   * requests send no pings, so an `anyNode` or `anyFile` path's is its requests' round trips,
-   * which include the destination's time to answer.
+   * requests send no pings, so an `anyNode` path's is its requests' round trips, which include the
+   * destination's time to answer; an `anyFile` path's is always zero, since a file transfer's round
+   * trip times the file as much as the path.
    */
   latencyMs: number
-  /** Mean difference between consecutive round trips, of the same kind as `latencyMs`. */
+  /**
+   * Mean difference between consecutive pings' round trips. Always zero on an `anyNode` or
+   * `anyFile` path: requests differ too much in kind and size to measure it by.
+   */
   jitterMs: number
   /**
    * Requests sent to `remoteHex` since the network started, and how many of them were passed on

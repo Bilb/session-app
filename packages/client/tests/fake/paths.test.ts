@@ -65,6 +65,9 @@ describe('fakeNetworkPaths', () => {
       true,
     )
     expect(fakeNetworkPaths(10 * MINUTE, 'busy', 'onion-requests').paths).toHaveLength(6)
+    // Timed only where it is no file path, and never with jitter.
+    expect(paths.every((p) => p.jitterMs === 0)).toBe(true)
+    expect(paths.every((p) => (p.destination === 'anyFile') === (p.latencyMs === 0))).toBe(true)
   })
 
   it('names a replaced onion path afresh and starts its count again', () => {

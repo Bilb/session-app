@@ -315,6 +315,12 @@ describe('country order', () => {
 })
 
 describe('pathStats', () => {
+  it('is not onion requests with no path, nor with Session Router paths', () => {
+    expect(pathStats(EMPTY_TRACKER, 0).onionRequests).toBe(false)
+    const { tracker } = trackSnapshot(EMPTY_TRACKER, snap(path({ remoteHex: 'a' })), 0, 1_000)
+    expect(pathStats(tracker, 0).onionRequests).toBe(false)
+  })
+
   it('summarises the paths in use, entry nodes included, leaving out paths not drawn', () => {
     const { tracker } = seen(
       snap(
@@ -324,6 +330,7 @@ describe('pathStats', () => {
       ),
     )
     expect(pathStats(tracker, 0)).toEqual({
+      onionRequests: false,
       pathsInUse: 2,
       countriesCrossed: 3,
       // a and b share e1; the idle path's e9 is not drawn, so not counted.
@@ -404,6 +411,24 @@ describe('onion paths', () => {
     expect(used.find((p) => p.key === 'FP-1')?.kind).toBe('file')
     // The destination is no country.
     expect(pathStats(tracker, 0).countriesCrossed).toBe(3)
+  })
+
+  it('takes the timings from the requests answered, and gives no jitter', () => {
+    const { tracker } = trackSnapshot(
+      EMPTY_TRACKER,
+      snap(
+        onion('SP-1', { latencyMs: 400, jitterMs: 0 }),
+        onion('SP-2', { latencyMs: 800, jitterMs: 0 }),
+        // A file path is never timed, so it leaves the figures alone.
+        onion('FP-1', { destination: 'anyFile', latencyMs: 0, jitterMs: 0 }),
+      ),
+      0,
+      1_000,
+    )
+    const stats = pathStats(tracker, 0)
+    expect(stats.onionRequests).toBe(true)
+    expect([stats.averageMs, stats.fastestMs, stats.slowestMs]).toEqual([600, 400, 800])
+    expect(stats.jitterMs).toBeNull()
   })
 
   it('counts a path replaced under a new name as rebuilt, and its first request as seen', () => {

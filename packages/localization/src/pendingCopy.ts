@@ -162,6 +162,19 @@ export const PENDING_COPY = {
   /** Jitter: how far round trips stray either side of each other, in whole milliseconds. */
   onionRoutingPathJitterMilliseconds: '±{ms} ms',
   /**
+   * The timings under onion requests, which send no pings: each figure is how long requests took
+   * to be answered, the destination's own time included, not a path's round trip.
+   */
+  onionRoutingPathAverageResponse: 'average response',
+  onionRoutingPathFastestResponse: 'fastest response',
+  onionRoutingPathSlowestResponse: 'slowest response',
+  /**
+   * In place of a figure that cannot be measured: jitter under onion requests, whose requests
+   * differ too much in kind and size for the gaps between their round trips to say anything of the
+   * path.
+   */
+  onionRoutingPathNotApplicable: 'N/A',
+  /**
    * The path screen's introduction: `onionRoutingPathDescription` without its closing "This is
    * your current path:", which introduced the single path the old screen drew.
    */
