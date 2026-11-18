@@ -1,6 +1,6 @@
-import { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Platform, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
-import Svg, { Circle, Defs, G, Path, RadialGradient, Rect, Stop } from 'react-native-svg'
+import Svg, { G, Path, Rect } from 'react-native-svg'
 import { XStack, YStack } from 'tamagui'
 
 import { COLORS, PRIMARY_COLOR_HEX } from '@session/theme-tokens'
@@ -386,6 +386,9 @@ const LitLayer = memo(function LitLayer({ layout, paths }: LinesLayerProps) {
   )
 })
 
+/** A bar's corner: rounded just enough to read as a bar rather than a block, at every size. */
+const BAR_RADIUS_PX = 2.5
+
 /** The bars, over the lines: redrawn only when the set of paths changes. */
 const BarsLayer = memo(function BarsLayer({ layout, barColor }: BarsLayerProps) {
   return (
@@ -397,7 +400,7 @@ const BarsLayer = memo(function BarsLayer({ layout, barColor }: BarsLayerProps) 
           y={bar.y - 1}
           width={layout.barWidth}
           height={Math.max(2, bar.height + 2)}
-          rx={2.5}
+          rx={BAR_RADIUS_PX}
           fill={barColor}
           fillOpacity={0.75}
         />
@@ -1084,61 +1087,161 @@ const BUILDING_PATH = [{ key: 'building', countries: [null, null, null, null] }]
 
 interface BuildingLayerProps {
   layout: FlowLayout
+  width: number
+  height: number
   barColor: string
-  glowId: string
   still: boolean
+}
+
+/** The dashed line from you to the destination, drawn whole. */
+function BuildingLine({
+  d,
+  width,
+  height,
+  opacity,
+}: {
+  d: string
+  width: number
+  height: number
+  opacity: number
+}) {
+  return (
+    <Svg width={width} height={height} pointerEvents="none">
+      <Path
+        d={d}
+        stroke={KIND_COLOR.swarm}
+        strokeOpacity={opacity}
+        strokeWidth={1.5}
+        strokeDasharray="3 4"
+        fill="none"
+      />
+    </Svg>
+  )
+}
+
+/** A hair's breadth of a pass: an interpolation's inputs may not repeat. */
+const BUILD_EPSILON = 0.0001
+const BUILD_HEAD_R = 8
+
+/**
+ * Where the building line's head is through one pass, 0 to 1, sampled as straight runs: it draws
+ * the line for the first part of the pass and waits at its end for the rest.
+ */
+function buildTrack(pts: readonly (readonly [number, number])[], barWidth: number) {
+  const last = pts.length - 1
+  const at: number[] = []
+  const xs: number[] = []
+  const ys: number[] = []
+  const push = (pass: number, h: number) => {
+    const [x, y] = pointAlong(pts, h, barWidth)
+    at.push(pass)
+    xs.push(x)
+    ys.push(y)
+  }
+  for (let h = 0; h < last; h += BUILD_STEP) push((h / last) * BUILD_DRAW_SHARE, h)
+  push(BUILD_DRAW_SHARE, last)
+  push(1, last)
+  return { at, xs, ys }
+}
+
+/** A bar of the building drawing, as `BarsLayer` draws one, but a view so it can fade natively. */
+function buildBar(x: number, y: number, barWidth: number, barColor: string) {
+  return {
+    position: 'absolute',
+    left: x,
+    top: y - barWidth - 1,
+    width: barWidth,
+    height: barWidth * 2 + 2,
+    borderRadius: BAR_RADIUS_PX,
+    backgroundColor: barColor,
+  } as const
 }
 
 /**
  * No path yet: a line being drawn from you to the destination, a column at a time, over and over,
  * with what is happening said beneath it. Still, the line is drawn whole and faint.
+ *
+ * The line is drawn once and uncovered by a clip sliding across it, and the head and the bars move
+ * and fade on one looping clock run by the native driver: nothing is rendered or redrawn per frame.
  */
-function BuildingLayer({ layout, barColor, glowId, still }: BuildingLayerProps) {
-  const [now, setNow] = useState(() => Date.now())
+function BuildingLayer({ layout, width, height, barColor, still }: BuildingLayerProps) {
+  const pts = layout.points.get('building')
+  const track = useMemo(
+    () => (pts ? buildTrack(pts, layout.barWidth) : null),
+    [pts, layout.barWidth],
+  )
+  const [clock] = useState(() => new Animated.Value(0))
   useEffect(() => {
     if (still) return
-    let frame = 0
-    const tick = () => {
-      setNow(Date.now())
-      frame = requestAnimationFrame(tick)
+    clock.setValue(0)
+    const run = Animated.loop(
+      Animated.timing(clock, {
+        toValue: 1,
+        duration: BUILD_CYCLE_MS,
+        easing: (t) => t,
+        useNativeDriver: NATIVE_DRIVER,
+      }),
+    )
+    run.start()
+    return () => run.stop()
+  }, [clock, still])
+  const moving = useMemo(() => {
+    if (!track || !pts) return null
+    const along = (values: readonly number[], map: (v: number) => number) =>
+      clock.interpolate({ inputRange: track.at, outputRange: values.map(map) })
+    const last = pts.length - 1
+    return {
+      clip: { transform: [{ translateX: along(track.xs, (x) => x - width) }] },
+      unclip: { transform: [{ translateX: along(track.xs, (x) => width - x) }] },
+      head: {
+        transform: [
+          { translateX: along(track.xs, (x) => x - BUILD_HEAD_R) },
+          { translateY: along(track.ys, (y) => y - BUILD_HEAD_R) },
+        ],
+      },
+      // Each bar lights as the head reaches it, and all but the first go dim as a pass starts.
+      bars: pts.map((_, k) => {
+        if (k === 0) return { opacity: 0.75 }
+        const litAt = (k / last) * BUILD_DRAW_SHARE
+        return {
+          opacity: clock.interpolate({
+            inputRange: [0, litAt - BUILD_EPSILON, litAt, 1],
+            outputRange: [0.2, 0.2, 0.75, 0.75],
+          }),
+        }
+      }),
     }
-    frame = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(frame)
-  }, [still])
-  const pts = layout.points.get('building')
-  if (!pts) return null
-  const last = pts.length - 1
-  const progress = (now % BUILD_CYCLE_MS) / BUILD_CYCLE_MS
-  const reach = still ? last : Math.min(1, progress / BUILD_DRAW_SHARE) * last
-  const drawn: [number, number][] = []
-  for (let h = 0; h < reach; h += BUILD_STEP) drawn.push(pointAlong(pts, h, layout.barWidth))
-  drawn.push(pointAlong(pts, reach, layout.barWidth))
-  const [hx, hy] = pointAlong(pts, reach, layout.barWidth)
-  const y = pts[0]?.[1] ?? 0
+  }, [clock, track, pts, width])
+  if (!pts || !track) return null
+  const d = track.xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x},${track.ys[i] ?? 0}`).join(' ')
+  const bar = (k: number) => {
+    const [x, y] = pts[k] ?? [0, 0]
+    return buildBar(x, y, layout.barWidth, barColor)
+  }
+  if (still || moving === null) {
+    return (
+      <View style={[OVERLAY, { width, height }]} pointerEvents="none">
+        <BuildingLine d={d} width={width} height={height} opacity={0.4} />
+        {pts.map((_, k) => (
+          <View key={k} style={[bar(k), { opacity: 0.75 }]} />
+        ))}
+      </View>
+    )
+  }
   return (
-    <G>
-      <Path
-        d={drawn.map(([x, py], i) => `${i === 0 ? 'M' : 'L'}${x},${py}`).join(' ')}
-        stroke={KIND_COLOR.swarm}
-        strokeOpacity={still ? 0.4 : 0.7}
-        strokeWidth={1.5}
-        strokeDasharray="3 4"
-        fill="none"
-      />
-      {pts.map(([x], k) => (
-        <Rect
-          key={k}
-          x={x}
-          y={y - layout.barWidth - 1}
-          width={layout.barWidth}
-          height={layout.barWidth * 2 + 2}
-          rx={2.5}
-          fill={barColor}
-          fillOpacity={reach >= k ? 0.75 : 0.2}
-        />
+    <View style={[OVERLAY, { width, height }]} pointerEvents="none">
+      <Animated.View style={[OVERLAY, { width, height, overflow: 'hidden' }, moving.clip]}>
+        <Animated.View style={moving.unclip}>
+          <BuildingLine d={d} width={width} height={height} opacity={0.7} />
+        </Animated.View>
+      </Animated.View>
+      {pts.map((_, k) => (
+        <Animated.View key={k} style={[bar(k), moving.bars[k]]} />
       ))}
-      {still ? null : <Circle cx={hx} cy={hy} r={8} fill={`url(#${glowId})`} />}
-    </G>
+      <Animated.View style={[SPRITE, moving.head]}>
+        <GlowDot kind="swarm" r={BUILD_HEAD_R} heart />
+      </Animated.View>
+    </View>
   )
 }
 
@@ -1258,8 +1361,6 @@ export function PathFlow({
   const barColor = useTokenColor('$textPrimary')
   const ringColor = useTokenColor('$textPrimary')
   const spritesHost = usePathSprites() ?? defaultPathSprites
-  // An id per drawing, as a gradient's id is global to the page and two flows could share one.
-  const idBase = useId().replace(/[^a-zA-Z0-9]/g, '')
   // A still for the catalog is drawn as given; a live flow redraws its paths only now and then,
   // which costs nothing while they stay put and saves a fifth or more of the screen's CPU once
   // sessions come and go. Each canvas of lines is held on its own, a third of a hold out of step
@@ -1305,7 +1406,6 @@ export function PathFlow({
     const keys = new Set(litKeys.split(';'))
     return drawn.filter((p) => keys.has(p.key))
   }, [drawn, litKeys])
-  const glowId = (kind: PathFlowKind) => `pathflow${idBase}${kind}`
   return (
     <YStack alignSelf="stretch" gap="$xs">
       <YStack
@@ -1357,22 +1457,13 @@ export function PathFlow({
               buildingLabel={building ? buildingLabel : null}
             />
             {building ? (
-              <Svg width={widthPx} height={heightPx} style={OVERLAY} pointerEvents="none">
-                <Defs>
-                  {/* The building line's leading glow, as a request's. */}
-                  <RadialGradient id={glowId('swarm')} cx="50%" cy="50%" r="50%">
-                    <Stop offset="0" stopColor={COLORS.WHITE} stopOpacity={1} />
-                    <Stop offset="0.18" stopColor={KIND_COLOR.swarm} stopOpacity={1} />
-                    <Stop offset="1" stopColor={KIND_COLOR.swarm} stopOpacity={0} />
-                  </RadialGradient>
-                </Defs>
-                <BuildingLayer
-                  layout={layout}
-                  barColor={barColor}
-                  glowId={glowId('swarm')}
-                  still={still}
-                />
-              </Svg>
+              <BuildingLayer
+                layout={layout}
+                width={widthPx}
+                height={heightPx}
+                barColor={barColor}
+                still={still}
+              />
             ) : null}
             {building || (still && stillAtMs === undefined) ? null : spritesHost !== null &&
               stillAtMs === undefined ? (
