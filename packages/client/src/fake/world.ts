@@ -1242,11 +1242,6 @@ export class FakeAccount {
     this.cacheLimitBytes = limitBytes
   }
 
-  /**
-   * libsession's five configs and a size for each, growing with what they hold. Not their real
-   * sizes - the fake keeps no dumps - but in the same order, under the same names, and empty before
-   * there is an account, which is what a caller can rely on.
-   */
   /** The paths the network holds, which are none until it has connected. */
   networkPaths(): NetworkPaths {
     const now = this.world?.pathNow() ?? Date.now()
@@ -1256,6 +1251,11 @@ export class FakeAccount {
     )
   }
 
+  /**
+   * libsession's five configs and a size for each, growing with what they hold. Not their real
+   * sizes - the fake keeps no dumps - but in the same order, under the same names, and empty before
+   * there is an account, which is what a caller can rely on.
+   */
   configSizes(): ConfigSize[] {
     if (!this.haveAccount) return []
     const conversations = this.conversations.size
