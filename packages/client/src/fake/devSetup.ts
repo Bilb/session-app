@@ -1,3 +1,5 @@
+import type { RouterKind } from '@session/bridge-types'
+
 import { friendsWithAttachments } from './attachments'
 import { backlog } from './backlog'
 import type { FakeSessionClient } from './FakeSessionClient'
@@ -55,6 +57,11 @@ export interface FakeDevEnv {
   EXPO_PUBLIC_SESSION_FAKE_FAILED_START?: string | undefined
   /** One of `FAKE_PATH_TRAFFIC`: what the path screen shows. Unset is `quiet`. */
   EXPO_PUBLIC_SESSION_FAKE_PATHS?: string | undefined
+  /**
+   * How the network sends, as the real bridge reads it: `onion-requests` shows onion requests'
+   * paths, `direct` none. Unset is libsession's default.
+   */
+  EXPO_PUBLIC_SESSION_ROUTER?: string | undefined
 }
 
 /**
@@ -120,6 +127,17 @@ function chosenFixture(env: FakeDevEnv, crowdPeers: number | undefined): FakeFix
   if (env.EXPO_PUBLIC_SESSION_FAKE_ROWS === '1') return 'rows'
   if (crowdPeers !== undefined) return 'crowd'
   return 'friends'
+}
+
+const ROUTERS: readonly RouterKind[] = ['session-router', 'onion-requests', 'direct']
+
+function chosenRouter(text: string | undefined): RouterKind | undefined {
+  const named = text?.trim()
+  if (named === undefined || named === '') return undefined
+  if ((ROUTERS as readonly string[]).includes(named)) return named as RouterKind
+  throw new Error(
+    `EXPO_PUBLIC_SESSION_ROUTER=${named} is not a router; use one of ${ROUTERS.join(', ')}`,
+  )
 }
 
 function chosenPathTraffic(text: string | undefined): FakePathTraffic {
@@ -238,7 +256,8 @@ export function startDevFake(env: FakeDevEnv, photos: DevPhotos): DevFake {
   // The real bridge attaches the network it was opened with as soon as there is an account. The
   // fake is opened with none, so the dev entry asks here: a fixture with an account goes online at
   // once, and `newcomer` once onboarding makes one.
-  void alice.attachNetwork({ netid: 'mainnet' })
+  const router = chosenRouter(env.EXPO_PUBLIC_SESSION_ROUTER)
+  void alice.attachNetwork({ netid: 'mainnet', ...(router === undefined ? {} : { router }) })
 
   // The failure screen is otherwise reachable only with a database somebody has already broken.
   // `unopenable` refuses with libsession's own reason and lets a discard through, so the screen's

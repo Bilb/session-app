@@ -224,6 +224,16 @@ describe('starting a dev fake', () => {
     )
   })
 
+  it('attaches the router EXPO_PUBLIC_SESSION_ROUTER names, and its paths', async () => {
+    const { alice } = startDevFake({ EXPO_PUBLIC_SESSION_ROUTER: 'onion-requests' }, allPhotos)
+    await vi.advanceTimersByTimeAsync(10 * FAKE_TICK_MS)
+    const { paths } = await alice.getNetworkPaths()
+    expect(new Set(paths.map((p) => p.destination))).toEqual(new Set(['anyNode', 'anyFile']))
+    expect(() => startDevFake({ EXPO_PUBLIC_SESSION_ROUTER: 'onion' }, allPhotos)).toThrow(
+      /EXPO_PUBLIC_SESSION_ROUTER=onion is not a router/,
+    )
+  })
+
   it('serves a database that will not open on EXPO_PUBLIC_SESSION_FAKE_FAILED_START=1', async () => {
     const { alice, served } = startDevFake(
       { EXPO_PUBLIC_SESSION_FAKE_FAILED_START: '1' },
