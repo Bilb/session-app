@@ -108,7 +108,7 @@ jobs:
 
   ios:
     if: >-
-      github.event_name == 'schedule' ||
+      github.event_name == 'schedule' || github.event_name == 'push' ||
       (github.event_name == 'workflow_dispatch' && inputs.platform != 'android')
     runs-on: [self-hosted, macOS, ARM64, session-ios]
     timeout-minutes: 180
