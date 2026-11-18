@@ -10,7 +10,7 @@ const MOBILE_PLATFORMS: readonly MobilePlatform[] = ['android', 'ios']
 // @session/ui's buttonHeight('md'): importing ui would pull react-native into Playwright.
 const DRAWN = 40
 
-/** How far outside the drawn button a touch lands: inside the slop, which reaches 4 on each side. */
+/** How far outside the drawn button a touch lands: inside the slop, which reaches 4 each side. */
 const OUTSIDE = 2
 
 /** iOS's tree gives each frame in whole points. */
@@ -19,16 +19,16 @@ const ROUNDING = 1
 /** The menu's arrival, on a slow emulator. */
 const OPEN_MS = 5_000
 
-type Side = 'left' | 'right' | 'above' | 'below'
+type Side = 'left of' | 'right of' | 'above' | 'below'
 
 /** A point just outside one edge of the drawn button, where only its slop takes a touch. */
 function besideEdge(button: Frame, side: Side): [number, number] {
   const centreX = button.x + button.width / 2
   const centreY = button.y + button.height / 2
   switch (side) {
-    case 'left':
+    case 'left of':
       return [button.x - OUTSIDE, centreY]
-    case 'right':
+    case 'right of':
       return [button.x + button.width + OUTSIDE, centreY]
     case 'above':
       return [centreX, button.y - OUTSIDE]
@@ -37,7 +37,7 @@ function besideEdge(button: Frame, side: Side): [number, number] {
   }
 }
 
-const SIDES: readonly Side[] = ['left', 'right', 'above', 'below']
+const SIDES: readonly Side[] = ['left of', 'right of', 'above', 'below']
 
 /**
  * Launched directly, because a touch at a point outside an element is not in `ISessionApp`. A
