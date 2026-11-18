@@ -6,9 +6,11 @@ import {
   Announcement,
   ATTACH_OPENS_MENU,
   Button,
+  buttonHeight,
   ComposerNotice,
   Icon,
   Input,
+  ROW_TOUCH_TARGET,
   StagedTile,
   StagedTray,
   XStack,
@@ -44,6 +46,11 @@ function Notices({ staging }: { staging: StagingState }) {
     </>
   )
 }
+
+const ATTACH_SIZE = 'md'
+
+/** Out to the platform's touch floor on each side; zero on the web, where a pointer is precise. */
+const ATTACH_SLOP = Math.max(0, (ROW_TOUCH_TARGET - buttonHeight(ATTACH_SIZE)) / 2)
 
 /** The bottom of a conversation: what is staged, what was refused, and the line being typed. */
 export function Composer({
@@ -153,14 +160,22 @@ export function Composer({
           })}
         </StagedTray>
       ) : null}
-      <XStack gap="$sm" alignItems="center">
+      <XStack
+        gap="$sm"
+        alignItems="center"
+        // A slop never reaches past its parent, and the attach button sits at the row's edge: the
+        // row reaches into the composer's padding by as much and gives it back as margin.
+        paddingHorizontal={ATTACH_SLOP}
+        marginHorizontal={-ATTACH_SLOP}
+      >
         <Button
           variant="tonal"
-          size="md"
+          size={ATTACH_SIZE}
           circular
           disabled={full || sending}
           icon={<Icon name="plus" size="md" color="$textPrimary" />}
           accessibilityLabel={tr('attachmentsAdd')}
+          hitSlop={ATTACH_SLOP}
           onPress={attach}
           testID={ELEMENT.conversation.attachButton}
         />

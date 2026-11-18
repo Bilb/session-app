@@ -78,6 +78,8 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'target-size message-attachment-action':
       'the same: attachment-footer.spec.ts taps the row edges',
     'target-size message-attachment-show-all': 'a PressArea 32dp tall, with no hitSlop at all',
+    'target-size composer-attach':
+      'drawn at 40dp; its hitSlop reaches 48 on every side, which the tree does not show',
   },
   'showcase-ios': {
     'XCUIAccessibilityAuditTypeSufficientElementDescription message-attachment-tile':
@@ -91,6 +93,8 @@ const KNOWN_ISSUES: Record<Audit, Readonly<Record<string, Known>>> = {
     'target-size message-attachment-action':
       'the same: attachment-footer.spec.ts taps the row edges',
     'target-size message-attachment-show-all': 'a PressArea 32pt tall, with no hitSlop at all',
+    'target-size composer-attach':
+      'drawn at 40pt; its hitSlop reaches 48 on every side, which the tree does not show',
   },
 }
 
