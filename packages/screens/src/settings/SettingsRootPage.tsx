@@ -1,4 +1,4 @@
-import { flag, requirePorts, URLS, useDebugMode, useNav, routes } from '@session/app'
+import { requirePorts, URLS, useDebugMode, useNav, routes } from '@session/app'
 import { PENDING_COPY, toPlainText, tr } from '@session/localization'
 import {
   useAccount,
@@ -183,7 +183,7 @@ export function SettingsRootPage() {
           confirmLink(modals, URLS.donationsApp)
         },
       },
-      // The path's live state, as a dot named in words, opening the path screen where it is on.
+      // The path's live state, as a dot named in words, opening the path screen.
       {
         label: tr('onionRoutingPath'),
         icon: (
@@ -199,13 +199,9 @@ export function SettingsRootPage() {
           </Text>
         ),
         testID: row('onion-path'),
-        ...(flag('pathScreen')
-          ? {
-              onPress: () => {
-                modals.push({ title: tr('onionRoutingPath'), render: () => <PathPage /> })
-              },
-            }
-          : {}),
+        onPress: () => {
+          modals.push({ title: tr('onionRoutingPath'), render: () => <PathPage /> })
+        },
       },
       { label: tr('networkName'), icon: SessionTokenMark, testID: row('network') },
     ],
