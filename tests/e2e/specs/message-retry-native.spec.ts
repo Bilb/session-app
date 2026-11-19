@@ -3,6 +3,7 @@ import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
 import { openFirstConversation } from '../harness/attachments'
+import type { Frame } from '../harness/ISessionApp'
 import { MobileApp, type MobilePlatform } from '../harness/MobileApp'
 
 const MOBILE_PLATFORMS: readonly MobilePlatform[] = ['android', 'ios']
@@ -19,10 +20,10 @@ async function failedLines(app: MobileApp): Promise<number> {
 }
 
 /**
- * Where a failed send's state line is among the state lines, if one is on screen above the
- * composer. iOS's tree holds rows scrolled out of sight as well, so being in it is not enough.
+ * A failed send's state line, if one is on screen above the composer. iOS's tree holds rows
+ * scrolled out of sight as well, so being in it is not enough.
  */
-async function failedOnScreen(app: MobileApp): Promise<number | undefined> {
+async function failedOnScreen(app: MobileApp): Promise<Frame | undefined> {
   const screen = await app.frame(ELEMENT.conversation.screen)
   const composer = await app.frame(ELEMENT.conversation.attachButton)
   if (screen === null || composer === null) return undefined
@@ -30,25 +31,26 @@ async function failedOnScreen(app: MobileApp): Promise<number | undefined> {
   for (const [at, line] of lines.entries()) {
     if (!line.includes(tr('tapToRetry'))) continue
     const frame = await app.frame(ELEMENT.conversation.messageState, at)
-    if (frame !== null && frame.y >= screen.y && frame.y + frame.height <= composer.y) return at
+    if (frame !== null && frame.y >= screen.y && frame.y + frame.height <= composer.y) return frame
   }
   return undefined
 }
 
 /** Scrolls the showcase until a failed send's state line is on screen, and says where it is. */
-async function revealFailed(app: MobileApp): Promise<number> {
+async function revealFailed(app: MobileApp): Promise<Frame> {
   for (const direction of [1, -1] as const)
     for (let swipe = 0; swipe < MAX_SWIPES; swipe++) {
-      const at = await failedOnScreen(app)
-      if (at !== undefined) return at
+      const line = await failedOnScreen(app)
+      if (line !== undefined) return line
       if (!(await app.scroll(ELEMENT.conversation.screen, direction))) break
     }
   throw new Error('no failed send in the showcase')
 }
 
 /**
- * Launched directly, because the bubble's press is not an element of its own: the touch goes to
- * the state line, as a finger on any part of the bubble would.
+ * Launched directly, because the bubble's press is not an element of its own and a touch at a
+ * point is not in `ISessionApp`: the touch lands on the state line, as a finger's on any part of
+ * the bubble would.
  */
 for (const platform of MOBILE_PLATFORMS)
   test(`retries a failed send from a touch on its bubble @${platform} @medium-risk`, async () => {
@@ -57,14 +59,11 @@ for (const platform of MOBILE_PLATFORMS)
     })
     try {
       await openFirstConversation(app)
-      const at = await revealFailed(app)
+      const line = await revealFailed(app)
       const before = await failedLines(app)
-      console.log(`debug ${platform} at ${String(at)} line ${JSON.stringify(await app.frame(ELEMENT.conversation.messageState, at))} screen ${JSON.stringify(await app.frame(ELEMENT.conversation.screen))} composer ${JSON.stringify(await app.frame(ELEMENT.conversation.attachButton))} before ${String(before)}`)
-      await app.screenshot(`debug-retry-before-${platform}`)
-      await app.tapAt(ELEMENT.conversation.messageState, at)
-      await new Promise((r) => setTimeout(r, 1500))
-      await app.screenshot(`debug-retry-after-${platform}`)
-      console.log(`debug ${platform} after ${String(await failedLines(app))} lines ${JSON.stringify(await app.readAllText(ELEMENT.conversation.messageState))}`)
+      // A touch at a point, as a finger's: XCUITest's click on a line that is no control scrolls
+      // the list rather than touching it.
+      await app.tapPoint(line.x + line.width / 2, line.y + line.height / 2)
       await expect.poll(() => failedLines(app), { timeout: SENT_MS }).toBeLessThan(before)
     } finally {
       await app.close()
