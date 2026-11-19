@@ -7,6 +7,7 @@ import { buttonHeight, hitSlopFor } from './buttonHitTarget'
 import type { FocusRingShape } from './keyboardPress'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
+import { touchReach } from './touchReach'
 import { Concealed } from './Concealed'
 import { Text } from './Text'
 import { LABEL_MAX_SCALE } from './fontScaleCaps'
@@ -474,7 +475,7 @@ export function Button({
     destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerColor' : PRESSED_LABEL[variant]
 
   const inert = disabled || loading
-  const reach = Math.max(0, (touchTarget - buttonHeight(size)) / 2)
+  const reach = touchReach(buttonHeight(size), touchTarget)
   /**
    * The name a screen reader gives the button. While loading the label is hidden, and Android
    * drops a fully transparent child from the accessibility tree, so the label's text is passed

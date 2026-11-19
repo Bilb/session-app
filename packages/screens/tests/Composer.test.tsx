@@ -55,6 +55,7 @@ vi.mock('@session/ui', () => {
     StagedTile: named('StagedTile'),
     StagedTray: named('StagedTray'),
     Text: named('Text'),
+    touchReach: () => 0,
     XStack: named('XStack'),
     YStack: named('YStack'),
   }
