@@ -172,6 +172,40 @@ sessionTest({
   },
 })
 
+/**
+ * A point `EDGE` inside the end of a button's box that reaches past the row's, which only a box
+ * that takes touches beyond its parent's edge answers.
+ */
+function pastRow(box: Frame, row: Frame): number {
+  if (box.x < row.x) return box.x + EDGE
+  const end = box.x + box.width
+  if (end > row.x + row.width) return end - EDGE
+  throw new Error('the box does not reach past the row')
+}
+
+sessionTest({
+  title: 'takes a touch on the footer buttons’ boxes past the row’s ends',
+  risk: 'medium',
+  clients: { alice: EACH },
+  run: async ({ alice }) => {
+    if (!alice) throw new Error('the harness did not open alice')
+    // The phones only: the desktop draws each button at its box.
+    if (alice.platform === 'desktop') return
+
+    await openFirstConversation(alice)
+    await alice.waitForVisible(ALBUM_TILE_ID)
+
+    const toList = await frameOf(alice, ELEMENT.conversation.attachmentViewList)
+    const row = await frameOf(alice, FOOTER)
+    await alice.tapPoint(pastRow(toList, row), toList.y + toList.height / 2)
+    await alice.waitForVisible(ELEMENT.conversation.attachmentViewGallery)
+
+    const verb = await frameOf(alice, FOOTER_ACTION_ID)
+    await alice.tapPoint(pastRow(verb, await frameOf(alice, FOOTER)), verb.y + verb.height / 2)
+    await alice.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
+  },
+})
+
 /** Its own launch: the verb's first press asks the one question there is no leaving unanswered. */
 sessionTest({
   title: 'takes a touch on the attachment footer’s row under its verb',

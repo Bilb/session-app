@@ -15,7 +15,14 @@ export const BUBBLE_TAKES_PRESS = true
 export function BubblePress({ onPress, testID, children }: BubblePressProps) {
   const menuLongPress = useMenuLongPress()
   return (
-    <Pressable accessible={false} onPress={onPress} {...menuLongPress} testID={testID}>
+    <Pressable
+      accessible={false}
+      // Android makes a pressable view a focusable node whatever `accessible` says.
+      importantForAccessibility="no"
+      onPress={onPress}
+      {...menuLongPress}
+      testID={testID}
+    >
       {children}
     </Pressable>
   )
