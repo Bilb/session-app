@@ -6,14 +6,12 @@ import {
   Announcement,
   ATTACH_OPENS_MENU,
   Button,
-  buttonHeight,
   ComposerNotice,
   Icon,
   Input,
   ROW_TOUCH_TARGET,
   StagedTile,
   StagedTray,
-  touchReach,
   XStack,
   YStack,
 } from '@session/ui'
@@ -49,9 +47,6 @@ function Notices({ staging }: { staging: StagingState }) {
 }
 
 const ATTACH_SIZE = 'md'
-
-/** How far the attach button's box reaches past what it draws, on each side; 0 on the web. */
-const ATTACH_REACH = touchReach(buttonHeight(ATTACH_SIZE), ROW_TOUCH_TARGET)
 
 /** The bottom of a conversation: what is staged, what was refused, and the line being typed. */
 export function Composer({
@@ -161,14 +156,7 @@ export function Composer({
           })}
         </StagedTray>
       ) : null}
-      <XStack
-        gap="$sm"
-        alignItems="center"
-        // No touch lands past a parent's edge, and the attach button's box reaches past the row's:
-        // the row reaches into the composer's padding by as much and gives it back as margin.
-        paddingHorizontal={ATTACH_REACH}
-        marginHorizontal={-ATTACH_REACH}
-      >
+      <XStack gap="$sm" alignItems="center">
         <Button
           variant="tonal"
           size={ATTACH_SIZE}

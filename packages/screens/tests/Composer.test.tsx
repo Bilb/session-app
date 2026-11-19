@@ -45,7 +45,6 @@ vi.mock('@session/ui', () => {
     ATTACH_OPENS_MENU: false,
     Announcement: named('Announcement'),
     Button: named('Button'),
-    buttonHeight: () => 40,
     ComposerNotice: named('ComposerNotice'),
     Icon: named('Icon'),
     Input: named('Input'),
@@ -55,7 +54,6 @@ vi.mock('@session/ui', () => {
     StagedTile: named('StagedTile'),
     StagedTray: named('StagedTray'),
     Text: named('Text'),
-    touchReach: () => 0,
     XStack: named('XStack'),
     YStack: named('YStack'),
   }

@@ -370,8 +370,8 @@ export interface ButtonProps {
   /**
    * The size of the control's box on a phone, with the button drawn at its own size in the middle:
    * the box takes the touch, and a screen reader and an accessibility audit read it as the
-   * control's size. Given back as margin, so nothing round it moves, and no touch lands past the
-   * parent's edge, so the parent needs the room. Ignored on the web, where a pointer needs no more.
+   * control's size. Given back as margin, so nothing round it moves. Ignored on the web, where a
+   * pointer needs no more.
    */
   touchTarget?: number | undefined
   /**
