@@ -179,7 +179,12 @@ export function PathPage() {
         />
       </SettingsGroup>
       {tracker.attribution.length === 0 ? null : (
-        <Text size="$caption" tone="secondary" maxFontSizeMultiplier={LABEL_MAX_SCALE}>
+        <Text
+          size="$caption"
+          tone="secondary"
+          textAlign="center"
+          maxFontSizeMultiplier={LABEL_MAX_SCALE}
+        >
           {tracker.attribution}
         </Text>
       )}
