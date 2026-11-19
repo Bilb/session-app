@@ -18,11 +18,29 @@ async function failedLines(app: MobileApp): Promise<number> {
   return lines.filter((line) => line.includes(tr('tapToRetry'))).length
 }
 
-/** Scrolls the showcase until a failed send's state line is on screen. */
-async function revealFailed(app: MobileApp): Promise<void> {
+/**
+ * Where a failed send's state line is among the state lines, if one is on screen above the
+ * composer. iOS's tree holds rows scrolled out of sight as well, so being in it is not enough.
+ */
+async function failedOnScreen(app: MobileApp): Promise<number | undefined> {
+  const screen = await app.frame(ELEMENT.conversation.screen)
+  const composer = await app.frame(ELEMENT.conversation.attachButton)
+  if (screen === null || composer === null) return undefined
+  const lines = await app.readAllText(ELEMENT.conversation.messageState)
+  for (const [at, line] of lines.entries()) {
+    if (!line.includes(tr('tapToRetry'))) continue
+    const frame = await app.frame(ELEMENT.conversation.messageState, at)
+    if (frame !== null && frame.y >= screen.y && frame.y + frame.height <= composer.y) return at
+  }
+  return undefined
+}
+
+/** Scrolls the showcase until a failed send's state line is on screen, and says where it is. */
+async function revealFailed(app: MobileApp): Promise<number> {
   for (const direction of [1, -1] as const)
     for (let swipe = 0; swipe < MAX_SWIPES; swipe++) {
-      if ((await failedLines(app)) > 0) return
+      const at = await failedOnScreen(app)
+      if (at !== undefined) return at
       if (!(await app.scroll(ELEMENT.conversation.screen, direction))) break
     }
   throw new Error('no failed send in the showcase')
@@ -39,13 +57,9 @@ for (const platform of MOBILE_PLATFORMS)
     })
     try {
       await openFirstConversation(app)
-      await revealFailed(app)
+      const at = await revealFailed(app)
       const before = await failedLines(app)
-      const lines = await app.readAllText(ELEMENT.conversation.messageState)
-      await app.tapAt(
-        ELEMENT.conversation.messageState,
-        lines.findIndex((line) => line.includes(tr('tapToRetry'))),
-      )
+      await app.tapAt(ELEMENT.conversation.messageState, at)
       await expect.poll(() => failedLines(app), { timeout: SENT_MS }).toBeLessThan(before)
     } finally {
       await app.close()
