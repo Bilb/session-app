@@ -3,7 +3,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { isWeb, Spinner, styled, XStack, YStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
-import { buttonHeight, hitSlopFor } from './buttonHitTarget'
+import { MIN_HIT_TARGET, buttonHeight } from './buttonHitTarget'
 import type { FocusRingShape } from './keyboardPress'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
@@ -368,11 +368,6 @@ export interface ButtonProps {
    */
   borderRadius?: ComponentProps<typeof Frame>['borderRadius']
   /**
-   * Overrides how far the touch target reaches past each side, which is otherwise just enough to
-   * reach `MIN_HIT_TARGET`. For a button in a row that offers more, so the whole row takes the tap.
-   */
-  hitSlop?: number | undefined
-  /**
    * The size of the control's box on a phone, with the button drawn at its own size in the middle:
    * the box takes the touch, and a screen reader and an accessibility audit read it as the
    * control's size. Given back as margin, so nothing round it moves, and no touch lands past the
@@ -442,7 +437,6 @@ export function Button({
   focusOnMount = false,
   paddingHorizontal,
   borderRadius,
-  hitSlop,
   touchTarget = 0,
   onAccent = false,
   icon,
@@ -498,7 +492,7 @@ export function Button({
       disabled={inert}
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
       // the target reaches the floor. Ignored on the web, where a pointer does not need it.
-      hitSlop={hitSlop ?? (reach > 0 ? 0 : hitSlopFor(size))}
+      hitSlop={reach > 0 ? 0 : touchReach(buttonHeight(size), MIN_HIT_TARGET)}
       reach={reach}
       {...(name === undefined ? {} : { accessibilityLabel: name })}
       busy={loading}
