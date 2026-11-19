@@ -56,7 +56,10 @@ export interface SettingsRowDetail {
   /** Punctuated by the caller, "Current:", since a colon is not the same in every language. */
   label: string
   value: string
-  /** Not in effect, as a mock that is off: in the disabled ink rather than the accent. */
+  /**
+   * Not in effect, as a mock that is off: in the secondary ink rather than the accent. Not the
+   * disabled ink, which on a row that is not disabled falls short of the contrast text needs.
+   */
   inactive?: boolean | undefined
 }
 
@@ -302,7 +305,13 @@ function RowContent({
                       faint as text on a light ground. */}
                   <Text
                     size="$label"
-                    color={disabled || detail.inactive === true ? '$textDisabled' : '$accentText'}
+                    color={
+                      disabled
+                        ? '$textDisabled'
+                        : detail.inactive === true
+                          ? '$textSecondary'
+                          : '$accentText'
+                    }
                   >
                     {detail.value}
                   </Text>

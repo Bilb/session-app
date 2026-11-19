@@ -191,7 +191,7 @@ export const SETTINGS_SCENARIOS: readonly AnyStory[] = [
       />
     ),
   }),
-  // With Restart, as desktop can relaunch, and without, as a phone cannot.
+  // With Restart, as desktop and Android can relaunch, and without, as iOS cannot.
   defineStory<{ relaunch: boolean }>({
     component: 'settings',
     story: 'developerRestartBanner',
