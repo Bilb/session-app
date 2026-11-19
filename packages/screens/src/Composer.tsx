@@ -166,8 +166,6 @@ export function Composer({
         alignItems="center"
         // No touch lands past a parent's edge, and the attach button's box reaches past the row's:
         // the row reaches into the composer's padding by as much and gives it back as margin.
-        paddingHorizontal={ATTACH_REACH}
-        marginHorizontal={-ATTACH_REACH}
       >
         <Button
           variant="tonal"
