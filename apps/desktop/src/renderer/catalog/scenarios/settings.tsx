@@ -2,7 +2,9 @@ import {
   AccountHeader,
   AttachmentCacheFigures,
   KeyboardShortcutsPage,
+  PathStatsCard,
   RecoveryPasswordPage,
+  type PathStats,
 } from '@session/screens'
 import { defineStory, type AnyStory } from '@session/ui/catalog'
 
@@ -37,6 +39,47 @@ const SECTION_WIDTH = 390
 
 /** Desktop's limit, and a usage in the megabytes a few downloads make. No folder, as the fake's. */
 const CATALOG_CACHE_SETTINGS = { cacheDir: '', usageBytes: 12_582_912, limitBytes: 5_000_000_000 }
+
+/**
+ * The path screen's figures as a busy client has them: under Session Router, timed from pings; and
+ * under onion requests, timed from the requests' answers, with no jitter to give; and before any
+ * path is built.
+ */
+const ROUTER_STATS: PathStats = {
+  onionRequests: false,
+  pathsInUse: 18,
+  countriesCrossed: 7,
+  entryNodes: 4,
+  rebuilt: 2,
+  averageMs: 304,
+  fastestMs: 188,
+  slowestMs: 612,
+  jitterMs: 14,
+}
+
+const ONION_STATS: PathStats = {
+  onionRequests: true,
+  pathsInUse: 6,
+  countriesCrossed: 5,
+  entryNodes: 3,
+  rebuilt: 1,
+  averageMs: 641,
+  fastestMs: 402,
+  slowestMs: 1288,
+  jitterMs: null,
+}
+
+const BUILDING_STATS: PathStats = {
+  onionRequests: false,
+  pathsInUse: 0,
+  countriesCrossed: 0,
+  entryNodes: 0,
+  rebuilt: 0,
+  averageMs: null,
+  fastestMs: null,
+  slowestMs: null,
+  jitterMs: null,
+}
 
 /** Made up, never an account's: a standard Account ID, for the avatar's colour and the code. */
 const CATALOG_ACCOUNT_ID = '05b2c7e1d4a8f3906e5c1b7d2a4f8e3c9b6d1a5e7f2c4b8d3a9e6f1c5b7d2a4e8f'
@@ -78,6 +121,20 @@ export const SETTINGS_SCENARIOS: readonly AnyStory[] = [
         initialView={view}
       />
     ),
+  }),
+  // How each router's figures read: onion requests' timings are named as responses, and its
+  // jitter cannot be measured. Right to left, the figures fill from the other edge.
+  defineStory<{ stats: PathStats }>({
+    component: 'settings',
+    story: 'pathStats',
+    width: SECTION_WIDTH,
+    sensitive: { rtl: true },
+    variants: {
+      'session router': { stats: ROUTER_STATS },
+      'onion requests': { stats: ONION_STATS },
+      building: { stats: BUILDING_STATS },
+    },
+    render: ({ stats }) => <PathStatsCard stats={stats} />,
   }),
   defineStory<{ names: 'mac' | 'pc' }>({
     component: 'settings',

@@ -11,6 +11,7 @@ import type {
   Deletion,
   ExportAttachmentOptions,
   MessageCursor,
+  NetworkPaths,
   NetworkStatus,
   SendPlan,
   SessionEvent,
@@ -209,6 +210,9 @@ export class FakeSessionClient implements SessionClient {
 
     // Recorded either way and attached only with an account, as the bridge does.
     this.account.networkPlanned = true
+    // libsession's default: Session Router where there is one, onion requests on a devnet.
+    this.account.networkRouter =
+      config.router ?? (config.netid === 'devnet' ? 'onion-requests' : 'session-router')
     this.account.goOnline()
     return Promise.resolve()
   }
@@ -472,6 +476,11 @@ export class FakeSessionClient implements SessionClient {
     }
     this.account.setThumbnailEdge(edgePx)
     return Promise.resolve()
+  }
+
+  getNetworkPaths(): Promise<NetworkPaths> {
+    this.assertOpen()
+    return Promise.resolve(this.account.networkPaths())
   }
 
   getConfigSizes(): Promise<ConfigSize[]> {

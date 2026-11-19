@@ -7,6 +7,8 @@ export { AttachmentCacheFigures, AttachmentCacheSection } from './settings/Attac
 export { KeyboardShortcutsPage } from './settings/KeyboardShortcutsPage'
 export { ModalHost } from './settings/ModalHost'
 export { RecoveryPasswordPage } from './settings/RecoveryPasswordPage'
+export { PathStatsCard } from './path/PathStatsCard'
+export type { PathStats } from './path/pathActivity'
 export { ToastLayer } from './ToastLayer'
 export { SettingsRootPage, useOpenSettings } from './settings/SettingsRootPage'
 export { BackButton } from './BackButton'
