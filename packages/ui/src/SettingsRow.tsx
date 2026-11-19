@@ -60,8 +60,13 @@ export interface SettingsRowProps {
   icon?: IconName | ComponentType<MarkProps> | ReactElement
   /** Draws the icon in the accent, as Donate's is. */
   accentIcon?: boolean
-  /** A second line under the label, for a row whose meaning is not obvious from its name. */
+  /**
+   * A second line under the label, for a row whose meaning is not obvious from its name. Its line
+   * breaks are kept, for an explanation with paragraphs or a list.
+   */
   subtitle?: string
+  /** A state under the subtitle, in the accent: what a setting is set to now. */
+  status?: string | undefined
   /** A value, a switch, a button. No chevron by default. */
   trailing?: ReactNode
   /**
@@ -95,6 +100,7 @@ export function SettingsRow({
   label,
   icon,
   subtitle,
+  status,
   trailing,
   wideTrailing = false,
   trailingYields = false,
@@ -112,6 +118,7 @@ export function SettingsRow({
     label,
     icon,
     subtitle,
+    status,
     trailing,
     wideTrailing,
     trailingYields,
@@ -141,6 +148,7 @@ interface RowContentProps {
   label: string
   icon?: SettingsRowProps['icon'] | undefined
   subtitle?: string | undefined
+  status?: string | undefined
   trailing?: ReactNode | undefined
   wideTrailing: boolean
   trailingYields: boolean
@@ -159,6 +167,7 @@ function RowContent({
   label,
   icon,
   subtitle,
+  status,
   trailing,
   wideTrailing,
   trailingYields,
@@ -255,8 +264,20 @@ function RowContent({
               size="$label"
               color={disabled ? '$textDisabled' : '$textPrimary'}
               maxFontSizeMultiplier={LABEL_MAX_SCALE}
+              whiteSpace="pre-line"
             >
               {subtitle}
+            </Text>
+          )}
+          {status === undefined ? null : (
+            // `accentText`, as for a link or an inline emphasis: the accent itself is too faint as
+            // text on a light ground.
+            <Text
+              size="$label"
+              color={disabled ? '$textDisabled' : '$accentText'}
+              maxFontSizeMultiplier={LABEL_MAX_SCALE}
+            >
+              {status}
             </Text>
           )}
         </YStack>

@@ -79,11 +79,12 @@ export const FLAGS = {
   disableAnimations: false,
 
   /**
-   * Debug mode: what reveals Developer Settings.
+   * Debug mode: what reveals Developer Settings, in any build.
    *
-   * The environment sets where it starts; ten presses on the build stamp in settings turn it over
-   * for the rest of the run, and a relaunch puts it back. Off, because a release build is not a
-   * debugging one.
+   * The environment sets where it starts. Ten presses on the build stamp in settings turn it on,
+   * stored with the account as a switched flag, so it stays on across launches; only its own switch
+   * at the top of Developer Settings turns it off, and that puts every other switched flag back.
+   * Off, because a release build is not a debugging one.
    */
   debugMode: false,
 
@@ -173,9 +174,45 @@ export type FlagSource = 'toggle' | 'environment' | 'default'
  */
 let toggles: Partial<Record<FlagName, boolean>> = {}
 
+/** Told whenever the switched flags change, so a screen that reads one can draw again. */
+const toggleListeners = new Set<() => void>()
+
 /** Replaces the switched flags; anything not named goes back to the environment or the table. */
 export function setFlagToggles(next: Partial<Record<FlagName, boolean>>): void {
   toggles = { ...next }
+  for (const listener of toggleListeners) listener()
+}
+
+/** Calls `listener` whenever the switched flags change; answers the unsubscribe. */
+export function subscribeFlagToggles(listener: () => void): () => void {
+  toggleListeners.add(listener)
+  return () => {
+    toggleListeners.delete(listener)
+  }
+}
+
+/**
+ * Every flag's value as the account opened, which is what anything read once at start is running
+ * with. Null until then.
+ */
+let atLaunch: Record<FlagName, boolean> | null = null
+
+/** Records the values the app is running with; see `followFlagToggles`. */
+export function markFlagsLaunched(): void {
+  atLaunch = flagSnapshot()
+}
+
+/**
+ * Whether a flag's value differs from the one the app opened with: for a flag read once at start,
+ * whether a restart is needed for the change to apply. False before the account has opened.
+ */
+export function changedSinceLaunch(name: FlagName): boolean {
+  return atLaunch !== null && atLaunch[name] !== flag(name)
+}
+
+/** Test seam: forgets the values recorded at launch. */
+export function forgetLaunchedFlags(): void {
+  atLaunch = null
 }
 
 /** The value a flag has without any developer setting: the environment's, else the table's. */

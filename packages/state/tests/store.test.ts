@@ -172,6 +172,19 @@ describe('the switched feature flags', () => {
     }
   })
 
+  it('are replaced together in one write, as turning debug mode off does', async () => {
+    const { client, store } = alice()
+    await store.actions.hydrate()
+    await store.actions.setFlagToggle('disableAnimations', true)
+    await store.actions.setFlagToggle('forceFastModeAvailable', true)
+
+    await store.actions.replaceFlagToggles({ debugMode: false })
+    expect(store.getState().flagToggles).toEqual({ debugMode: false })
+    const next = createSessionStore(client)
+    await next.actions.hydrate()
+    expect(next.getState().flagToggles).toEqual({ debugMode: false })
+  })
+
   it('go with the account', async () => {
     const { world, store } = alice()
     await store.actions.hydrate()

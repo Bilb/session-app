@@ -13,15 +13,6 @@
  * session-localization that it would have needed anyway.
  */
 export const PENDING_COPY = {
-  /**
-   * Developer Settings' feature flags: the section, where a flag's value comes from, and putting
-   * every switched one back. Internal, shown only in debug mode.
-   */
-  developerFeatureFlags: 'Feature Flags',
-  developerFlagSetHere: 'Set here',
-  developerFlagFromEnvironment: 'From the environment',
-  developerFlagDefault: 'Default',
-  developerResetFlags: 'Reset All Flags',
   attachmentCache: 'Attachment Cache',
   attachmentCacheUsage: 'Space used',
   attachmentCacheLimit: 'Limit',

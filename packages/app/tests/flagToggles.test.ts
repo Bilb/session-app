@@ -3,12 +3,20 @@ import { createSessionStore } from '@session/state'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { memoryPorts, resetPorts, setPorts } from '#src/index'
-import { FLAGS, flag, flagSnapshot, setFlagToggles } from '#src/flags'
+import {
+  FLAGS,
+  changedSinceLaunch,
+  flag,
+  flagSnapshot,
+  forgetLaunchedFlags,
+  setFlagToggles,
+} from '#src/flags'
 import { followFlagToggles } from '#src/flagToggles'
 
 afterEach(() => {
   resetPorts()
   setFlagToggles({})
+  forgetLaunchedFlags()
 })
 
 describe('followFlagToggles', () => {
@@ -48,6 +56,33 @@ describe('followFlagToggles', () => {
     // Kept as stored, so a later build that has it again finds it, and harmless meanwhile.
     expect(store.getState().flagToggles).toEqual({ noLongerAFlag: true })
     expect(flagSnapshot()).toEqual(Object.fromEntries(Object.entries(FLAGS)))
+    stop()
+  })
+
+  /**
+   * What the restart banner goes by: the values as the account opened, with its switches in
+   * place, so a switch stored before this launch is not a change and one made since is, until it
+   * is put back.
+   */
+  it('records the values the account opened with, and says which a switch has changed since', async () => {
+    setPorts(memoryPorts({ flags: { override: () => null } }))
+    const { clients } = friends(['Alice', 'Bob'])
+    const client = clients['Alice']
+    if (!client) throw new Error('fixture did not produce a client')
+    const first = createSessionStore(client)
+    await first.actions.hydrate()
+    await first.actions.setFlagToggle('disableAnimations', true)
+
+    const store = createSessionStore(client)
+    const stop = followFlagToggles(store)
+    expect(changedSinceLaunch('disableAnimations')).toBe(false)
+    await store.actions.hydrate()
+    expect(changedSinceLaunch('disableAnimations')).toBe(false)
+
+    await store.actions.setFlagToggle('disableAnimations', false)
+    expect(changedSinceLaunch('disableAnimations')).toBe(true)
+    await store.actions.setFlagToggle('disableAnimations', true)
+    expect(changedSinceLaunch('disableAnimations')).toBe(false)
     stop()
   })
 })

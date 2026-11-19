@@ -1,81 +1,173 @@
-import { FLAGS, flag, flagSource, requirePorts, type FlagName, type FlagSource } from '@session/app'
-import { PENDING_COPY, tr } from '@session/localization'
+import {
+  DEVELOPER_COPY,
+  DEVELOPER_FLAGS,
+  changedSinceLaunch,
+  flag,
+  flagSource,
+  requirePorts,
+  type DeveloperFlag,
+  type FlagName,
+  type FlagSource,
+} from '@session/app'
+import { tr } from '@session/localization'
 import { useFlagToggles, useSessionActions } from '@session/state'
 import { ELEMENT } from '@session/test-ids'
 import {
+  Button,
   SettingsGroup,
-  SettingsNote,
   SettingsRow,
   SettingsSection,
   Switch,
+  Text,
+  useModals,
+  XStack,
   YStack,
 } from '@session/ui'
 
-/** Every flag in the shared table, in its order. */
-const FLAG_NAMES = Object.keys(FLAGS) as FlagName[]
+/** A listed flag as it stands now. */
+interface DeveloperFlagState {
+  flag: DeveloperFlag
+  value: boolean
+  source: FlagSource
+}
 
-function sourceLabel(source: FlagSource): string {
-  if (source === 'toggle') return PENDING_COPY.developerFlagSetHere
-  if (source === 'environment') return PENDING_COPY.developerFlagFromEnvironment
-  return PENDING_COPY.developerFlagDefault
+export interface DeveloperSettingsContentProps {
+  flags: readonly DeveloperFlagState[]
+  /** A flag read only at start differs from what the app started with. */
+  restartPending: boolean
+  /** Relaunches the app, where the platform can. */
+  onRestart: (() => void) | null
+  /** Anything besides debug mode is switched, so there is something to put back. */
+  canReset: boolean
+  onDebugModeOff: () => void
+  onFlagChange: (name: FlagName, value: boolean) => void
+  onReset: () => void
+}
+
+function RestartBanner({ onRestart }: { onRestart: (() => void) | null }) {
+  return (
+    <SettingsGroup>
+      <XStack
+        backgroundColor="$backgroundSecondary"
+        alignItems="center"
+        gap="$sm"
+        padding="$md"
+        testID={ELEMENT.developerSettings.restartBanner}
+      >
+        <YStack flex={1}>
+          <Text size="$label" color="$warningColor">
+            {tr('settingsRestartDescription')}
+          </Text>
+        </YStack>
+        {onRestart === null ? null : (
+          <Button size="sm" onPress={onRestart} testID={ELEMENT.developerSettings.restart}>
+            {tr('restart')}
+          </Button>
+        )}
+      </XStack>
+    </SettingsGroup>
+  )
 }
 
 /**
- * Developer Settings: every feature flag with a switch, which wins over the environment and starts
- * at whatever the flag is now, so one turned on by its environment variable shows as on. What is
- * switched here is stored with the account; most flags are read as screens are drawn or as the app
- * starts, so a change applies everywhere after a restart. Shown only in debug mode.
+ * Developer Settings as drawn from what it is given: debug mode alone at the top, as legacy iOS has
+ * its developer mode, then every listed flag with what it does and how it stands now.
  */
-export function DeveloperSettingsPage() {
-  const actions = useSessionActions()
-  // Read so the page redraws when a switch is stored; the values themselves come from `flag`.
-  const toggles = useFlagToggles()
-  const restart = requirePorts().window.restart
-  const switched = FLAG_NAMES.filter((name) => toggles[name] !== undefined)
+export function DeveloperSettingsContent({
+  flags,
+  restartPending,
+  onRestart,
+  canReset,
+  onDebugModeOff,
+  onFlagChange,
+  onReset,
+}: DeveloperSettingsContentProps) {
   return (
     <YStack padding="$md" gap="$lg" testID={ELEMENT.developerSettings.page}>
+      {restartPending ? <RestartBanner onRestart={onRestart} /> : null}
+      <SettingsGroup>
+        <SettingsRow
+          label={DEVELOPER_COPY.debugModeTitle}
+          subtitle={DEVELOPER_COPY.debugModeDescription}
+          trailing={
+            <Switch
+              value
+              onValueChange={(on) => {
+                if (!on) onDebugModeOff()
+              }}
+              accessibilityLabel={DEVELOPER_COPY.debugModeTitle}
+              testID={ELEMENT.developerSettings.debugModeSwitch}
+            />
+          }
+          testID={ELEMENT.developerSettings.debugMode}
+        />
+      </SettingsGroup>
       <YStack>
-        <SettingsSection label={PENDING_COPY.developerFeatureFlags} />
+        <SettingsSection label={DEVELOPER_COPY.featureFlags} />
         <SettingsGroup>
-          {FLAG_NAMES.map((name) => (
+          {flags.map(({ flag: listed, value, source }) => (
             <SettingsRow
-              key={name}
-              label={name}
-              subtitle={sourceLabel(flagSource(name))}
+              key={listed.name}
+              label={listed.title}
+              subtitle={listed.description}
+              status={DEVELOPER_COPY.current(value, source)}
               trailing={
                 <Switch
-                  value={flag(name)}
-                  onValueChange={(value) => void actions.setFlagToggle(name, value)}
-                  accessibilityLabel={name}
-                  testID={ELEMENT.developerSettings.flagSwitch(name)}
+                  value={value}
+                  onValueChange={(next) => onFlagChange(listed.name, next)}
+                  accessibilityLabel={listed.title}
+                  testID={ELEMENT.developerSettings.flagSwitch(listed.name)}
                 />
               }
-              testID={ELEMENT.developerSettings.flag(name)}
+              testID={ELEMENT.developerSettings.flag(listed.name)}
             />
           ))}
         </SettingsGroup>
       </YStack>
       <SettingsGroup>
         <SettingsRow
-          label={PENDING_COPY.developerResetFlags}
-          disabled={switched.length === 0}
-          onPress={() => {
-            for (const name of switched) void actions.setFlagToggle(name, null)
-          }}
+          label={DEVELOPER_COPY.resetFlags}
+          disabled={!canReset}
+          onPress={onReset}
           testID={ELEMENT.developerSettings.resetFlags}
         />
-        {restart === null ? null : (
-          <SettingsRow
-            label={tr('restart')}
-            onPress={restart}
-            testID={ELEMENT.developerSettings.restart}
-          />
-        )}
       </SettingsGroup>
-      <SettingsNote
-        text={tr('settingsRestartDescription')}
-        testID={ELEMENT.developerSettings.restartNote}
-      />
     </YStack>
+  )
+}
+
+/**
+ * Developer Settings: debug mode, and a switch for each listed flag, which wins over the
+ * environment and starts at whatever the flag is now, so one turned on by its environment variable
+ * shows as on. Switches are stored with the account. Shown only in debug mode, which turning off
+ * here puts every switch back and leaves the screen, as legacy iOS's developer mode does.
+ */
+export function DeveloperSettingsPage() {
+  const actions = useSessionActions()
+  const modals = useModals()
+  // Read so the page redraws when a switch is stored; the values themselves come from `flag`.
+  const toggles = useFlagToggles()
+  const debugToggle = toggles['debugMode']
+  return (
+    <DeveloperSettingsContent
+      flags={DEVELOPER_FLAGS.map((listed) => ({
+        flag: listed,
+        value: flag(listed.name),
+        source: flagSource(listed.name),
+      }))}
+      restartPending={DEVELOPER_FLAGS.some(
+        (listed) => listed.restartRequired && changedSinceLaunch(listed.name),
+      )}
+      onRestart={requirePorts().window.restart}
+      canReset={Object.keys(toggles).some((name) => name !== 'debugMode')}
+      onDebugModeOff={() => {
+        // Stored off rather than cleared, so it stays off where the environment turns it on.
+        void actions.replaceFlagToggles({ debugMode: false }).then(() => modals.back())
+      }}
+      onFlagChange={(name, value) => void actions.setFlagToggle(name, value)}
+      onReset={() =>
+        void actions.replaceFlagToggles(debugToggle === undefined ? {} : { debugMode: debugToggle })
+      }
+    />
   )
 }

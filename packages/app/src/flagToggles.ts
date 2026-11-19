@@ -1,6 +1,6 @@
 import type { SessionStore } from '@session/state'
 
-import { FLAGS, setFlagToggles, type FlagName } from './flags'
+import { FLAGS, markFlagsLaunched, setFlagToggles, type FlagName } from './flags'
 
 function isFlag(name: string): name is FlagName {
   return Object.hasOwn(FLAGS, name)
@@ -21,7 +21,11 @@ function known(stored: Readonly<Record<string, boolean>>): Partial<Record<FlagNa
  */
 export function followFlagToggles(store: SessionStore): () => void {
   setFlagToggles(known(store.getState().flagToggles))
+  if (store.getState().hydrated) markFlagsLaunched()
   return store.subscribe((state, previous) => {
     if (state.flagToggles !== previous.flagToggles) setFlagToggles(known(state.flagToggles))
+    // The account's switches are in place from here, so these are the values anything read at
+    // start goes by: what Developer Settings compares against to say a restart is needed.
+    if (state.hydrated && !previous.hydrated) markFlagsLaunched()
   })
 }

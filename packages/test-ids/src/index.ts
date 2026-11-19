@@ -172,13 +172,17 @@ export const ELEMENT = {
   },
   developerSettings: {
     page: 'developer-settings',
+    debugMode: 'developer-debug-mode',
+    debugModeSwitch: 'developer-debug-mode-switch',
+    /** Shown while a setting read only at start differs from what the app started with. */
+    restartBanner: 'developer-restart-banner',
     /** A feature flag's row, by the flag's name in the shared flag table. */
     flag: (name: string) => `developer-flag-${name}` as const,
     /** That row's switch. */
     flagSwitch: (name: string) => `developer-flag-${name}-switch` as const,
     resetFlags: 'developer-reset-flags',
+    /** The banner's Restart, where the platform can relaunch the app. */
     restart: 'developer-restart',
-    restartNote: 'developer-restart-note',
   },
   keyboardShortcuts: {
     page: 'keyboard-shortcuts',

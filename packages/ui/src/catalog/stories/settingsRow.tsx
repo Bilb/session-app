@@ -55,6 +55,22 @@ export const settingsRow = defineStory<SettingsRowProps | NoteVariant>({
         />
       ),
     },
+    // A developer setting's shape: an explanation in paragraphs, then the state in the accent.
+    status: {
+      testID: 'catalog-settings-row-status',
+      label: 'Disable Animations',
+      subtitle:
+        'Turns off animations and transitions.\n\nApplies to screens drawn after the change.',
+      status: 'Current: Enabled (set here)',
+      trailing: (
+        <Switch
+          value
+          onValueChange={noop}
+          accessibilityLabel="Disable Animations"
+          testID="catalog-settings-row-status-control"
+        />
+      ),
+    },
     accentIcon: {
       ...ROW,
       testID: 'catalog-settings-row-accentIcon',

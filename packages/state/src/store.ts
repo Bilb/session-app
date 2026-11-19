@@ -115,6 +115,11 @@ export interface SessionActions {
    */
   setFlagToggle: (name: string, value: boolean | null) => Promise<void>
   /**
+   * Replaces every switched flag at once, in one write: for putting them back together, which a
+   * switch at a time would race, each reading the set before the last had stored it.
+   */
+  replaceFlagToggles: (toggles: Readonly<Record<string, boolean>>) => Promise<void>
+  /**
    * Subscribes first, then asks - never the other way round.
    *
    * What arrives before an answer is already in it, and what arrives after is applied on top of
@@ -531,6 +536,13 @@ export function createSessionStore(
       if (store.getState().account?.haveAccount !== true) return
       const { [name]: _, ...rest } = store.getState().flagToggles
       const flagToggles = value === null ? rest : { ...rest, [name]: value }
+      await client.setPref(FLAG_TOGGLES_PREF, JSON.stringify(flagToggles))
+      store.setState({ flagToggles })
+    },
+
+    async replaceFlagToggles(toggles): Promise<void> {
+      if (store.getState().account?.haveAccount !== true) return
+      const flagToggles = { ...toggles }
       await client.setPref(FLAG_TOGGLES_PREF, JSON.stringify(flagToggles))
       store.setState({ flagToggles })
     },

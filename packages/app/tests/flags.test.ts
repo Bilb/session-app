@@ -9,6 +9,7 @@ import {
   flagSnapshot,
   flagSource,
   setFlagToggles,
+  subscribeFlagToggles,
 } from '#src/flags'
 import type { FlagName } from '#src/flags'
 
@@ -126,5 +127,28 @@ describe('a flag switched in Developer Settings', () => {
   it('counts as the environment only when the value is understood', () => {
     withEnv({ EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS: 'maybe' })
     expect(flagSource('disableAnimations')).toBe('default')
+  })
+})
+
+describe('the switched flags', () => {
+  it('tell a subscriber when they change, until it unsubscribes', () => {
+    withEnv({})
+    let calls = 0
+    const stop = subscribeFlagToggles(() => {
+      calls += 1
+    })
+    setFlagToggles({ debugMode: true })
+    expect(calls).toBe(1)
+    stop()
+    setFlagToggles({})
+    expect(calls).toBe(1)
+  })
+
+  /** Debug mode is stored as a switch, so one stored off holds where the environment says on. */
+  it('decide debug mode over the environment', () => {
+    withEnv({ EXPO_PUBLIC_SESSION_FLAG_DEBUG_MODE: '1' })
+    expect(flag('debugMode')).toBe(true)
+    setFlagToggles({ debugMode: false })
+    expect(flag('debugMode')).toBe(false)
   })
 })

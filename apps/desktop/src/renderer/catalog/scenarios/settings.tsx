@@ -1,12 +1,13 @@
 import {
   AccountHeader,
   AttachmentCacheFigures,
-  DeveloperSettingsPage,
+  DeveloperSettingsContent,
   KeyboardShortcutsPage,
   PathStatsCard,
   RecoveryPasswordPage,
   type PathStats,
 } from '@session/screens'
+import { DEVELOPER_FLAGS } from '@session/app'
 import { defineStory, type AnyStory } from '@session/ui/catalog'
 
 /** Made up, never an account's: the fake's thirteen words and a 16-byte seed. */
@@ -34,6 +35,9 @@ const CATALOG_LONG_SECRET = {
   ],
   seedHex: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 }
+
+/** For a press the catalog cannot make. */
+const noop = (): void => undefined
 
 /** A phone's width, as the settings row's own story draws at. */
 const SECTION_WIDTH = 390
@@ -162,15 +166,34 @@ export const SETTINGS_SCENARIOS: readonly AnyStory[] = [
       <AccountHeader sessionId={CATALOG_ACCOUNT_ID} name="Alice" initialView={view} />
     ),
   }),
-  // Every flag as this build has it, which is the table's defaults unless the catalog was built
-  // with an override; nothing is switched, so Reset is disabled. At a phone's width, where a long
-  // flag name meets its switch.
-  defineStory<Record<string, never>>({
+  // Fixed states rather than the build's flags, which move with the environment the catalog was
+  // built in: the first flag switched here and the rest at their defaults, and the restart banner
+  // with and without its Restart, which only desktop can do. At a phone's width, where the
+  // descriptions wrap.
+  defineStory<{ restart: 'none' | 'desktop' | 'mobile' }>({
     component: 'settings',
     story: 'developerSettings',
     width: SECTION_WIDTH,
     sensitive: { rtl: true, theme: true },
-    variants: { resting: {} },
-    render: () => <DeveloperSettingsPage />,
+    variants: {
+      resting: { restart: 'none' },
+      'restart pending': { restart: 'desktop' },
+      'restart pending, no relaunch': { restart: 'mobile' },
+    },
+    render: ({ restart }) => (
+      <DeveloperSettingsContent
+        flags={DEVELOPER_FLAGS.map((listed, index) =>
+          index === 0
+            ? { flag: listed, value: true, source: 'toggle' as const }
+            : { flag: listed, value: false, source: 'default' as const },
+        )}
+        restartPending={restart !== 'none'}
+        onRestart={restart === 'desktop' ? noop : null}
+        canReset
+        onDebugModeOff={noop}
+        onFlagChange={noop}
+        onReset={noop}
+      />
+    ),
   }),
 ]
