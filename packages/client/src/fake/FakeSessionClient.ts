@@ -162,6 +162,15 @@ export class FakeSessionClient implements SessionClient {
 
   hideRecoveryPassword(): Promise<void> {
     this.assertOpen()
+    // As libsession refuses it: there is no recovery password to hide before the account exists,
+    // and a flag set then would hide the one made next.
+    if (!this.account.haveAccount) {
+      return Promise.reject(
+        new SessionClientError(
+          'This Session account has no identity yet; call create_account() or restore_account() first',
+        ),
+      )
+    }
     this.account.recoveryPasswordHidden = true
     return Promise.resolve()
   }

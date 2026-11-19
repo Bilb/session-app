@@ -372,6 +372,17 @@ export function runSessionClientContract(
       expect((await client.getAccountInfo()).sessionId).toBe(sessionId)
     })
 
+    it('refuses to hide the recovery password before there is an account', async () => {
+      // Hidden then, the account made next would start with its recovery password already gone.
+      const { client } = await harness.newcomer()
+
+      expect(await failure(() => client.hideRecoveryPassword())).toBeDefined()
+
+      await client.createAccount()
+      expect(await client.getRecoveryPasswordHidden()).toBe(false)
+      expect((await client.getSeedMnemonic())?.length ?? 0).toBeGreaterThan(0)
+    })
+
     it('refuses a phrase of the wrong length, and still makes nothing', async () => {
       const { client, phrase } = await harness.newcomer()
 
