@@ -1,6 +1,7 @@
 import {
   AccountHeader,
   AttachmentCacheFigures,
+  DeveloperSettingsPage,
   KeyboardShortcutsPage,
   PathStatsCard,
   RecoveryPasswordPage,
@@ -160,5 +161,16 @@ export const SETTINGS_SCENARIOS: readonly AnyStory[] = [
     render: ({ view }) => (
       <AccountHeader sessionId={CATALOG_ACCOUNT_ID} name="Alice" initialView={view} />
     ),
+  }),
+  // Every flag as this build has it, which is the table's defaults unless the catalog was built
+  // with an override; nothing is switched, so Reset is disabled. At a phone's width, where a long
+  // flag name meets its switch.
+  defineStory<Record<string, never>>({
+    component: 'settings',
+    story: 'developerSettings',
+    width: SECTION_WIDTH,
+    sensitive: { rtl: true, theme: true },
+    variants: { resting: {} },
+    render: () => <DeveloperSettingsPage />,
   }),
 ]

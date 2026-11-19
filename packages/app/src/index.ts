@@ -8,14 +8,15 @@ export { requirePorts, resetPorts, setPorts } from './ports'
 export { ExportAccessRefused } from './exportAccess'
 export { suggestedExportName } from './exportFileName'
 export type { ExportAccess } from './exportAccess'
-export { FLAGS, envVarFor, flag, flagSnapshot } from './flags'
+export { FLAGS, envVarFor, flag, flagSnapshot, flagSource } from './flags'
 export { appLog, logStoreMilestones, startLogger, storeLogger } from './log'
 export { exportLogs, type ExportOutcome, type ExportSources } from './exportLogs'
 export type { PlatformFacts } from './log'
 export { toggleDebugMode, useDebugMode } from './debugMode'
 export { URLS } from './urls.generated'
 export { CLIENT_URLS } from './clientUrls'
-export type { FlagName } from './flags'
+export type { FlagName, FlagSource } from './flags'
+export { followFlagToggles } from './flagToggles'
 export type {
   BuildPort,
   DiagnosticsPort,

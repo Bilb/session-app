@@ -1,7 +1,15 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { memoryPorts, resetPorts, setPorts } from '#src/index'
-import { FLAGS, envVarFor, flag, flagOverrideRows, flagSnapshot } from '#src/flags'
+import {
+  FLAGS,
+  envVarFor,
+  flag,
+  flagOverrideRows,
+  flagSnapshot,
+  flagSource,
+  setFlagToggles,
+} from '#src/flags'
 import type { FlagName } from '#src/flags'
 
 /** Installs ports whose only override is the one under test. */
@@ -11,6 +19,7 @@ function withEnv(env: Record<string, string>): void {
 
 afterEach(() => {
   resetPorts()
+  setFlagToggles({})
 })
 
 describe('feature flags', () => {
@@ -90,5 +99,32 @@ describe('flagOverrideRows', () => {
         EXPO_PUBLIC_SESSION_FLAG_NOT_A_FLAG: '',
       }),
     ).toEqual([])
+  })
+})
+
+describe('a flag switched in Developer Settings', () => {
+  it('wins over the environment, either way', () => {
+    withEnv({ EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS: '1' })
+    expect(flag('disableAnimations')).toBe(true)
+    setFlagToggles({ disableAnimations: false })
+    expect(flag('disableAnimations')).toBe(false)
+    expect(flagSource('disableAnimations')).toBe('toggle')
+  })
+
+  it('gives way to the environment, then the table, once it is reset', () => {
+    withEnv({ EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS: 'on' })
+    setFlagToggles({ disableAnimations: false })
+    setFlagToggles({})
+    expect(flag('disableAnimations')).toBe(true)
+    expect(flagSource('disableAnimations')).toBe('environment')
+
+    withEnv({})
+    expect(flag('disableAnimations')).toBe(FLAGS.disableAnimations)
+    expect(flagSource('disableAnimations')).toBe('default')
+  })
+
+  it('counts as the environment only when the value is understood', () => {
+    withEnv({ EXPO_PUBLIC_SESSION_FLAG_DISABLE_ANIMATIONS: 'maybe' })
+    expect(flagSource('disableAnimations')).toBe('default')
   })
 })

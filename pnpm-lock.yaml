@@ -522,6 +522,9 @@ importers:
       '@session/logging':
         specifier: workspace:*
         version: link:../logging
+      '@session/state':
+        specifier: workspace:*
+        version: link:../state
       uqr:
         specifier: 'catalog:'
         version: 0.1.3

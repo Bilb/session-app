@@ -162,18 +162,43 @@ function falsy(value: string): boolean {
   return ['0', 'false', 'no', 'off'].includes(value.trim().toLowerCase())
 }
 
+/** Where a flag's value comes from: a developer setting, the environment, or the table. */
+export type FlagSource = 'toggle' | 'environment' | 'default'
+
 /**
- * Whether a flag is on, after any environment override.
+ * The flags someone has switched in Developer Settings, which win over the environment: the
+ * switch starts at whatever the environment says, so a flag turned on there shows as on, and once
+ * it is changed the change is what holds. Stored with the account (see `followFlagToggles`), and
+ * installed here so `flag` stays synchronous.
+ */
+let toggles: Partial<Record<FlagName, boolean>> = {}
+
+/** Replaces the switched flags; anything not named goes back to the environment or the table. */
+export function setFlagToggles(next: Partial<Record<FlagName, boolean>>): void {
+  toggles = { ...next }
+}
+
+/** The value a flag has without any developer setting: the environment's, else the table's. */
+function untoggled(name: FlagName): { value: boolean; source: FlagSource } {
+  const override = requirePorts().flags.override(envVarFor(name))
+  if (override !== null && truthy(override)) return { value: true, source: 'environment' }
+  if (override !== null && falsy(override)) return { value: false, source: 'environment' }
+  return { value: FLAGS[name], source: 'default' }
+}
+
+/** Where `flag(name)` gets its value from. */
+export function flagSource(name: FlagName): FlagSource {
+  return toggles[name] === undefined ? untoggled(name).source : 'toggle'
+}
+
+/**
+ * Whether a flag is on: a developer setting if there is one, then the environment, then the table.
  *
  * Reads the port every call rather than caching, because on mobile the value is live. The lookup
  * is a map read and a string compare, so there is nothing to save by holding it.
  */
 export function flag(name: FlagName): boolean {
-  const override = requirePorts().flags.override(envVarFor(name))
-  if (override === null) return FLAGS[name]
-  if (truthy(override)) return true
-  if (falsy(override)) return false
-  return FLAGS[name]
+  return toggles[name] ?? untoggled(name).value
 }
 
 /** Every flag and its effective value. For the debug menu, and for a bug report to quote. */

@@ -25,6 +25,27 @@ import {
 /** Where the account's theme and accent are kept, as libsession preferences. */
 const THEME_PREF = 'appearance.theme'
 const ACCENT_PREF = 'appearance.accent'
+/** Where the flags switched in Developer Settings are kept: a JSON object of name to value. */
+const FLAG_TOGGLES_PREF = 'developer.flagToggles'
+
+/**
+ * The stored switched flags, or none where the stored value is missing or is not an object of
+ * booleans: a malformed developer setting must not stop the account from opening.
+ */
+function parseFlagToggles(stored: string | undefined): Record<string, boolean> {
+  if (stored === undefined) return {}
+  try {
+    const parsed: unknown = JSON.parse(stored)
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {}
+    return Object.fromEntries(
+      Object.entries(parsed).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === 'boolean',
+      ),
+    )
+  } catch {
+    return {}
+  }
+}
 
 /** What the recovery password screen shows: the words, and the seed its QR code carries. */
 export interface RecoveryPassword {
@@ -88,6 +109,11 @@ export interface SessionActions {
   getRecoveryPassword: () => Promise<RecoveryPassword>
   /** Hides the recovery password on this device for good. See `recoveryPasswordHidden`. */
   hideRecoveryPassword: () => Promise<void>
+  /**
+   * Switches a feature flag in Developer Settings, or with null puts it back to the environment's
+   * value or the default. Stored with the account; see `flagToggles`.
+   */
+  setFlagToggle: (name: string, value: boolean | null) => Promise<void>
   /**
    * Subscribes first, then asks - never the other way round.
    *
@@ -479,19 +505,34 @@ export function createSessionStore(
         return
       }
 
-      const [theme, accent, hidden] = await Promise.all([
+      const [theme, accent, hidden, toggles] = await Promise.all([
         client.getPref(THEME_PREF),
         client.getPref(ACCENT_PREF),
         client.getRecoveryPasswordHidden(),
+        client.getPref(FLAG_TOGGLES_PREF),
         readList('conversations'),
         readList('requests'),
         askNetworkStatus(),
       ])
 
       // In the same update as `hydrated`, so the screen the account opens on is drawn once, in its
-      // theme. Both or neither: an accent without its theme is half a choice.
+      // theme and with its switched flags. Both or neither: an accent without its theme is half a
+      // choice.
       const appearance = theme === undefined || accent === undefined ? null : { theme, accent }
-      store.setState({ appearance, recoveryPasswordHidden: hidden, hydrated: true })
+      store.setState({
+        appearance,
+        recoveryPasswordHidden: hidden,
+        flagToggles: parseFlagToggles(toggles),
+        hydrated: true,
+      })
+    },
+
+    async setFlagToggle(name, value): Promise<void> {
+      if (store.getState().account?.haveAccount !== true) return
+      const { [name]: _, ...rest } = store.getState().flagToggles
+      const flagToggles = value === null ? rest : { ...rest, [name]: value }
+      await client.setPref(FLAG_TOGGLES_PREF, JSON.stringify(flagToggles))
+      store.setState({ flagToggles })
     },
 
     async setAppearance(appearance): Promise<void> {

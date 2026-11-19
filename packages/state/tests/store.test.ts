@@ -131,6 +131,58 @@ describe("the account's theme", () => {
   })
 })
 
+describe('the switched feature flags', () => {
+  function alice() {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const client = clients['Alice']
+    if (!client) throw new Error('fixture did not produce a client')
+    return { world, client, store: createSessionStore(client) }
+  }
+
+  it('are none until one is switched', async () => {
+    const { store } = alice()
+    await store.actions.hydrate()
+    expect(store.getState().flagToggles).toEqual({})
+  })
+
+  it('are stored against the account and read back with it, and a reset forgets one', async () => {
+    const { client, store } = alice()
+    await store.actions.hydrate()
+
+    await store.actions.setFlagToggle('disableAnimations', true)
+    await store.actions.setFlagToggle('debugMode', false)
+    expect(store.getState().flagToggles).toEqual({ disableAnimations: true, debugMode: false })
+
+    await store.actions.setFlagToggle('debugMode', null)
+    const next = createSessionStore(client)
+    await next.actions.hydrate()
+    expect(next.getState().flagToggles).toEqual({ disableAnimations: true })
+  })
+
+  it('ignore a stored value that is not an object of switches', async () => {
+    const { client, store } = alice()
+    await store.actions.hydrate()
+    for (const stored of ['not json', '[true]', '{"disableAnimations":"yes","debugMode":true}']) {
+      await client.setPref('developer.flagToggles', stored)
+      const next = createSessionStore(client)
+      await next.actions.hydrate()
+      expect(next.getState().flagToggles, stored).toEqual(
+        stored.startsWith('{') ? { debugMode: true } : {},
+      )
+    }
+  })
+
+  it('go with the account', async () => {
+    const { world, store } = alice()
+    await store.actions.hydrate()
+    await store.actions.setFlagToggle('disableAnimations', true)
+
+    world.account('Alice').haveAccount = false
+    await store.actions.hydrate()
+    expect(store.getState().flagToggles).toEqual({})
+  })
+})
+
 describe('the recovery password', () => {
   function alice() {
     const { world, clients } = friends(['Alice', 'Bob'])

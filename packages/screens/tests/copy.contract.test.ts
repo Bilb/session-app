@@ -136,6 +136,11 @@ describe('screen copy', () => {
       'English with no catalogue key. Each of these ships untranslated until the key lands, so ' +
         'the list is meant to shrink: promote one via session-localization rather than adding.',
     ).toEqual([
+      'developerFeatureFlags',
+      'developerFlagSetHere',
+      'developerFlagFromEnvironment',
+      'developerFlagDefault',
+      'developerResetFlags',
       'attachmentCache',
       'attachmentCacheUsage',
       'attachmentCacheLimit',
