@@ -510,7 +510,8 @@ export function Button({
           // spinner's absolute offsets would otherwise resolve against the page.
           position="relative"
           {...(fill ? { flex: 1 } : {})}
-          {...FRAME_ROLE}
+          // A box reaching past the frame is the button; a role here reads as a smaller one.
+          {...(reach > 0 ? {} : FRAME_ROLE)}
           variant={variant}
           size={size}
           circular={circular}
