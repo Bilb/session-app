@@ -51,6 +51,15 @@ function useSeparatorHeight(): number {
   return 1 / (scale * usePageZoom())
 }
 
+/** One line of a row's details: a setting's name, as the caller words it, and how it stands. */
+export interface SettingsRowDetail {
+  /** Punctuated by the caller, "Current:", since a colon is not the same in every language. */
+  label: string
+  value: string
+  /** Not in effect, as a mock that is off: in the disabled ink rather than the accent. */
+  inactive?: boolean | undefined
+}
+
 export interface SettingsRowProps {
   label: string
   /**
@@ -65,8 +74,11 @@ export interface SettingsRowProps {
    * breaks are kept, for an explanation with paragraphs or a list.
    */
   subtitle?: string
-  /** A state under the subtitle, in the accent: what a setting is set to now. */
-  status?: string | undefined
+  /**
+   * How the row's settings stand, a line each under the subtitle: one for a setting, or a summary
+   * of a screen's settings on the row that opens it, as legacy iOS's developer settings have.
+   */
+  details?: readonly SettingsRowDetail[] | undefined
   /** A value, a switch, a button. No chevron by default. */
   trailing?: ReactNode
   /**
@@ -100,7 +112,7 @@ export function SettingsRow({
   label,
   icon,
   subtitle,
-  status,
+  details,
   trailing,
   wideTrailing = false,
   trailingYields = false,
@@ -118,7 +130,7 @@ export function SettingsRow({
     label,
     icon,
     subtitle,
-    status,
+    details,
     trailing,
     wideTrailing,
     trailingYields,
@@ -148,7 +160,7 @@ interface RowContentProps {
   label: string
   icon?: SettingsRowProps['icon'] | undefined
   subtitle?: string | undefined
-  status?: string | undefined
+  details?: readonly SettingsRowDetail[] | undefined
   trailing?: ReactNode | undefined
   wideTrailing: boolean
   trailingYields: boolean
@@ -167,7 +179,7 @@ function RowContent({
   label,
   icon,
   subtitle,
-  status,
+  details,
   trailing,
   wideTrailing,
   trailingYields,
@@ -269,16 +281,34 @@ function RowContent({
               {subtitle}
             </Text>
           )}
-          {status === undefined ? null : (
-            // `accentText`, as for a link or an inline emphasis: the accent itself is too faint as
-            // text on a light ground.
-            <Text
-              size="$label"
-              color={disabled ? '$textDisabled' : '$accentText'}
-              maxFontSizeMultiplier={LABEL_MAX_SCALE}
-            >
-              {status}
-            </Text>
+          {details === undefined || details.length === 0 ? null : (
+            // Set apart from the subtitle, as a paragraph would be.
+            <YStack paddingTop="$xs">
+              {details.map((detail) => (
+                <Text
+                  key={detail.label}
+                  size="$label"
+                  color={disabled ? '$textDisabled' : '$textPrimary'}
+                  maxFontSizeMultiplier={LABEL_MAX_SCALE}
+                >
+                  <Text
+                    size="$label"
+                    weight="bold"
+                    color={disabled ? '$textDisabled' : '$textPrimary'}
+                  >
+                    {detail.label}
+                  </Text>{' '}
+                  {/* `accentText`, as for a link or an inline emphasis: the accent itself is too
+                      faint as text on a light ground. */}
+                  <Text
+                    size="$label"
+                    color={disabled || detail.inactive === true ? '$textDisabled' : '$accentText'}
+                  >
+                    {detail.value}
+                  </Text>
+                </Text>
+              ))}
+            </YStack>
           )}
         </YStack>
 

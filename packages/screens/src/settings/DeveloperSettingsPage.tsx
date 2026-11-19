@@ -22,6 +22,7 @@ import {
   useModals,
   XStack,
   YStack,
+  type ModalScreen,
 } from '@session/ui'
 
 /** A listed flag as it stands now. */
@@ -33,10 +34,6 @@ interface DeveloperFlagState {
 
 export interface DeveloperSettingsContentProps {
   flags: readonly DeveloperFlagState[]
-  /** A flag read only at start differs from what the app started with. */
-  restartPending: boolean
-  /** Relaunches the app, where the platform can. */
-  onRestart: (() => void) | null
   /** Anything besides debug mode is switched, so there is something to put back. */
   canReset: boolean
   onDebugModeOff: () => void
@@ -44,29 +41,56 @@ export interface DeveloperSettingsContentProps {
   onReset: () => void
 }
 
-function RestartBanner({ onRestart }: { onRestart: (() => void) | null }) {
+/**
+ * Says a restart is needed, with Restart where the platform can relaunch (`onRestart` null where it
+ * cannot). Pinned above every Developer Settings screen; see `developerScreen`.
+ */
+export function DeveloperRestartBanner({ onRestart }: { onRestart: (() => void) | null }) {
   return (
-    <SettingsGroup>
-      <XStack
-        backgroundColor="$backgroundSecondary"
-        alignItems="center"
-        gap="$sm"
-        padding="$md"
-        testID={ELEMENT.developerSettings.restartBanner}
-      >
-        <YStack flex={1}>
-          <Text size="$label" color="$warningColor">
-            {tr('settingsRestartDescription')}
-          </Text>
-        </YStack>
-        {onRestart === null ? null : (
-          <Button size="sm" onPress={onRestart} testID={ELEMENT.developerSettings.restart}>
-            {tr('restart')}
-          </Button>
-        )}
-      </XStack>
-    </SettingsGroup>
+    <YStack paddingHorizontal="$md" paddingTop="$md">
+      <SettingsGroup>
+        <XStack
+          backgroundColor="$backgroundSecondary"
+          alignItems="center"
+          gap="$sm"
+          padding="$md"
+          testID={ELEMENT.developerSettings.restartBanner}
+        >
+          <YStack flex={1}>
+            <Text size="$label" color="$warningColor">
+              {tr('settingsRestartDescription')}
+            </Text>
+          </YStack>
+          {onRestart === null ? null : (
+            <Button size="sm" onPress={onRestart} testID={ELEMENT.developerSettings.restart}>
+              {tr('restart')}
+            </Button>
+          )}
+        </XStack>
+      </SettingsGroup>
+    </YStack>
   )
+}
+
+/**
+ * The banner while a listed flag read only at start differs from what the app started with, and
+ * nothing otherwise. Reads the switches itself, so it comes and goes as they change.
+ */
+function PendingRestart() {
+  useFlagToggles()
+  const pending = DEVELOPER_FLAGS.some(
+    (listed) => listed.restartRequired && changedSinceLaunch(listed.name),
+  )
+  return pending ? <DeveloperRestartBanner onRestart={requirePorts().window.restart} /> : null
+}
+
+/**
+ * A Developer Settings screen, for pushing onto the settings modal: the restart banner is its
+ * header, so it stays in view however far the screen scrolls and on every child screen pushed this
+ * way, and appears nowhere outside Developer Settings.
+ */
+export function developerScreen(screen: Omit<ModalScreen, 'header'>): ModalScreen {
+  return { ...screen, header: () => <PendingRestart /> }
 }
 
 /**
@@ -75,8 +99,6 @@ function RestartBanner({ onRestart }: { onRestart: (() => void) | null }) {
  */
 export function DeveloperSettingsContent({
   flags,
-  restartPending,
-  onRestart,
   canReset,
   onDebugModeOff,
   onFlagChange,
@@ -84,7 +106,6 @@ export function DeveloperSettingsContent({
 }: DeveloperSettingsContentProps) {
   return (
     <YStack padding="$md" gap="$lg" testID={ELEMENT.developerSettings.page}>
-      {restartPending ? <RestartBanner onRestart={onRestart} /> : null}
       <SettingsGroup>
         <SettingsRow
           label={DEVELOPER_COPY.debugModeTitle}
@@ -110,7 +131,12 @@ export function DeveloperSettingsContent({
               key={listed.name}
               label={listed.title}
               subtitle={listed.description}
-              status={DEVELOPER_COPY.current(value, source)}
+              details={[
+                {
+                  label: DEVELOPER_COPY.currentLabel,
+                  value: DEVELOPER_COPY.currentValue(value, source),
+                },
+              ]}
               trailing={
                 <Switch
                   value={value}
@@ -155,10 +181,6 @@ export function DeveloperSettingsPage() {
         value: flag(listed.name),
         source: flagSource(listed.name),
       }))}
-      restartPending={DEVELOPER_FLAGS.some(
-        (listed) => listed.restartRequired && changedSinceLaunch(listed.name),
-      )}
-      onRestart={requirePorts().window.restart}
       canReset={Object.keys(toggles).some((name) => name !== 'debugMode')}
       onDebugModeOff={() => {
         // Stored off rather than cleared, so it stays off where the environment turns it on.

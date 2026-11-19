@@ -55,6 +55,7 @@ export const DEVELOPER_COPY = {
   featureFlags: 'Feature Flags',
   resetFlags: 'Reset All Flags',
   /** A flag's state line: its value, and where the value comes from. */
-  current: (value: boolean, source: FlagSource): string =>
-    `Current: ${value ? 'Enabled' : 'Disabled'} (${SOURCE_WORDS[source]})`,
+  currentLabel: 'Current:',
+  currentValue: (value: boolean, source: FlagSource): string =>
+    `${value ? 'Enabled' : 'Disabled'} (${SOURCE_WORDS[source]})`,
 } as const

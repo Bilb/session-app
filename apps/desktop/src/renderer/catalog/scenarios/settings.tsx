@@ -1,6 +1,7 @@
 import {
   AccountHeader,
   AttachmentCacheFigures,
+  DeveloperRestartBanner,
   DeveloperSettingsContent,
   KeyboardShortcutsPage,
   PathStatsCard,
@@ -167,33 +168,36 @@ export const SETTINGS_SCENARIOS: readonly AnyStory[] = [
     ),
   }),
   // Fixed states rather than the build's flags, which move with the environment the catalog was
-  // built in: the first flag switched here and the rest at their defaults, and the restart banner
-  // with and without its Restart, which only desktop can do. At a phone's width, where the
-  // descriptions wrap.
-  defineStory<{ restart: 'none' | 'desktop' | 'mobile' }>({
+  // built in: the first flag switched here and any others at their defaults. At a phone's width,
+  // where the descriptions wrap. The restart banner is its own story, since it sits above every
+  // Developer Settings screen rather than in one.
+  defineStory<Record<string, never>>({
     component: 'settings',
     story: 'developerSettings',
     width: SECTION_WIDTH,
     sensitive: { rtl: true, theme: true },
-    variants: {
-      resting: { restart: 'none' },
-      'restart pending': { restart: 'desktop' },
-      'restart pending, no relaunch': { restart: 'mobile' },
-    },
-    render: ({ restart }) => (
+    variants: { resting: {} },
+    render: () => (
       <DeveloperSettingsContent
         flags={DEVELOPER_FLAGS.map((listed, index) =>
           index === 0
             ? { flag: listed, value: true, source: 'toggle' as const }
             : { flag: listed, value: false, source: 'default' as const },
         )}
-        restartPending={restart !== 'none'}
-        onRestart={restart === 'desktop' ? noop : null}
         canReset
         onDebugModeOff={noop}
         onFlagChange={noop}
         onReset={noop}
       />
     ),
+  }),
+  // With Restart, as desktop can relaunch, and without, as a phone cannot.
+  defineStory<{ relaunch: boolean }>({
+    component: 'settings',
+    story: 'developerRestartBanner',
+    width: SECTION_WIDTH,
+    sensitive: { rtl: true, theme: true },
+    variants: { 'can relaunch': { relaunch: true }, 'cannot relaunch': { relaunch: false } },
+    render: ({ relaunch }) => <DeveloperRestartBanner onRestart={relaunch ? noop : null} />,
   }),
 ]

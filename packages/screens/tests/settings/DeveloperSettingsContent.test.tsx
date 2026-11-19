@@ -5,6 +5,7 @@ import { fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  DeveloperRestartBanner,
   DeveloperSettingsContent,
   type DeveloperSettingsContentProps,
 } from '#src/settings/DeveloperSettingsPage'
@@ -24,8 +25,6 @@ function draw(
 ): DeveloperSettingsContentProps {
   const props: DeveloperSettingsContentProps = {
     flags: [{ flag: FIRST, value: false, source: 'default' }],
-    restartPending: false,
-    onRestart: vi.fn(),
     canReset: true,
     onDebugModeOff: vi.fn(),
     onFlagChange: vi.fn(),
@@ -57,21 +56,18 @@ describe('Developer Settings', () => {
     fireEvent.click(screen.getByTestId(ELEMENT.developerSettings.resetFlags))
     expect(props.onReset).not.toHaveBeenCalled()
   })
+})
 
-  it('shows no restart banner while nothing needs a restart', () => {
-    draw()
-    expect(screen.queryByTestId(ELEMENT.developerSettings.restartBanner)).toBeNull()
-  })
-
-  it('relaunches from the banner where the platform can', () => {
-    const props = draw({ restartPending: true })
-    expect(screen.getByTestId(ELEMENT.developerSettings.restartBanner)).toBeTruthy()
+describe('the restart banner', () => {
+  it('relaunches where the platform can', () => {
+    const onRestart = vi.fn()
+    renderScreen(<DeveloperRestartBanner onRestart={onRestart} />)
     fireEvent.click(screen.getByRole('button', { name: tr('restart') }))
-    expect(props.onRestart).toHaveBeenCalledOnce()
+    expect(onRestart).toHaveBeenCalledOnce()
   })
 
   it('offers no Restart where the platform cannot relaunch', () => {
-    draw({ restartPending: true, onRestart: null })
+    renderScreen(<DeveloperRestartBanner onRestart={null} />)
     expect(screen.getByTestId(ELEMENT.developerSettings.restartBanner)).toBeTruthy()
     expect(screen.queryByRole('button', { name: tr('restart') })).toBeNull()
   })

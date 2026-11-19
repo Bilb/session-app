@@ -4,7 +4,11 @@ export { OnboardingFlow } from './onboarding/OnboardingFlow'
 export { RequestsScreen } from './RequestsScreen'
 export { AccountHeader } from './settings/AccountHeader'
 export { AttachmentCacheFigures, AttachmentCacheSection } from './settings/AttachmentCacheSection'
-export { DeveloperSettingsContent, DeveloperSettingsPage } from './settings/DeveloperSettingsPage'
+export {
+  DeveloperRestartBanner,
+  DeveloperSettingsContent,
+  DeveloperSettingsPage,
+} from './settings/DeveloperSettingsPage'
 export { KeyboardShortcutsPage } from './settings/KeyboardShortcutsPage'
 export { ModalHost } from './settings/ModalHost'
 export { RecoveryPasswordPage } from './settings/RecoveryPasswordPage'

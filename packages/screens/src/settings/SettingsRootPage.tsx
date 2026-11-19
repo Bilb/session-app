@@ -28,7 +28,7 @@ import { PathPage } from '../path/PathPage'
 import { AccountHeader } from './AccountHeader'
 import { confirmLink } from './confirmLink'
 import { ConversationsPage } from './ConversationsPage'
-import { DeveloperSettingsPage } from './DeveloperSettingsPage'
+import { DeveloperSettingsPage, developerScreen } from './DeveloperSettingsPage'
 import { HelpPage } from './HelpPage'
 import { openRecoveryPassword } from './RecoveryPasswordPage'
 import { SessionInfo } from './SessionInfo'
@@ -266,10 +266,12 @@ export function SettingsRootPage() {
               icon: 'settings',
               testID: row('developer-settings'),
               onPress: () => {
-                modals.push({
-                  title: tr('developerSettings'),
-                  render: () => <DeveloperSettingsPage />,
-                })
+                modals.push(
+                  developerScreen({
+                    title: tr('developerSettings'),
+                    render: () => <DeveloperSettingsPage />,
+                  }),
+                )
               },
             } satisfies RowSpec,
           ]
