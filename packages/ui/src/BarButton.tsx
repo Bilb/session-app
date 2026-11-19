@@ -5,6 +5,7 @@ import type { IconName } from './Icon.types'
 import { PressArea } from './PressArea'
 import { ROW_TOUCH_TARGET } from './rowTouchTarget'
 import { SIZE_SCALE } from './scales'
+import { touchReach } from './touchReach'
 import { useThemeIsDark } from './UIProvider'
 import { useTokenColor } from './useTokenColor'
 
@@ -62,7 +63,7 @@ export function BarButton({
       {...(testID === undefined ? {} : { testID })}
       onPress={onPress}
       disabled={disabled}
-      reach={Math.max(0, (ROW_TOUCH_TARGET - glassDiameter) / 2)}
+      reach={touchReach(glassDiameter, ROW_TOUCH_TARGET)}
     >
       {(_pressed, hovered) => (
         <Glass size={glassDiameter} dark={dark} highlight={hovered ? hoverColor : null}>
