@@ -48,14 +48,8 @@ async function revealFailed(app: MobileApp): Promise<Frame> {
 }
 
 /**
-<<<<<<< HEAD
- * Launched directly, because the bubble's press is not an element of its own and a touch at a
- * point is not in `ISessionApp`: the touch lands on the state line, as a finger's on any part of
- * the bubble would.
-=======
  * The phones only: the desktop keeps its Retry link. The touch lands on the state line, as a
  * finger's on any part of the bubble would.
->>>>>>> fix/native-spec-failures
  */
 for (const platform of MOBILE_PLATFORMS)
   test(`retries a failed send from a touch on its bubble @${platform} @medium-risk`, async () => {
