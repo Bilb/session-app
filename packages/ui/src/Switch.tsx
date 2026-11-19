@@ -16,9 +16,10 @@ export interface SwitchProps {
  * An on/off switch: the platform's own on iOS and Android, as the legacy clients have, and
  * react-native-web's on desktop, in the theme's colours.
  *
- * On is the accent; off is a step on the surface ladder rather than the border role, which in a
- * theme with a saturated border would read as on. The thumb is `surfaceInverted`, light in every
- * theme, since a dark thumb reads as off.
+ * On is the accent. Off is `progressTrack`, the role for an unfilled track: translucent ink, so it
+ * reads as off on a card, the page or a nested card alike, where a surface step all but vanished on
+ * a dark card and the border role, saturated in some themes, read as a state. The thumb is
+ * `surfaceInverted`, light in every theme, since a dark thumb reads as off.
  */
 export function Switch({
   value,
@@ -28,7 +29,7 @@ export function Switch({
   testID,
 }: SwitchProps) {
   const on = useTokenColor('$primaryColor')
-  const off = useTokenColor('$backgroundTertiary')
+  const off = useTokenColor('$progressTrack')
   const thumb = useTokenColor('$surfaceInverted')
   const thumbDisabled = useTokenColor('$textDisabled')
   // iOS and Android fade a disabled switch themselves; react-native-web's only sign of it is a grey
