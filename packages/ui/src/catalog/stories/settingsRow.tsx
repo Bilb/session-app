@@ -1,4 +1,5 @@
 import { SettingsNote, SettingsRow, type SettingsRowProps } from '../../SettingsRow'
+import { Switch } from '../../Switch'
 import { Text } from '../../Text'
 import { defineStory } from '../story'
 import { LONG, noop } from './shared'
@@ -40,6 +41,19 @@ export const settingsRow = defineStory<SettingsRowProps | NoteVariant>({
       label: 'Language',
       icon: 'clock',
       trailing: <Text tone="secondary">English</Text>,
+    },
+    switch: {
+      testID: 'catalog-settings-row-switch',
+      label: 'Read receipts',
+      subtitle: 'Show that you have read a message',
+      trailing: (
+        <Switch
+          value
+          onValueChange={noop}
+          accessibilityLabel="Read receipts"
+          testID="catalog-settings-row-switch-control"
+        />
+      ),
     },
     accentIcon: {
       ...ROW,
