@@ -93,10 +93,19 @@ function expectClearOf(row: Frame, aboveBottom: number, between = 0): void {
     .toBeLessThanOrEqual(MAX_CLEARANCE + between)
 }
 
+/**
+ * What a footer button draws, in the middle of its box: on a phone the box is the row's full height
+ * and the button is drawn at the line's.
+ */
+function drawnOf(box: Frame): Frame {
+  return { ...box, y: box.y + (box.height - FOOTER_HEIGHT) / 2, height: FOOTER_HEIGHT }
+}
+
 /** A point `EDGE` in from the row's edge must miss the button's drawn box, or it proves nothing. */
-function expectOutsideDrawn(app: ISessionApp, y: number, button: Frame): void {
+function expectOutsideDrawn(app: ISessionApp, y: number, box: Frame): void {
   if (app.platform === 'desktop') return
-  expect(y < button.y || y > bottom(button), 'the tap misses the drawn button').toBe(true)
+  const drawn = drawnOf(box)
+  expect(y < drawn.y || y > bottom(drawn), 'the tap misses the drawn button').toBe(true)
 }
 
 sessionTest({
@@ -115,6 +124,7 @@ sessionTest({
 
     // Above the toggle, where the footer's row would take the touch if it reached over the tile.
     const toggle = await frameOf(alice, ELEMENT.conversation.attachmentViewList)
+    expectRowHeight(alice, toggle)
     await alice.tapPoint(centreX(toggle), above - EDGE)
     await alice.waitForVisible(ELEMENT.conversation.autoDownloadPrompt)
     // A phone's prompt hides the transcript from the tree, so the view is read once it is gone.
