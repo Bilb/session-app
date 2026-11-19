@@ -3,7 +3,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { isWeb, Spinner, styled, XStack, YStack } from 'tamagui'
 
 import { INHERITED_LABEL } from './labelColor'
-import { hitSlopFor } from './buttonHitTarget'
+import { buttonHeight, hitSlopFor } from './buttonHitTarget'
 import type { FocusRingShape } from './keyboardPress'
 import { PRESS_PASSTHROUGH } from './pressPassthrough'
 import { PressArea } from './PressArea'
@@ -372,6 +372,13 @@ export interface ButtonProps {
    */
   hitSlop?: number | undefined
   /**
+   * The size of the control's box on a phone, with the button drawn at its own size in the middle:
+   * the box takes the touch, and a screen reader and an accessibility audit read it as the
+   * control's size. Given back as margin, so nothing round it moves, and no touch lands past the
+   * parent's edge, so the parent needs the room. Ignored on the web, where a pointer needs no more.
+   */
+  touchTarget?: number | undefined
+  /**
    * Colour the label danger without filling the button.
    *
    * Every destructive action in a modal is drawn this way in the desktop client -- red text beside
@@ -435,6 +442,7 @@ export function Button({
   paddingHorizontal,
   borderRadius,
   hitSlop,
+  touchTarget = 0,
   onAccent = false,
   icon,
   accessibilityLabel,
@@ -466,6 +474,7 @@ export function Button({
     destructive && !INVERTS_ON_PRESS.has(variant) ? '$dangerColor' : PRESSED_LABEL[variant]
 
   const inert = disabled || loading
+  const reach = Math.max(0, (touchTarget - buttonHeight(size)) / 2)
   /**
    * The name a screen reader gives the button. While loading the label is hidden, and Android
    * drops a fully transparent child from the accessibility tree, so the label's text is passed
@@ -488,7 +497,8 @@ export function Button({
       disabled={inert}
       // Grown outwards rather than drawn larger: the control keeps the size the designs give it and
       // the target reaches the floor. Ignored on the web, where a pointer does not need it.
-      hitSlop={hitSlop ?? hitSlopFor(size)}
+      hitSlop={hitSlop ?? (reach > 0 ? 0 : hitSlopFor(size))}
+      reach={reach}
       {...(name === undefined ? {} : { accessibilityLabel: name })}
       busy={loading}
       {...(testID === undefined ? {} : { testID })}

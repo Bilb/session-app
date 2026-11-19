@@ -49,8 +49,8 @@ function Notices({ staging }: { staging: StagingState }) {
 
 const ATTACH_SIZE = 'md'
 
-/** Out to the platform's touch floor on each side; zero on the web, where a pointer is precise. */
-const ATTACH_SLOP = Math.max(0, (ROW_TOUCH_TARGET - buttonHeight(ATTACH_SIZE)) / 2)
+/** How far the attach button's box reaches past what it draws, on each side; 0 on the web. */
+const ATTACH_REACH = Math.max(0, (ROW_TOUCH_TARGET - buttonHeight(ATTACH_SIZE)) / 2)
 
 /** The bottom of a conversation: what is staged, what was refused, and the line being typed. */
 export function Composer({
@@ -163,10 +163,10 @@ export function Composer({
       <XStack
         gap="$sm"
         alignItems="center"
-        // A slop never reaches past its parent, and the attach button sits at the row's edge: the
-        // row reaches into the composer's padding by as much and gives it back as margin.
-        paddingHorizontal={ATTACH_SLOP}
-        marginHorizontal={-ATTACH_SLOP}
+        // No touch lands past a parent's edge, and the attach button's box reaches past the row's:
+        // the row reaches into the composer's padding by as much and gives it back as margin.
+        paddingHorizontal={ATTACH_REACH}
+        marginHorizontal={-ATTACH_REACH}
       >
         <Button
           variant="tonal"
@@ -175,7 +175,7 @@ export function Composer({
           disabled={full || sending}
           icon={<Icon name="plus" size="md" color="$textPrimary" />}
           accessibilityLabel={tr('attachmentsAdd')}
-          hitSlop={ATTACH_SLOP}
+          touchTarget={ROW_TOUCH_TARGET}
           onPress={attach}
           testID={ELEMENT.conversation.attachButton}
         />
