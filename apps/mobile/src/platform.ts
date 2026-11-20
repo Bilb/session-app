@@ -143,8 +143,12 @@ const ports = memoryPorts({
     // notification delivery something to choose rather than something that just happens. True on
     // a tablet as well as a phone: it is the OS that decides this, not the screen size.
     notificationModesApply: true,
-    // TODO: true where the variant names a push service, once registration with that service
-    // exists. Saying true before then would offer a mode that silently never delivers.
+    // TODO: true only when all three hold, which no build trait alone can say:
+    // - the variant names a push service (`VARIANT_TRAITS[VARIANT].pushService`);
+    // - registration with that service exists, which it does not yet;
+    // - on Android, the device has that service: Google Play Services (or microG) for Google's,
+    //   HMS Core for Huawei's. Asked at runtime, since a sideloaded or F-Droid install may lack it.
+    // Saying true before then would offer a mode that silently never delivers.
     fastModeAvailable: false,
     pushService: VARIANT_TRAITS[VARIANT].pushService,
     requestPermission: () => Promise.resolve(true),

@@ -19,8 +19,8 @@ header prints it as **Variant**.
 | `website`     | Android  | built as the `website` flavour   | none ¹       | no           | no            | yes                |
 | `huawei`      | Android  | built as the `huawei` flavour    | Huawei       | no           | no            | no                 |
 | `appStore`    | iOS      | no embedded provisioning profile | Apple        | App Store    | yes           | no                 |
-| `testFlight`  | iOS      | a profile and a sandbox receipt  | Apple        | App Store ²  | no            | no                 |
-| `adHoc`       | iOS      | a profile and no sandbox receipt | Apple        | no           | no            | no                 |
+| `testFlight`  | iOS      | a profile that names no devices  | Apple        | App Store ²  | no            | no                 |
+| `adHoc`       | iOS      | a profile that names devices     | Apple        | no           | no            | no                 |
 | `development` | iOS      | a Debug build, or the simulator  | Apple        | no           | no            | no                 |
 | `euWeb`       | iOS      | not reported yet ³               | Apple        | not yet ³    | no            | yes                |
 | `marketplace` | iOS      | not reported yet ³               | Apple        | not yet ³    | no            | no                 |
@@ -37,8 +37,9 @@ header prints it as **Variant**.
    exported, such an install reports as `appStore`. TODOs in `buildVariant.ts` say what each of
    these still needs.
 
-A push service named here is the one a build would talk to, not one it does: fast mode stays
-unavailable until registration with that service exists.
+A push service named here is the one a build would talk to, not one it does: fast mode also needs
+registration with that service, which does not exist yet, and on Android a device that has the
+service (Google Play Services or microG, or HMS Core), which is asked at runtime.
 
 ## Android: one flavour per store
 
@@ -65,10 +66,18 @@ The APKs land in `app/build/outputs/apk/<flavour>/<buildType>/`.
 ## iOS: one build, told apart at runtime
 
 App Store and TestFlight installs are the same binary, promoted rather than rebuilt, so nothing
-baked in could separate them. `modules/session-logs` makes legacy's checks, in its order: a Debug or
-simulator build is `development`; no embedded provisioning profile is `appStore`; a sandbox receipt
-is `testFlight`; anything else is `adHoc`. An ad hoc build can name the sandbox receipt too and so
-report as `testFlight`, a limit legacy shares.
+baked in could separate them. `modules/session-logs` asks, in order:
+
+- a Debug or simulator build is `development`;
+- no embedded provisioning profile is `appStore`, since the App Store strips it;
+- a profile that names the devices it may run on (or all of them) is `adHoc`;
+- any other profile is TestFlight's App Store distribution profile, so `testFlight`.
+
+Legacy tells the last two apart by the sandbox receipt, which an ad hoc build can name too and so
+pass for TestFlight; that is kept only for a profile that cannot be read.
+
+`ports.build.variant` carries the answer to JavaScript like any other variant, so shared code can
+tell App Store, TestFlight and ad hoc installs apart.
 
 ## Desktop
 

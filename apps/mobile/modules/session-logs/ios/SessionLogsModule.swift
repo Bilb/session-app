@@ -45,7 +45,10 @@ public class SessionLogsModule: Module {
   }
 }
 
-/// How the app was installed, as far as the bundle can tell: legacy's checks, in its order.
+/// How the app was installed, as far as the bundle can tell.
+///
+/// Legacy's checks, except that TestFlight and ad hoc are told apart by the provisioning profile
+/// rather than the receipt, which an ad hoc build can name as TestFlight's.
 enum Install: String {
   case development
   case adHoc
@@ -56,17 +59,33 @@ enum Install: String {
     #if DEBUG || targetEnvironment(simulator)
       return .development
     #else
-      // The App Store strips the provisioning profile; TestFlight and ad hoc builds keep it.
-      if Bundle.main.path(forResource: "embedded", ofType: "mobileprovision") == nil {
-        return .appStore
+      // The App Store strips the provisioning profile; TestFlight and ad hoc builds keep theirs.
+      guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision")
+      else { return .appStore }
+      if let profile = propertyList(of: url) {
+        // A development or ad hoc profile names the devices it may run on, or all of them for an
+        // enterprise one. The distribution profile a TestFlight build carries names none.
+        let listsDevices =
+          profile["ProvisionedDevices"] != nil || profile["ProvisionsAllDevices"] as? Bool == true
+        return listsDevices ? .adHoc : .testFlight
       }
-      // TestFlight's receipt is the sandbox one. An ad hoc build may name it too and report as
-      // TestFlight, a limit legacy shares; only a Debug build is told apart, by the check above.
-      if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
-        return .testFlight
-      }
-      return .adHoc
+      // Unreadable: legacy's check, which an ad hoc build can pass for TestFlight's.
+      return Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt"
+        ? .testFlight : .adHoc
     #endif
+  }
+
+  /// A provisioning profile's contents: a property list inside a signed envelope, read without
+  /// checking the signature, which the system checked when it installed the app.
+  private static func propertyList(of profile: URL) -> [String: Any]? {
+    guard
+      let data = try? Data(contentsOf: profile),
+      let start = data.range(of: Data("<?xml".utf8)),
+      let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex),
+      let plist = try? PropertyListSerialization.propertyList(
+        from: data[start.lowerBound..<end.upperBound], format: nil)
+    else { return nil }
+    return plist as? [String: Any]
   }
 }
 

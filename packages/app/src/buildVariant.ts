@@ -10,8 +10,8 @@
  * - **iOS**, told apart at runtime: App Store and TestFlight installs are the same binary, promoted
  *   rather than rebuilt, so nothing baked in could separate them.
  *   - `appStore`.
- *   - `testFlight`: a sandbox receipt.
- *   - `adHoc`: a release build signed with a provisioning profile.
+ *   - `testFlight`: a provisioning profile that names no devices, which is the App Store's.
+ *   - `adHoc`: a release build whose profile names the devices it may run on.
  *   - `development`: a Debug build, or any build on the simulator.
  *   - `euWeb`, `marketplace`: installed from the web or an alternative marketplace where the EU
  *     allows it. Not reported yet. TODO: Apple's `AppDistributor.current` (MarketplaceKit, iOS
@@ -50,8 +50,8 @@ export interface VariantTraits {
    * The push service behind fast mode, or null where there is none.
    *
    * Which service the build would talk to, not that it does: whether fast mode is on offer is
-   * `NotificationsPort.fastModeAvailable`, which stays false until registration with the service
-   * exists.
+   * `NotificationsPort.fastModeAvailable`, which also needs registration with the service and, on
+   * Android, a device that has the service. See the TODO where each app sets it.
    */
   pushService: 'apple' | 'google' | 'huawei' | null
   /**
