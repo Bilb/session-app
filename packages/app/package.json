@@ -44,6 +44,7 @@
     "@session/basic-types": "workspace:*",
     "@session/client": "workspace:*",
     "@session/logging": "workspace:*",
+    "@session/state": "workspace:*",
     "uqr": "catalog:"
   }
 }
