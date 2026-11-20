@@ -36,6 +36,37 @@ public class SessionLogsModule: Module {
     AsyncFunction("diagnostics") { () async -> [String: Any?] in
       await Diagnostics.snapshot()
     }
+
+    /// How the app was installed, by its name in `BUILD_VARIANTS` in `@session/app`. Synchronous,
+    /// since the ports are built at launch, and it only reads the bundle.
+    Function("buildVariant") { () -> String in
+      Install.current.rawValue
+    }
+  }
+}
+
+/// How the app was installed, as far as the bundle can tell: legacy's checks, in its order.
+enum Install: String {
+  case development
+  case adHoc
+  case testFlight
+  case appStore
+
+  static var current: Install {
+    #if DEBUG || targetEnvironment(simulator)
+      return .development
+    #else
+      // The App Store strips the provisioning profile; TestFlight and ad hoc builds keep it.
+      if Bundle.main.path(forResource: "embedded", ofType: "mobileprovision") == nil {
+        return .appStore
+      }
+      // TestFlight's receipt is the sandbox one. An ad hoc build may name it too and report as
+      // TestFlight, a limit legacy shares; only a Debug build is told apart, by the check above.
+      if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
+        return .testFlight
+      }
+      return .adHoc
+    #endif
   }
 }
 
@@ -145,18 +176,16 @@ enum Diagnostics {
     return withUnsafeBytes(of: &info.machine) { String(decoding: $0.prefix { $0 != 0 }, as: UTF8.self) }
   }
 
-  /// Where the build came from, as far as the bundle can tell.
+  /// Where the build came from, in the words the export header uses.
   private static func install() -> String {
     #if targetEnvironment(simulator)
       return "simulator"
     #else
-      if Bundle.main.path(forResource: "embedded", ofType: "mobileprovision") != nil {
-        return "development or ad hoc"
+      switch Install.current {
+      case .development, .adHoc: return "development or ad hoc"
+      case .testFlight: return "testflight"
+      case .appStore: return "app store"
       }
-      if Bundle.main.appStoreReceiptURL?.lastPathComponent == "sandboxReceipt" {
-        return "testflight"
-      }
-      return "app store"
     #endif
   }
 
