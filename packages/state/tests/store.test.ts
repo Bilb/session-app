@@ -185,6 +185,22 @@ describe('the switched feature flags', () => {
     expect(next.getState().flagToggles).toEqual({ debugMode: false })
   })
 
+  it('keep every switch when several are made without waiting for the first to be stored', async () => {
+    const { client, store } = alice()
+    await store.actions.hydrate()
+
+    await Promise.all([
+      store.actions.setFlagToggle('disableAnimations', true),
+      store.actions.setFlagToggle('forceFastModeAvailable', true),
+      store.actions.setFlagToggle('debugMode', false),
+    ])
+    const all = { disableAnimations: true, forceFastModeAvailable: true, debugMode: false }
+    expect(store.getState().flagToggles).toEqual(all)
+    const next = createSessionStore(client)
+    await next.actions.hydrate()
+    expect(next.getState().flagToggles).toEqual(all)
+  })
+
   it('go with the account', async () => {
     const { world, store } = alice()
     await store.actions.hydrate()

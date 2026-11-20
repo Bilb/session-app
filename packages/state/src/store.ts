@@ -115,8 +115,8 @@ export interface SessionActions {
    */
   setFlagToggle: (name: string, value: boolean | null) => Promise<void>
   /**
-   * Replaces every switched flag at once, in one write: for putting them back together, which a
-   * switch at a time would race, each reading the set before the last had stored it.
+   * Replaces every switched flag at once, in one write: for putting them back together, as turning
+   * debug mode off does.
    */
   replaceFlagToggles: (toggles: Readonly<Record<string, boolean>>) => Promise<void>
   /**
@@ -411,6 +411,25 @@ export function createSessionStore(
     return { message, kind: classifyStartupFailure(message, code) }
   }
 
+  /**
+   * The switched flags are one stored value, so each write starts from the last one's result: a
+   * write that read the set while another was still storing would put back what that one changed.
+   * A failed write rejects its own caller and leaves the next to start from the store as it stands.
+   */
+  let flagTogglesWritten: Promise<void> = Promise.resolve()
+  function writeFlagToggles(
+    next: (current: Readonly<Record<string, boolean>>) => Readonly<Record<string, boolean>>,
+  ): Promise<void> {
+    const write = flagTogglesWritten.then(async () => {
+      if (store.getState().account?.haveAccount !== true) return
+      const flagToggles = next(store.getState().flagToggles)
+      await client.setPref(FLAG_TOGGLES_PREF, JSON.stringify(flagToggles))
+      store.setState({ flagToggles })
+    })
+    flagTogglesWritten = write.catch(() => undefined)
+    return write
+  }
+
   const actions: SessionActions = {
     async start(): Promise<void> {
       store.setState({ startupError: null, startupFailureKind: null })
@@ -532,19 +551,15 @@ export function createSessionStore(
       })
     },
 
-    async setFlagToggle(name, value): Promise<void> {
-      if (store.getState().account?.haveAccount !== true) return
-      const { [name]: _, ...rest } = store.getState().flagToggles
-      const flagToggles = value === null ? rest : { ...rest, [name]: value }
-      await client.setPref(FLAG_TOGGLES_PREF, JSON.stringify(flagToggles))
-      store.setState({ flagToggles })
+    setFlagToggle(name, value): Promise<void> {
+      return writeFlagToggles((current) => {
+        const { [name]: _, ...rest } = current
+        return value === null ? rest : { ...rest, [name]: value }
+      })
     },
 
-    async replaceFlagToggles(toggles): Promise<void> {
-      if (store.getState().account?.haveAccount !== true) return
-      const flagToggles = { ...toggles }
-      await client.setPref(FLAG_TOGGLES_PREF, JSON.stringify(flagToggles))
-      store.setState({ flagToggles })
+    replaceFlagToggles(toggles): Promise<void> {
+      return writeFlagToggles(() => ({ ...toggles }))
     },
 
     async setAppearance(appearance): Promise<void> {
