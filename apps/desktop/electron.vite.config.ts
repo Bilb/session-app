@@ -224,6 +224,8 @@ const DEVELOPER_SETTINGS = [
   'EXPO_PUBLIC_SESSION_DEVNET_SEED_URL',
   'EXPO_PUBLIC_SESSION_FILE_SERVER_URL',
   'EXPO_PUBLIC_SESSION_FILE_SERVER_ED25519_PUBKEY',
+  // A test's override of which build this is (docs/BUILD_VARIANTS.md), never a release's.
+  'EXPO_PUBLIC_SESSION_BUILD_VARIANT',
 ]
 
 // Before anything below is substituted, so a release cannot carry one of them.
