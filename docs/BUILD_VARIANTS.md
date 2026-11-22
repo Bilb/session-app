@@ -27,9 +27,9 @@ header prints it as **Variant**.
 | `desktop`     | desktop  | always                           | none         | no           | no            | yes                |
 | `unknown`     | any      | the build could not say          | none         | no           | no            | no                 |
 
-1. **Open question:** whether the F-Droid and website builds carry Firebase push as legacy's
-   `fdroid` flavour does, or are fully de-googled (push only through a distributor app such as
-   UnifiedPush, or slow mode). The table is written as de-googled until that is decided.
+1. **No Google code at all**, unlike legacy's `fdroid` flavour, which links Firebase Messaging: F-Droid's
+   own repository accepts only fully open-source builds. Without a push service, notifications come
+   from polling. The website build follows the same rule for now.
 2. TestFlight buys through the App Store's sandbox, as legacy's does.
 3. Apple's `AppDistributor` (MarketplaceKit, iOS 17.4 and later) can tell an install from the web
    or an alternative marketplace apart from the App Store, but it is asynchronous and the variant

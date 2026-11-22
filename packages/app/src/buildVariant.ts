@@ -89,9 +89,9 @@ export const VARIANT_TRAITS: Readonly<Record<BuildVariant, Readonly<VariantTrait
     storeReview: true,
     checksForUpdates: false,
   },
-  // Open question: whether this build carries Firebase push as legacy's does, or is fully
-  // de-googled with push only through a distributor app or slow mode. Written as de-googled until
-  // that is decided.
+  // No Google code at all, unlike legacy's F-Droid build, which carries Firebase: F-Droid's own
+  // repository accepts only fully open-source builds. So no push service; notifications come from
+  // polling.
   fdroid: NONE,
   // As F-Droid, with nothing to update it.
   website: { ...NONE, checksForUpdates: true },
