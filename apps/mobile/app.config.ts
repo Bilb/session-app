@@ -318,7 +318,9 @@ export default ({ config }: ConfigContext): ExpoConfig =>
     slug: config.slug ?? 'session-app',
     plugins: [
       ...(config.plugins ?? []),
-      // The camera is the scanner behind the restore screen's QR tab.
+      // iOS's scanner behind the restore screen's QR tab. Android's is modules/qr-scanner:
+      // expo-camera is left out of Android autolinking (package.json), as its scanner there is
+      // Google's ML Kit.
       [
         'expo-camera',
         {
