@@ -12,6 +12,7 @@ export {
 export { formatConversationTime, formatDateHeader, localDayNumber } from './conversationTime'
 export { isolate } from './isolate'
 export { PENDING_COPY } from './pendingCopy'
+export { singular } from './singular'
 export type {
   ConversationTimeOptions,
   DateFormat,
