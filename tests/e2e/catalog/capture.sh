@@ -17,7 +17,7 @@ media=${SESSION_FAKE_MEDIA_DIR:-$HOME/.cache/session-app/dev-media}
 
 # Run by the ID this build printed: another job on this host's daemon can retag session-catalog
 # from its own Dockerfile in between.
-image=$(docker build --quiet --tag session-catalog "$here")
+image=${CATALOG_IMAGE:-$(docker build --quiet --tag session-catalog "$here")}
 # Made here, so the container's user owns nothing the host cannot clean up.
 mkdir -p "$out"
 

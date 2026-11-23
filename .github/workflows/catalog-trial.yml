@@ -1,7 +1,8 @@
 name: catalog-trial
 
-# Throwaway measurement: the pr-tier catalog on GitHub-hosted runners at several shard counts, and
-# once on the self-hosted runner for reference. Nothing goes to Argos.
+# Throwaway measurement. The pr-tier catalog on a dozen GitHub-hosted runners (4 shards, capture
+# image pulled from GHCR) and once on the self-hosted runner. Each hosted run then goes to Argos as
+# its own build, compared with the self-hosted pictures uploaded as that build's reference.
 on:
   push:
     branches: [trial/catalog-hosted]
@@ -9,24 +10,36 @@ on:
 permissions:
   contents: read
 
+env:
+  IMAGE: ghcr.io/session-foundation/session-catalog-capture:trial-${{ github.sha }}
+
 jobs:
-  capture:
-    name: ${{ matrix.name }}
-    runs-on: ${{ matrix.runs-on }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { name: hosted-1, runs-on: ubuntu-latest, shards: '1' }
-          - { name: hosted-2, runs-on: ubuntu-latest, shards: '2' }
-          - { name: hosted-4, runs-on: ubuntu-latest, shards: '4' }
-          - { name: self-default, runs-on: [self-hosted, linux, x64, session-catalog], shards: '' }
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: tests/e2e/catalog
+          push: true
+          tags: ${{ env.IMAGE }}
+
+  self:
+    runs-on: [self-hosted, linux, x64, session-catalog]
     env:
       CATALOG_TIER: pr
       CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
     steps:
-      - run: nproc && free -g && lscpu | grep 'Model name'
-
+      - run: nproc && lscpu | grep 'Model name'
       - uses: actions/checkout@v5
       - run: git submodule update --init --recursive packages/localization/src/localization-src
       - uses: pnpm/action-setup@v6
@@ -39,18 +52,98 @@ jobs:
       - run: pnpm --filter @session/localization build
       - run: pnpm --filter @session/desktop build
       - run: pnpm fake-media:fetch
-
-      - name: Build the capture image
-        run: docker build --quiet --tag session-catalog tests/e2e/catalog
-
       - name: Capture
-        run: |
-          if [ -n "${{ matrix.shards }}" ]; then export CATALOG_SHARDS=${{ matrix.shards }}; fi
-          pnpm --filter @session/e2e test:catalog
-
-      - if: success() || failure()
-        uses: actions/upload-artifact@v7
+        run: pnpm --filter @session/e2e test:catalog
+      - uses: actions/upload-artifact@v7
         with:
-          name: catalog-${{ matrix.name }}
+          name: catalog-self
           path: test-results/catalog/*.png
           retention-days: 3
+
+  hosted:
+    needs: image
+    name: hosted-${{ matrix.run }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    env:
+      CATALOG_TIER: pr
+      CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
+      CATALOG_SHARDS: '4'
+    steps:
+      - run: nproc && lscpu | grep 'Model name' | tee cpu.txt
+      - uses: actions/checkout@v5
+      - run: git submodule update --init --recursive packages/localization/src/localization-src
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @session/localization build
+      - run: pnpm --filter @session/desktop build
+      - run: pnpm fake-media:fetch
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull the capture image
+        run: docker pull --quiet "$IMAGE"
+      - name: Capture
+        run: CATALOG_IMAGE="$IMAGE" pnpm --filter @session/e2e test:catalog
+      - run: cp cpu.txt test-results/catalog/
+      - uses: actions/upload-artifact@v7
+        with:
+          name: catalog-hosted-${{ matrix.run }}
+          path: |
+            test-results/catalog/*.png
+            test-results/catalog/cpu.txt
+          retention-days: 3
+
+  # Build catalog-trial-<n> on the parent commit holds the self-hosted pictures; the same name on
+  # this commit holds hosted run n's and compares with it.
+  argos:
+    needs: [self, hosted]
+    if: success() || failure()
+    runs-on: ubuntu-latest
+    env:
+      ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}
+      ARGOS_API_BASE_URL: ${{ vars.ARGOS_API_BASE_URL }}
+      NODE_OPTIONS: --network-family-autoselection-attempt-timeout=2000
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @session/e2e...
+      - uses: actions/download-artifact@v5
+        with:
+          path: art
+      - name: Reference builds
+        run: |
+          parent=$(git rev-parse HEAD^)
+          for n in $(seq 1 12); do
+            [ -d "art/catalog-hosted-$n" ] || continue
+            ARGOS_COMMIT=$parent pnpm --filter @session/e2e exec argos upload \
+              --build-name "catalog-trial-$n" "$GITHUB_WORKSPACE/art/catalog-self"
+          done
+      - name: Hosted builds
+        run: |
+          parent=$(git rev-parse HEAD^)
+          for n in $(seq 1 12); do
+            [ -d "art/catalog-hosted-$n" ] || continue
+            echo "hosted-$n: $(cat art/catalog-hosted-$n/cpu.txt)"
+            pnpm --filter @session/e2e exec argos upload --build-name "catalog-trial-$n" \
+              --reference-commit "$parent" --ignore '**/cpu.txt' "$GITHUB_WORKSPACE/art/catalog-hosted-$n"
+          done
