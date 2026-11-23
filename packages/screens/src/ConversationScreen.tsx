@@ -2,8 +2,10 @@ import { requirePorts } from '@session/app'
 import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import type { ConversationId, Message } from '@session/client'
 import {
+  useAccount,
   useAttachmentUploadLimit,
   useConversation,
+  useMessage,
   useMessages,
   useSessionActions,
   type Transcript as LoadedTranscript,
@@ -22,7 +24,7 @@ import {
   YStack,
   type TranscriptListHandle,
 } from '@session/ui'
-import { useCallback, useMemo, useRef, useState, type Ref } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, type Ref } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
@@ -40,6 +42,7 @@ import { conversationAvatarName, conversationTitle } from './conversationTitle'
 import { DateHeaderRow } from './DateHeaderRow'
 import { PageStatus, PageStatusRow } from './PageStatus'
 import { showsDateHeader } from './dateHeaders'
+import { authorName, canReply, namer, quotedMessage, replyingToHeading } from './quotedReply'
 import { TranscriptWidth } from './TranscriptWidth'
 
 const messageKey = (message: Message) => String(message.id)
@@ -102,12 +105,26 @@ function Transcript({
 
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const conversation = useConversation(conversationId)
+  const account = useAccount()
   const transcript = useMessages(conversationId)
-  const { ready, firstPageFailed, reload } = transcript
+  const { messages, ready, firstPageFailed, reload } = transcript
   const showLoading = useShowAfter(!ready && !firstPageFailed)
   const actions = useSessionActions()
   const list = useRef<TranscriptListHandle | null>(null)
   const [farFromEnd, setFarFromEnd] = useState(false)
+  // Held here beside the draft, not in the store: which message this screen is answering is
+  // nothing another screen or device shares.
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [composerFocus, setComposerFocus] = useState(0)
+  const answered = useMessage(conversationId, replyingTo?.id ?? -1) ?? replyingTo
+  // The bar goes with the message it answers; what was typed stays.
+  const replying = answered !== null && answered.deleted === undefined ? answered : null
+
+  // Read by the callbacks below, which the memoised rows hold across every update.
+  const held = useRef(messages)
+  useLayoutEffect(() => {
+    held.current = messages
+  })
   const staging = useStaging((file) => actions.attachmentSendPlan(file.path, file.contentType))
   const [dropping, setDropping] = useState(false)
   const uploadLimitBytes = useAttachmentUploadLimit()
@@ -123,10 +140,20 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const [sheet, setSheet] = useState<number | null>(null)
   const [menu, setMenu] = useState<MessageMenuTarget | null>(null)
 
+  // On the names alone: the conversation itself changes with every message it receives.
+  const ownId = account?.sessionId
+  const nickname = conversation?.nickname
+  const displayName = conversation?.displayName
+  const nameOf = useMemo(
+    () => namer(ownId, { id: conversationId, nickname, displayName }),
+    [ownId, conversationId, nickname, displayName],
+  )
+
   // Memoised so typing in the composer does not re-render every message through the context.
   const ui = useMemo(
     (): ConversationUi => ({
       conversationId,
+      nameOf,
       requestAutoDownloadPrompt: () => {
         if (autoDownload === undefined) setPrompting(true)
       },
@@ -137,8 +164,14 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
       openMenu: (messageId, anchor) => {
         setMenu({ messageId, anchor })
       },
+      reply: (messageId) => {
+        const message = held.current.find((m) => m.id === messageId)
+        if (message === undefined || !canReply(message)) return
+        setReplyingTo(message)
+        setComposerFocus((serial) => serial + 1)
+      },
     }),
-    [conversationId, autoDownload],
+    [conversationId, autoDownload, nameOf],
   )
 
   function toLatest(): void {
@@ -229,12 +262,34 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
 
           <Composer
             staging={staging}
+            reply={
+              replying === null
+                ? undefined
+                : {
+                    heading: replyingToHeading(
+                      authorName(
+                        replying.author,
+                        account?.sessionId,
+                        conversation ?? { id: conversationId },
+                      ),
+                    ),
+                    message: quotedMessage(replying, requirePorts().media),
+                  }
+            }
+            onCancelReply={() => {
+              setReplyingTo(null)
+            }}
+            focusSerial={composerFocus}
             onSend={async (body, files) => {
               const { picksAreCopies } = requirePorts().files
               await actions.send(conversationId, {
                 body,
                 attachments: files.map((file) => outgoingAttachment(file, { picksAreCopies })),
+                ...(replying === null ? {} : { replyTo: replying.id }),
               })
+              // Kept through a refusal, as the draft is. A reply started while this one was out is
+              // the next message's.
+              setReplyingTo((current) => (current?.id === replying?.id ? null : current))
               list.current?.scrollToEnd()
             }}
           />

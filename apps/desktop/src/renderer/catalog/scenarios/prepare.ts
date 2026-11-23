@@ -26,6 +26,8 @@ const PREPARE: Record<string, 'downloaded' | 'downloadFailed' | Running> = {
   'Ours from another device, for the ring at 95%': { doneBytes: 95, totalBytes: 100 },
   'One file, caught downloading': { doneBytes: 40, totalBytes: 100 },
   'One picture as a list, caught downloading': { doneBytes: 40, totalBytes: 100 },
+  // Quoted by a reply, which then draws libsession's thumbnail of it.
+  'A view, downloaded': 'downloaded',
 }
 
 /** Four tenths of a 3 MB file, so a caption reads in the sizes a real one would. */
@@ -55,7 +57,10 @@ async function until(ready: () => boolean): Promise<void> {
   while (!ready()) await new Promise((resolve) => setTimeout(resolve, POLL_MS))
 }
 
-/** The showcase's conversation, and its messages' ids by body. */
+/**
+ * The showcase's conversation, and its messages' ids by body: a reply with no words of its own by
+ * `Reply to` and the body of the message it answers.
+ */
 export interface Scenario {
   conversationId: ConversationId
   messageIds: Map<string, number>
@@ -145,7 +150,18 @@ export async function prepare(session: SessionStore): Promise<Scenario> {
 
   return {
     conversationId,
-    messageIds: new Map(messages.map((message) => [message.body, message.id])),
+    messageIds: new Map(
+      messages.map((message) => {
+        const answered = message.replyTo
+        const original =
+          message.body === '' && answered !== undefined
+            ? messages.find(
+                (m) => m.author === answered.author && m.timestamp === answered.timestamp,
+              )
+            : undefined
+        return [original === undefined ? message.body : `Reply to ${original.body}`, message.id]
+      }),
+    ),
     pictures,
     placeholders,
   }

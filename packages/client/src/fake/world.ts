@@ -1023,6 +1023,7 @@ export class FakeAccount {
     attachments: Attachment[],
     sendState: SendState,
     uploaded: number,
+    replyTo?: FakeQuote,
   ): Message {
     const now = this.world?.now() ?? Date.now()
     const messageId = nextId()
@@ -1051,6 +1052,9 @@ export class FakeAccount {
       galleryViewable: galleryViewable(seeded),
       gallery: galleryViewable(seeded),
       syncState: sendState,
+      ...(replyTo === undefined
+        ? {}
+        : { replyTo: { author: replyTo.author, timestamp: replyTo.timestamp } }),
     })
   }
 
