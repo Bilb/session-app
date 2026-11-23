@@ -51,9 +51,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       # In the background, behind the install and builds; Capture waits for it.
       - name: Start pulling the capture image
+        # Every descriptor redirected, or the step waits for the pull to close its output.
         run: |
-          ( docker pull --quiet "$IMAGE" > "$RUNNER_TEMP/pull.log" 2>&1 \
-            && touch "$RUNNER_TEMP/pulled" || touch "$RUNNER_TEMP/pull-failed" ) &
+          nohup sh -c 'docker pull --quiet "$IMAGE" && touch "$RUNNER_TEMP/pulled" \
+            || touch "$RUNNER_TEMP/pull-failed"' > "$RUNNER_TEMP/pull.log" 2>&1 < /dev/null &
       - uses: actions/checkout@v5
       - run: git submodule update --init --recursive packages/localization/src/localization-src
       - uses: pnpm/action-setup@v6
@@ -113,9 +114,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       # In the background, behind the install and builds; Capture waits for it.
       - name: Start pulling the capture image
+        # Every descriptor redirected, or the step waits for the pull to close its output.
         run: |
-          ( docker pull --quiet "$IMAGE" > "$RUNNER_TEMP/pull.log" 2>&1 \
-            && touch "$RUNNER_TEMP/pulled" || touch "$RUNNER_TEMP/pull-failed" ) &
+          nohup sh -c 'docker pull --quiet "$IMAGE" && touch "$RUNNER_TEMP/pulled" \
+            || touch "$RUNNER_TEMP/pull-failed"' > "$RUNNER_TEMP/pull.log" 2>&1 < /dev/null &
       - uses: actions/checkout@v5
       - run: git submodule update --init --recursive packages/localization/src/localization-src
       - uses: pnpm/action-setup@v6
@@ -154,45 +156,3 @@ jobs:
             test-results/catalog/*.png
             test-results/catalog/cpu.txt
           retention-days: 3
-
-  # Build catalog-trial-<n> on the parent commit holds the self-hosted pictures; the same name on
-  # this commit holds hosted run n's and compares with it.
-  argos:
-    needs: [self, hosted]
-    if: success() || failure()
-    runs-on: ubuntu-latest
-    env:
-      ARGOS_TOKEN: ${{ secrets.ARGOS_TOKEN }}
-      ARGOS_API_BASE_URL: ${{ vars.ARGOS_API_BASE_URL }}
-      NODE_OPTIONS: --network-family-autoselection-attempt-timeout=2000
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 2
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --filter @session/e2e...
-      - uses: actions/download-artifact@v5
-        with:
-          path: art
-          pattern: catalog-*
-      - name: Reference builds
-        run: |
-          parent=$(git rev-parse HEAD^)
-          for n in $(seq 1 12); do
-            [ -d "art/catalog-hosted-$n" ] || continue
-            ARGOS_COMMIT=$parent pnpm --filter @session/e2e exec argos upload \
-              --build-name "catalog-trial-$n" "$GITHUB_WORKSPACE/art/catalog-self"
-          done
-      - name: Hosted builds
-        run: |
-          parent=$(git rev-parse HEAD^)
-          for n in $(seq 1 12); do
-            [ -d "art/catalog-hosted-$n" ] || continue
-            echo "hosted-$n: $(cat art/catalog-hosted-$n/cpu.txt)"
-            pnpm --filter @session/e2e exec argos upload --build-name "catalog-trial-$n" \
-              --reference-commit "$parent" "$GITHUB_WORKSPACE/art/catalog-hosted-$n"
-          done
