@@ -1,0 +1,56 @@
+name: catalog-trial
+
+# Throwaway measurement: the pr-tier catalog on GitHub-hosted runners at several shard counts, and
+# once on the self-hosted runner for reference. Nothing goes to Argos.
+on:
+  push:
+    branches: [trial/catalog-hosted]
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: hosted-1, runs-on: ubuntu-latest, shards: '1' }
+          - { name: hosted-2, runs-on: ubuntu-latest, shards: '2' }
+          - { name: hosted-4, runs-on: ubuntu-latest, shards: '4' }
+          - { name: self-default, runs-on: [self-hosted, linux, x64, session-catalog], shards: '' }
+    env:
+      CATALOG_TIER: pr
+      CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
+    steps:
+      - run: nproc && free -g && lscpu | grep 'Model name'
+
+      - uses: actions/checkout@v5
+      - run: git submodule update --init --recursive packages/localization/src/localization-src
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          check-latest: true
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @session/localization build
+      - run: pnpm --filter @session/desktop build
+      - run: pnpm fake-media:fetch
+
+      - name: Build the capture image
+        run: docker build --quiet --tag session-catalog tests/e2e/catalog
+
+      - name: Capture
+        run: |
+          if [ -n "${{ matrix.shards }}" ]; then export CATALOG_SHARDS=${{ matrix.shards }}; fi
+          pnpm --filter @session/e2e test:catalog
+
+      - if: success() || failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: catalog-${{ matrix.name }}
+          path: test-results/catalog/*.png
+          retention-days: 3
