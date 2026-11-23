@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs catalog.spec.ts inside the pinned image, so a capture is the same on any Linux x86_64 host.
-# Takes CATALOG_TIER and CATALOG_OUT like the spec; the checkout, its node_modules and a built
-# desktop app come from the host.
+# Takes CATALOG_TIER, CATALOG_OUT, CATALOG_SHARDS and CATALOG_PAGES like the spec; the checkout,
+# its node_modules and a built desktop app come from the host.
 set -euo pipefail
 
 # The host's Electron runs inside the image, and Argos's references are x86_64 captures.
@@ -31,6 +31,7 @@ docker run --rm --init ${CATALOG_CGROUP_PARENT:+--cgroup-parent "$CATALOG_CGROUP
   --ulimit core=0 \
   --env HOME=/tmp/home --env COREPACK_HOME=/tmp/corepack \
   --env CATALOG_TIER="${CATALOG_TIER:-pr}" --env CATALOG_OUT=/out \
+  --env CATALOG_SHARDS --env CATALOG_PAGES \
   --env SESSION_FAKE_MEDIA_DIR=/media \
   --volume "$repo:$repo" --volume "$out:/out" --volume "$media:/media:ro" \
   --workdir "$repo/tests/e2e" \

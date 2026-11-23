@@ -17,6 +17,12 @@ export const CAPTURE_WINDOW: WindowSize = { width: 3000, height: 2400 }
 export const MAX_CAPTURE_WINDOW: WindowSize = { width: 3600, height: 8000 }
 
 /**
+ * The X screen a capture's window sits on: `MAX_CAPTURE_WINDOW` with 200 px to spare. capture.sh
+ * gives xvfb-run the same, and the spec gives each further shard a screen of this size.
+ */
+export const CAPTURE_SCREEN: WindowSize = { width: 3800, height: 8200 }
+
+/**
  * The window that holds a page reaching to `extent`: the capture window, grown on each side the
  * page passes. A width change can move a breakpoint and so the layout being measured, which is
  * why the width only grows when the page is already wider than the window.
