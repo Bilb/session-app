@@ -4,6 +4,7 @@
 #include <session/client/conversation.hpp>
 #include <session/client/conversation_id.hpp>
 #include <session/client/error_codes.hpp>
+#include <session/config/local.hpp>
 #include <session/core/devices.hpp>
 #include <session/image/source.hpp>
 #include <session/image/thumbhash.hpp>
@@ -1284,6 +1285,28 @@ struct ClientBridge::Impl {
         throw std::invalid_argument{"setPushToken.service is not a push service"};
     }
 
+    static NotificationContent notification_content(config::notify_content stored) {
+        switch (stored) {
+            // Unset means the default, which is to show both.
+            case config::notify_content::defaulted:
+            case config::notify_content::name_and_preview:
+                return NotificationContent::name_and_content;
+            case config::notify_content::name_no_preview: return NotificationContent::name_only;
+            case config::notify_content::no_name_no_preview: return NotificationContent::none;
+        }
+        return NotificationContent::name_and_content;
+    }
+
+    static config::notify_content notify_content(NotificationContent content) {
+        switch (content) {
+            case NotificationContent::name_and_content:
+                return config::notify_content::name_and_preview;
+            case NotificationContent::name_only: return config::notify_content::name_no_preview;
+            case NotificationContent::none: return config::notify_content::no_name_no_preview;
+        }
+        throw std::invalid_argument{"setNotificationContent.content is not a content setting"};
+    }
+
     push::Notifications& push_notifications() {
         if (!notifications)
             notifications.emplace(*client);
@@ -1302,6 +1325,20 @@ struct ClientBridge::Impl {
 
     void handle(double id, const ClearPushTokenCommand&) {
         push_notifications().unsubscribe(on(id, [this, id](bool) { ok(id); }));
+    }
+
+    // The device's local settings are Core's, read and written on its loop like every config.
+    void handle(double id, const GetNotificationContentCommand&) {
+        auto stored = client->core.loop().call_get(
+                [&] { return client->core.configs.local().get_notification_content(); });
+        respond(id, NotificationContentResult{notification_content(stored)});
+    }
+
+    void handle(double id, const SetNotificationContentCommand& cmd) {
+        client->core.loop().call_get([&] {
+            client->core.configs.local().set_notification_content(notify_content(cmd.content));
+        });
+        ok(id);
     }
 
     void handle(double id, const HandlePushPayloadCommand&) {

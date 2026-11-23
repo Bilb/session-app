@@ -47,6 +47,13 @@ export type AutoDownload = 'none' | 'image-attachments' | 'all'
 export type PushService = 'apns' | 'apns-sandbox' | 'firebase' | 'huawei'
 
 /**
+ * What a notification shows: the sender's name and the message, the name only, or neither -- a
+ * generic "You've got a new message". libsession keeps it with the device's local settings and
+ * applies it when it decides what a push shows.
+ */
+export type NotificationContent = 'nameAndContent' | 'nameOnly' | 'none'
+
+/**
  * What sending a file as an attachment will do with it, decided from its header alone as the send
  * decides it: libsession's `image::SendPlan`.
  *

@@ -488,6 +488,41 @@ struct BoolResult {
             value{std::move(value_)} {}
 };
 
+/// What a notification shows: the sender's name and the message, the name only, or neither -- a
+/// generic "You've got a new message". libsession keeps it with the device's local settings and
+/// applies it when it decides what a push shows.
+enum class NotificationContent {
+    name_and_content,
+    name_only,
+    none,
+};
+
+template <>
+struct EnumTraits<NotificationContent> {
+    static constexpr std::string_view name = "NotificationContent";
+    static constexpr std::array<std::string_view, 3> names{"nameAndContent", "nameOnly", "none"};
+
+    static constexpr std::string_view to_string(NotificationContent value) {
+        return names[static_cast<std::size_t>(value)];
+    }
+
+    static constexpr std::optional<NotificationContent> parse(std::string_view text) {
+        for (std::size_t i = 0; i < names.size(); i++)
+            if (names[i] == text)
+                return static_cast<NotificationContent>(i);
+        return std::nullopt;
+    }
+};
+
+struct NotificationContentResult {
+    static constexpr std::string_view type_tag = "notificationContent";
+
+    ::session_bridge::NotificationContent content;
+
+    explicit NotificationContentResult(::session_bridge::NotificationContent content_) :
+            content{std::move(content_)} {}
+};
+
 /// How `closeClient` went. `closed` is false when `reopenClient` cancelled it while it waited.
 /// `waitedMs` is how long it waited for outbound work, `closeMs` how long destroying the Client
 /// took, `outboundBusy` whether outbound work was still in flight when it did -- a send that will
@@ -790,6 +825,7 @@ using Result = std::variant<
         HexResult,
         PrefResult,
         BoolResult,
+        NotificationContentResult,
         ClientClosedResult,
         SeedHiddenResult,
         PathResult,
@@ -1473,6 +1509,22 @@ struct ClearPushTokenCommand {
     static constexpr std::string_view type_tag = "clearPushToken";
 };
 
+/// What notifications on this device show. Answers `notificationContent`; `nameAndContent` until
+/// somebody chooses. Refused without an account, whose local settings hold it.
+struct GetNotificationContentCommand {
+    static constexpr std::string_view type_tag = "getNotificationContent";
+};
+
+/// Stores what notifications on this device show. Answers `ok`. Refused without an account.
+struct SetNotificationContentCommand {
+    static constexpr std::string_view type_tag = "setNotificationContent";
+
+    ::session_bridge::NotificationContent content;
+
+    explicit SetNotificationContentCommand(::session_bridge::NotificationContent content_) :
+            content{std::move(content_)} {}
+};
+
 /// Interpret a push payload far enough to notify. Answering from the payload alone matters on
 /// iOS, where the notification service extension runs while the app holds the database.
 struct HandlePushPayloadCommand {
@@ -1909,6 +1961,8 @@ using Command = std::variant<
         ReopenClientCommand,
         SetPushTokenCommand,
         ClearPushTokenCommand,
+        GetNotificationContentCommand,
+        SetNotificationContentCommand,
         HandlePushPayloadCommand,
         GetConversationsCommand,
         GetMessageRequestsCommand,

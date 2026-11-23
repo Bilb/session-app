@@ -10,6 +10,7 @@ import type {
   Frame,
   NetworkPaths,
   NetworkStatus,
+  NotificationContent,
   Request,
   Response,
   Result,
@@ -256,6 +257,12 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     },
     async clearPushToken(): Promise<void> {
       await call({ type: 'clearPushToken' })
+    },
+    async getNotificationContent(): Promise<NotificationContent> {
+      return resultOf(await call({ type: 'getNotificationContent' }), 'notificationContent').content
+    },
+    async setNotificationContent(content): Promise<void> {
+      await call({ type: 'setNotificationContent', content })
     },
     async setBlocked(id, blocked): Promise<void> {
       await call({ type: 'setBlocked', conversationId: id, blocked })

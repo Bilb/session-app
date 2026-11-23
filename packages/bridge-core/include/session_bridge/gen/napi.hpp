@@ -580,6 +580,38 @@ struct Codec<::session_bridge::BoolResult> {
 };
 
 template <>
+struct Codec<::session_bridge::NotificationContent> {
+    static constexpr std::string_view name = "NotificationContent";
+    static Napi::Value to(Napi::Env env, ::session_bridge::NotificationContent value) {
+        auto text = ::session_bridge::EnumTraits<::session_bridge::NotificationContent>::to_string(value);
+        return Napi::String::New(env, text.data(), text.size());
+    }
+    static ::session_bridge::NotificationContent from(const Napi::Value& value, std::string_view where) {
+        std::string text = Codec<std::string>::from(value, where);
+        auto parsed = ::session_bridge::EnumTraits<::session_bridge::NotificationContent>::parse(text);
+        if (!parsed)
+            throw std::invalid_argument(std::string{where} + ": \"" + text + "\" is not a NotificationContent");
+        return *parsed;
+    }
+};
+
+template <>
+struct Codec<::session_bridge::NotificationContentResult> {
+    static constexpr std::string_view name = "NotificationContentResult";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::NotificationContentResult& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::NotificationContentResult::type_tag.data(), ::session_bridge::NotificationContentResult::type_tag.size()));
+        obj.Set("content", Codec<::session_bridge::NotificationContent>::to(env, value.content));
+        return obj;
+    }
+    static ::session_bridge::NotificationContentResult from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::NotificationContentResult(
+                Codec<::session_bridge::NotificationContent>::from(obj.Get("content"), "NotificationContentResult.content"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::ClientClosedResult> {
     static constexpr std::string_view name = "ClientClosedResult";
     static Napi::Value to(Napi::Env env, const ::session_bridge::ClientClosedResult& value) {
@@ -919,6 +951,8 @@ struct Codec<::session_bridge::Result> {
             return Codec<::session_bridge::PrefResult>::from(value, where);
         if (tag == "bool")
             return Codec<::session_bridge::BoolResult>::from(value, where);
+        if (tag == "notificationContent")
+            return Codec<::session_bridge::NotificationContentResult>::from(value, where);
         if (tag == "clientClosed")
             return Codec<::session_bridge::ClientClosedResult>::from(value, where);
         if (tag == "seedHidden")
@@ -1723,6 +1757,37 @@ struct Codec<::session_bridge::ClearPushTokenCommand> {
 };
 
 template <>
+struct Codec<::session_bridge::GetNotificationContentCommand> {
+    static constexpr std::string_view name = "GetNotificationContentCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::GetNotificationContentCommand& value) {
+        (void)value;
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::GetNotificationContentCommand::type_tag.data(), ::session_bridge::GetNotificationContentCommand::type_tag.size()));
+        return obj;
+    }
+    static ::session_bridge::GetNotificationContentCommand from(const Napi::Value& value, std::string_view where) {
+        object(value, where);
+        return ::session_bridge::GetNotificationContentCommand{};
+    }
+};
+
+template <>
+struct Codec<::session_bridge::SetNotificationContentCommand> {
+    static constexpr std::string_view name = "SetNotificationContentCommand";
+    static Napi::Value to(Napi::Env env, const ::session_bridge::SetNotificationContentCommand& value) {
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("type", Napi::String::New(env, ::session_bridge::SetNotificationContentCommand::type_tag.data(), ::session_bridge::SetNotificationContentCommand::type_tag.size()));
+        obj.Set("content", Codec<::session_bridge::NotificationContent>::to(env, value.content));
+        return obj;
+    }
+    static ::session_bridge::SetNotificationContentCommand from(const Napi::Value& value, std::string_view where) {
+        Napi::Object obj = object(value, where);
+        return ::session_bridge::SetNotificationContentCommand(
+                Codec<::session_bridge::NotificationContent>::from(obj.Get("content"), "SetNotificationContentCommand.content"));
+    }
+};
+
+template <>
 struct Codec<::session_bridge::HandlePushPayloadCommand> {
     static constexpr std::string_view name = "HandlePushPayloadCommand";
     static Napi::Value to(Napi::Env env, const ::session_bridge::HandlePushPayloadCommand& value) {
@@ -2446,6 +2511,10 @@ struct Codec<::session_bridge::Command> {
             return Codec<::session_bridge::SetPushTokenCommand>::from(value, where);
         if (tag == "clearPushToken")
             return Codec<::session_bridge::ClearPushTokenCommand>::from(value, where);
+        if (tag == "getNotificationContent")
+            return Codec<::session_bridge::GetNotificationContentCommand>::from(value, where);
+        if (tag == "setNotificationContent")
+            return Codec<::session_bridge::SetNotificationContentCommand>::from(value, where);
         if (tag == "handlePushPayload")
             return Codec<::session_bridge::HandlePushPayloadCommand>::from(value, where);
         if (tag == "getConversations")

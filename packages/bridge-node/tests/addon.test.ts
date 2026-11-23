@@ -642,6 +642,10 @@ describeEcho('the generated converters', () => {
     { type: 'response', response: { id: 900_012, result: { type: 'bool', value: true } } },
     {
       type: 'response',
+      response: { id: 900_102, result: { type: 'notificationContent', content: 'none' } },
+    },
+    {
+      type: 'response',
       response: {
         id: 900_101,
         result: {

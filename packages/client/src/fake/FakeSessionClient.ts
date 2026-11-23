@@ -13,6 +13,7 @@ import type {
   MessageCursor,
   NetworkPaths,
   NetworkStatus,
+  NotificationContent,
   PushService,
   SendPlan,
   SessionEvent,
@@ -90,6 +91,8 @@ export class FakeSessionClient implements SessionClient {
   private background: 'open' | 'waiting' | 'closed' = 'open'
   /** This device's push subscription, as the push server holds it. */
   private pushSubscription: { service: PushService; token: string; atMs: number } | null = null
+  /** As libsession's local settings default it: both, until somebody chooses. */
+  private notificationContent: NotificationContent = 'nameAndContent'
   /** Settles a close that is waiting, as a reopen does; set only while one waits. */
   private cancelClose: (() => void) | null = null
   /** The close the scheduled checks belong to, so a stale check cannot settle a later close. */
@@ -183,6 +186,19 @@ export class FakeSessionClient implements SessionClient {
   clearPushToken(): Promise<void> {
     this.assertOpen()
     this.pushSubscription = null
+    return Promise.resolve()
+  }
+
+  getNotificationContent(): Promise<NotificationContent> {
+    this.assertOpen()
+    if (!this.account.haveAccount) return Promise.reject(new SessionClientError('no account'))
+    return Promise.resolve(this.notificationContent)
+  }
+
+  setNotificationContent(content: NotificationContent): Promise<void> {
+    this.assertOpen()
+    if (!this.account.haveAccount) return Promise.reject(new SessionClientError('no account'))
+    this.notificationContent = content
     return Promise.resolve()
   }
 

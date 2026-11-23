@@ -26,6 +26,7 @@ import type {
   NetworkStatus,
   OutgoingAttachment,
   PixelSize,
+  NotificationContent,
   PushService,
   Request,
   RouterKind,
@@ -161,6 +162,13 @@ export interface SessionClient {
   setPushToken(service: PushService, token: string): Promise<boolean>
   /** Removes this device's push subscription, if it has one. */
   clearPushToken(): Promise<void>
+  /**
+   * What notifications on this device show; `nameAndContent` until somebody chooses. Refused
+   * without an account.
+   */
+  getNotificationContent(): Promise<NotificationContent>
+  /** Stores what notifications on this device show. Refused without an account. */
+  setNotificationContent(content: NotificationContent): Promise<void>
 
   getConversations(): Promise<Conversation[]>
   getMessageRequests(): Promise<Conversation[]>

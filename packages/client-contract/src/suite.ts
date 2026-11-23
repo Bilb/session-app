@@ -700,11 +700,20 @@ export function runSessionClientContract(
     })
 
     it('clears a push subscription that was never made without asking anything', async () => {
-      // Answered at once, network or not: switching to slow mode must never hang on a server it
-      // has nothing to tell.
+      // Answered at once, network or not: switching away from Instant must never hang on a server
+      // it has nothing to tell.
       const { alice } = await harness.friends()
       await alice.clearPushToken()
       await alice.clearPushToken()
+    })
+
+    it('shows the name and the message until another choice of notification content', async () => {
+      const { alice } = await harness.friends()
+      expect(await alice.getNotificationContent()).toBe('nameAndContent')
+      await alice.setNotificationContent('none')
+      expect(await alice.getNotificationContent()).toBe('none')
+      await alice.setNotificationContent('nameOnly')
+      expect(await alice.getNotificationContent()).toBe('nameOnly')
     })
 
     it('closes for the background, refusing requests until it is reopened', async () => {

@@ -14,6 +14,7 @@ import type {
   NetworkPaths,
   NetworkStatus,
   OutgoingAttachment,
+  NotificationContent,
   PushService,
   SendPlan,
 } from './domain'
@@ -263,6 +264,13 @@ export type Command =
    */
   | { type: 'clearPushToken' }
   /**
+   * What notifications on this device show. Answers `notificationContent`; `nameAndContent` until
+   * somebody chooses. Refused without an account, whose local settings hold it.
+   */
+  | { type: 'getNotificationContent' }
+  /** Stores what notifications on this device show. Answers `ok`. Refused without an account. */
+  | { type: 'setNotificationContent'; content: NotificationContent }
+  /**
    * Interpret a push payload far enough to notify. Answering from the payload alone matters on
    * iOS, where the notification service extension runs while the app holds the database.
    */
@@ -454,6 +462,7 @@ export type Result =
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
   | { type: 'bool'; value: boolean }
+  | { type: 'notificationContent'; content: NotificationContent }
   /**
    * How `closeClient` went. `closed` is false when `reopenClient` cancelled it while it waited.
    * `waitedMs` is how long it waited for outbound work, `closeMs` how long destroying the Client
