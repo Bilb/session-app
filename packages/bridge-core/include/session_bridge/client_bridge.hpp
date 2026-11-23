@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "session_bridge/gen/types.hpp"
-#include "session_bridge/push_handler.hpp"
 
 namespace session_bridge {
 
@@ -174,6 +173,9 @@ using ThumbhashHandler = std::function<void(Thumbhash)>;
 ///
 /// Command responses go to the same sink as events, correlated by request id, because their
 /// relative order is load-bearing: see `Frame` in @session/bridge-types.
+/// See push_handler.hpp, which needs libsession's headers: this one deliberately does not.
+struct PushResult;
+
 class ClientBridge {
   public:
     /// Opens the database and publishes the initial state. Throws if the database cannot be
@@ -261,7 +263,7 @@ class ClientBridge {
             std::string_view you,
             std::optional<std::string_view> open,
             std::chrono::milliseconds deadline,
-            const PushLog& log);
+            const std::function<void(std::string_view)>& log);
 
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than
