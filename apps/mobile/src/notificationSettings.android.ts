@@ -23,6 +23,7 @@ type NotificationSettings = Pick<
   | 'backgroundActivity'
   | 'backgroundRefreshOn'
   | 'preview'
+  | 'onTap'
 >
 
 /** Android's part of the Notifications page, through `modules/session-push`. */
@@ -36,6 +37,7 @@ export const notificationSettings: NotificationSettings =
         backgroundActivity: null,
         backgroundRefreshOn: null,
         preview: null,
+        onTap: () => () => undefined,
       }
     : {
         soundWhenOpenDefault: true,
@@ -57,6 +59,8 @@ export const notificationSettings: NotificationSettings =
           SessionPush.preview(title, body)
           return Promise.resolve()
         },
+        // Android opens a tapped conversation through the app's own link: see PushMessages.kt.
+        onTap: () => () => undefined,
       }
 
 /**

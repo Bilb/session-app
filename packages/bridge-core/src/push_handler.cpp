@@ -1,5 +1,6 @@
 #include <session_bridge/push_handler.hpp>
 
+#include <algorithm>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -102,17 +103,36 @@ PushResult handle_cold_push(
     std::error_code ec;
     if (!std::filesystem::exists(where.db_path, ec))
         return generic("no database");
+    const auto started = std::chrono::steady_clock::now();
+    auto open_client = [&] {
+        return where.plaintext_header
+                     ? std::make_unique<client::Client>(
+                               where.db_path,
+                               session::sqlite::raw_key{where.key},
+                               session::sqlite::plaintext_header,
+                               session::core::one_shot{})
+                     : std::make_unique<client::Client>(
+                               where.db_path,
+                               session::sqlite::raw_key{where.key},
+                               session::core::one_shot{});
+    };
     try {
-        auto client = where.plaintext_header
-                            ? std::make_unique<client::Client>(
-                                      where.db_path,
-                                      session::sqlite::raw_key{where.key},
-                                      session::sqlite::plaintext_header,
-                                      session::core::one_shot{})
-                            : std::make_unique<client::Client>(
-                                      where.db_path,
-                                      session::sqlite::raw_key{where.key},
-                                      session::core::one_shot{});
+        std::unique_ptr<client::Client> client;
+        for (int attempt = 1;; ++attempt) {
+            try {
+                client = open_client();
+                break;
+            } catch (const std::exception& e) {
+                // "database is locked": another process is writing. Each open waits out SQLite's
+                // busy timeout before failing, so this is not a tight loop.
+                std::string_view what = e.what();
+                const bool locked = what.find("locked") != std::string_view::npos ||
+                                    what.find("busy") != std::string_view::npos;
+                if (!locked || std::chrono::steady_clock::now() - started >= where.open_retry_for)
+                    throw;
+                log("database locked, trying again (attempt " + std::to_string(attempt) + ")");
+            }
+        }
         log("database open");
         const auto cache = where.db_path.parent_path() / "netcache";
         if (where.netid == "testnet")
@@ -127,11 +147,22 @@ PushResult handle_cold_push(
                     session::network::opt::router::session_router(),
                     session::network::opt::cache_directory{cache},
                     session::network::opt::one_shot{});
+        // Whatever opening took comes out of the deadline, with a few seconds kept for the push.
+        const auto spent =
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - started);
+        const auto left = std::max(deadline - spent, std::chrono::milliseconds{3'000});
         PushResult out;
         {
             push::Notifications notifications{*client};
             out = handle_push(
-                    *client, notifications, enc_payload, you, std::nullopt, deadline, log);
+                    *client,
+                    notifications,
+                    enc_payload,
+                    you,
+                    where.open ? std::optional<std::string_view>{*where.open} : std::nullopt,
+                    left,
+                    log);
         }
         client.reset();
         log("database closed");

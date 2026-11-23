@@ -68,12 +68,21 @@ struct ColdPush {
     std::string netid = "mainnet";
     /// iOS opens its database with SQLite's header in plaintext (see the bridge); Android does not.
     bool plaintext_header = false;
+    /// How long to keep trying to open a database another process has locked. iOS's app holds it
+    /// for up to its close's interrupt deadline after leaving the screen, and the extension waits
+    /// that out rather than showing a generic notification.
+    std::chrono::milliseconds open_retry_for{0};
+    /// The conversation on screen in the app, which gets no notification; see `handle_push`.
+    std::optional<std::string> open;
 };
 
 /// Handles one push with a Client of its own: opens the database one-shot, attaches a one-shot
 /// network, hands the push to `handle_push`, and closes everything before returning. For a process
 /// in which the app's own Client is not open: never beside it, since two Clients in one process on
 /// one database would each think they own it.
+///
+/// `deadline` is the whole of it, opening included: what opening took comes out of the time left to
+/// handle the push.
 ///
 /// Never throws: a database that will not open, or a push that cannot be handled, comes back as a
 /// generic notification, since the person has a message and should hear about it.

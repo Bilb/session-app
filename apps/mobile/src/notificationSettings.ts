@@ -1,6 +1,17 @@
 import type { NotificationsPort } from '@session/app'
 import type { SessionStore } from '@session/state'
+import { type EventSubscription, requireOptionalNativeModule } from 'expo'
 import { Linking } from 'react-native'
+
+interface SessionPushModule {
+  notificationsAllowed(): Promise<boolean>
+  backgroundRefreshOn(): Promise<boolean>
+  setSoundWhenOpen(on: boolean): void
+  preview(title: string, body: string): Promise<void>
+  addListener(event: 'onTap', listener: (tap: { conversation: string }) => void): EventSubscription
+}
+
+const SessionPush = requireOptionalNativeModule<SessionPushModule>('SessionPush')
 
 type NotificationSettings = Pick<
   NotificationsPort,
@@ -11,24 +22,47 @@ type NotificationSettings = Pick<
   | 'backgroundActivity'
   | 'backgroundRefreshOn'
   | 'preview'
+  | 'onTap'
 >
 
-/**
- * iOS's part of the Notifications page. The permission, Background App Refresh and the preview
- * need the notification work iOS has not had yet, so they are null for now and their rows absent.
- */
+/** iOS's part of the Notifications page, through `modules/session-push`. */
 export const notificationSettings: NotificationSettings = {
   soundWhenOpenDefault: false,
-  notificationsAllowed: null,
+  notificationsAllowed: SessionPush === null ? null : () => SessionPush.notificationsAllowed(),
   // iOS opens the app's own page in Settings, which is where its notification switches are.
   openSettings: () => {
     void Linking.openSettings()
   },
   openChannelSettings: null,
   backgroundActivity: null,
-  backgroundRefreshOn: null,
-  preview: null,
+  backgroundRefreshOn: SessionPush === null ? null : () => SessionPush.backgroundRefreshOn(),
+  preview: SessionPush === null ? null : ({ title, body }) => SessionPush.preview(title, body),
+  // A tap on a message notification, by conversation. Android opens it through the app's link
+  // instead, so this is iOS's alone.
+  onTap: (handler) => {
+    if (SessionPush === null) return () => undefined
+    const subscription = SessionPush.addListener('onTap', ({ conversation }) =>
+      handler(conversation),
+    )
+    return () => {
+      subscription.remove()
+    }
+  },
 }
 
-/** Nothing native to keep in step on iOS yet. */
-export function followNotificationPrefs(_store: SessionStore): void {}
+/**
+ * Keeps the native presenter's copy of "sound when app is open" in step with the store: iOS asks it
+ * how to show a notification while the app is in front.
+ */
+export function followNotificationPrefs(store: SessionStore): void {
+  if (SessionPush === null) return
+  let last: boolean | null = null
+  const apply = () => {
+    const on = store.getState().soundWhenOpen ?? notificationSettings.soundWhenOpenDefault
+    if (on === last) return
+    last = on
+    SessionPush.setSoundWhenOpen(on)
+  }
+  apply()
+  store.subscribe(apply)
+}
