@@ -1,4 +1,4 @@
-import { requirePorts } from '@session/app'
+import { flag, requirePorts } from '@session/app'
 import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from '@session/basic-types'
 import type { ConversationId, Message } from '@session/client'
 import {
@@ -6,8 +6,10 @@ import {
   useAttachmentUploadLimit,
   useConversation,
   useMessage,
+  useHeldMessages,
   useMessages,
   useSessionActions,
+  type Landing,
   type Transcript as LoadedTranscript,
 } from '@session/state'
 import { isolate, PENDING_COPY, tr } from '@session/localization'
@@ -16,22 +18,29 @@ import {
   DropOverlay,
   DropZone,
   elementMenuAnchor,
+  LANDING_FADE_MS,
   Screen,
   ScrollToLatest,
   Text,
   TranscriptList,
+  useToast,
   XStack,
   YStack,
   type TranscriptListHandle,
 } from '@session/ui'
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type Ref } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Ref } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
 import { outgoingAttachment } from './staging'
 import { useShowAfter } from './useShowAfter'
 import { useStaging } from './useStaging'
-import { ConversationUiContext, useConversationUi, type ConversationUi } from './conversationUi'
+import {
+  ConversationUiContext,
+  QuoteJumpContext,
+  useConversationUi,
+  type ConversationUi,
+} from './conversationUi'
 import { MessageMediaViewer, type ViewerTarget } from './MessageMediaViewer'
 import { MessageMenu, type MessageMenuTarget } from './MessageMenu'
 import { MessageRow } from './MessageRow'
@@ -42,25 +51,70 @@ import { conversationAvatarName, conversationTitle } from './conversationTitle'
 import { DateHeaderRow } from './DateHeaderRow'
 import { PageStatus, PageStatusRow } from './PageStatus'
 import { showsDateHeader } from './dateHeaders'
-import { authorName, canReply, namer, quotedMessage, replyingToHeading } from './quotedReply'
+import {
+  authorName,
+  canReply,
+  namer,
+  originalFound,
+  quotedMessage,
+  replyingToHeading,
+} from './quotedReply'
 import { TranscriptWidth } from './TranscriptWidth'
 
 const messageKey = (message: Message) => String(message.id)
+
+/** One toast however often it is asked for: a second press shows it again, not twice. */
+const ORIGINAL_NOT_FOUND_TOAST = 'original-not-found'
+const ORIGINAL_UNREAD_TOAST = 'original-unread'
+
+/**
+ * How many list heights from the newest message the button still scrolls there. Further, it reads
+ * the newest page in afresh, as Telegram does: scrolling through the pages between is slow and
+ * keeps them all held.
+ */
+const LATEST_ANIMATED_VIEWPORTS = 3
+
+/** How long a landing's highlight stays mounted: its fade, and a margin for the frames around. */
+const HIGHLIGHT_HOLD_MS = LANDING_FADE_MS + 400
 
 /** The messages, oldest first, each under its date where the day changes. */
 function Transcript({
   conversationId,
   transcript,
+  highlight,
+  held,
   list,
   onFarFromEnd,
+  showsOnceAtEnd,
+  onAtEnd,
+  onRowsOnScreen,
 }: {
   conversationId: ConversationId
   transcript: LoadedTranscript
+  /** The landing being shown, on the row it landed on. */
+  highlight: Landing | null
+  /** Draws the landing's highlight at full strength, with no fade. */
+  held: boolean
   list: Ref<TranscriptListHandle>
   onFarFromEnd: (far: boolean) => void
+  /** See `TranscriptListProps.showsOnceAtEnd`. */
+  showsOnceAtEnd?: boolean | undefined
+  onAtEnd: () => void
+  onRowsOnScreen: (keys: ReadonlySet<string>) => void
 }) {
-  const { messages, loadOlder, fetchingOlder, olderPageFailed } = transcript
+  const {
+    messages,
+    hasOlder,
+    hasNewer,
+    loadOlder,
+    loadNewer,
+    fetchingOlder,
+    olderPageFailed,
+    fetchingNewer,
+    newerPageFailed,
+  } = transcript
   const { openMenu } = useConversationUi()
+  const [waitsForOlder, setWaitsForOlder] = useState(false)
   // A row's key is its message's id; see `messageKey`.
   const openRowMenu = useCallback(
     (key: string, row: unknown) => {
@@ -78,14 +132,31 @@ function Transcript({
       onRowMenu={openRowMenu}
       handle={list}
       onStartReached={loadOlder}
+      moreBefore={hasOlder}
+      onEndReached={loadNewer}
+      moreAfter={hasNewer}
       onFarFromEnd={onFarFromEnd}
+      showsOnceAtEnd={showsOnceAtEnd}
+      onAtEnd={onAtEnd}
+      onRowsOnScreen={onRowsOnScreen}
+      onWaitsForStart={setWaitsForOlder}
       header={
         <PageStatus
           fetching={fetchingOlder}
+          waiting={waitsForOlder}
           failed={olderPageFailed}
           onRetry={loadOlder}
           loadingTestID={ELEMENT.conversation.olderPageLoading}
           retryTestID={ELEMENT.conversation.olderPageRetry}
+        />
+      }
+      footer={
+        <PageStatus
+          fetching={fetchingNewer}
+          failed={newerPageFailed}
+          onRetry={loadNewer}
+          loadingTestID={ELEMENT.conversation.newerPageLoading}
+          retryTestID={ELEMENT.conversation.newerPageRetry}
         />
       }
       // TODO: enter on the oldest unread message once the bridge carries libsession's
@@ -96,9 +167,103 @@ function Transcript({
           {showsDateHeader(messages[index - 1], message) ? (
             <DateHeaderRow timestampMs={message.timestamp} />
           ) : null}
-          <MessageRow conversationId={conversationId} messageId={message.id} index={index} />
+          <MessageRow
+            conversationId={conversationId}
+            messageId={message.id}
+            index={index}
+            highlightSerial={highlight?.messageId === message.id ? highlight.serial : undefined}
+            highlightHeld={held && highlight?.messageId === message.id}
+          />
         </YStack>
       )}
+    />
+  )
+}
+
+/**
+ * Scrolls to each landing a jump makes, and shows its highlight once the list has stopped there:
+ * started with the scroll, most of the fade is spent before the message is seen. The highlight is
+ * kept only for as long as the fade takes, so a row drawn again later does not replay it.
+ */
+function useLanding(
+  transcript: LoadedTranscript,
+  list: { current: TranscriptListHandle | null },
+): Landing | null {
+  const { landing, messages } = transcript
+  const [highlight, setHighlight] = useState<Landing | null>(null)
+  const shownSerial = useRef<number | undefined>(undefined)
+  /** The messages the list held before this render, which a landing among may be animated to. */
+  const heldBefore = useRef<ReadonlySet<number>>(new Set())
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+
+  useLayoutEffect(() => {
+    if (landing !== undefined && landing.serial !== shownSerial.current) {
+      shownSerial.current = landing.serial
+      list.current?.scrollToKey(String(landing.messageId), {
+        animated: heldBefore.current.has(landing.messageId),
+        focus: true,
+        onArrived: () => {
+          // A later landing has taken over.
+          if (shownSerial.current !== landing.serial) return
+          setHighlight(landing)
+          // Held still, it stays until the next landing.
+          if (flag('disableAnimations')) return
+          clearTimeout(timer.current)
+          timer.current = setTimeout(() => {
+            setHighlight(null)
+          }, HIGHLIGHT_HOLD_MS)
+        },
+      })
+    }
+    heldBefore.current = new Set(messages.map((m) => m.id))
+  }, [landing, messages, list])
+
+  useEffect(
+    () => () => {
+      clearTimeout(timer.current)
+    },
+    [],
+  )
+  return highlight
+}
+
+const ignore = () => undefined
+
+/**
+ * The transcript just after a jump landed on `landedOn`, its highlight held: for the component
+ * catalog, whose capture would otherwise catch the fade at a moment of its own. Scrolls the list
+ * there without moving the store's window, which the catalog's other rows draw from.
+ */
+export function DetachedTranscript({
+  conversationId,
+  landedOn,
+}: {
+  conversationId: ConversationId
+  landedOn: number
+}) {
+  // Not `useMessages`, which forgets the history when this goes, under the catalog's other rows.
+  const transcript = useHeldMessages(conversationId)
+  const list = useRef<TranscriptListHandle | null>(null)
+  const [highlight, setHighlight] = useState<Landing | null>(null)
+  useLayoutEffect(() => {
+    if (!transcript.ready) return
+    list.current?.scrollToKey(String(landedOn), {
+      onArrived: () => {
+        setHighlight({ messageId: landedOn, serial: 1 })
+      },
+    })
+  }, [transcript.ready, landedOn])
+  if (!transcript.ready) return null
+  return (
+    <Transcript
+      conversationId={conversationId}
+      transcript={transcript}
+      highlight={highlight}
+      held
+      list={list}
+      onFarFromEnd={ignore}
+      onAtEnd={ignore}
+      onRowsOnScreen={ignore}
     />
   )
 }
@@ -110,12 +275,41 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const { messages, ready, firstPageFailed, reload } = transcript
   const showLoading = useShowAfter(!ready && !firstPageFailed)
   const actions = useSessionActions()
+  const toasts = useToast()
   const list = useRef<TranscriptListHandle | null>(null)
+  const highlight = useLanding(transcript, list)
   const [farFromEnd, setFarFromEnd] = useState(false)
+  // Bumped to draw the transcript afresh, as when it opens: every row on the first pass, shown
+  // once at its end. Swapping a whole window under a list that stays mounted, Android's
+  // place-keeping and the list's following of its end pull against each other as rows measure.
+  const [listEpoch, setListEpoch] = useState(0)
+  // The first message of the window the newest page is replacing, while it is read. The new
+  // window is drawn by a new list in the very render it arrives in: a frame of it in the old one
+  // shows its top.
+  const [reloadingFrom, setReloadingFrom] = useState<number | null>(null)
+  const firstHeld = transcript.messages[0]?.id
+  const reloaded = reloadingFrom !== null && firstHeld !== reloadingFrom
+  const listKey = listEpoch + (reloaded ? 1 : 0)
+  // The read is over: set once it answers, so the render that sees it holds what it read.
+  const [reloadAnswered, setReloadAnswered] = useState(false)
+  useEffect(() => {
+    if (reloaded) {
+      // A new list says only what changes, and starts at its end.
+      setFarFromEnd(false)
+      setListEpoch((epoch) => epoch + 1)
+    } else if (reloadAnswered && reloadingFrom !== null) {
+      // The newest page began where the window did: no new list, only the way to its end.
+      list.current?.scrollToEnd({ animated: false })
+    } else return
+    setReloadingFrom(null)
+    setReloadAnswered(false)
+  }, [reloaded, reloadAnswered, reloadingFrom])
   // Held here beside the draft, not in the store: which message this screen is answering is
-  // nothing another screen or device shares.
+  // nothing another screen or device shares. As it was when the reply started, for when a jump
+  // has taken it out of the window.
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [composerFocus, setComposerFocus] = useState(0)
+  const [followingQuoteOf, setFollowingQuoteOf] = useState<number | null>(null)
   const answered = useMessage(conversationId, replyingTo?.id ?? -1) ?? replyingTo
   // The bar goes with the message it answers; what was typed stays.
   const replying = answered !== null && answered.deleted === undefined ? answered : null
@@ -170,12 +364,92 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
         setReplyingTo(message)
         setComposerFocus((serial) => serial + 1)
       },
+      openQuote: (replyId) => {
+        const reply = held.current.find((m) => m.id === replyId)?.replyTo
+        if (reply === undefined) return
+        const notFound = () => {
+          toasts.show(tr('messageErrorOriginal'), { id: ORIGINAL_NOT_FOUND_TOAST })
+        }
+        if (!originalFound(reply)) {
+          notFound()
+          return
+        }
+        // Busy only while the original is read in: one in the window arrives at once, and the
+        // spinner would take its quote's picture away for a frame.
+        if (!held.current.some((m) => m.id === reply.messageId)) setFollowingQuoteOf(replyId)
+        // An original already on screen is only shown, with nowhere to come back from.
+        const inPlace = list.current?.isOnScreen(String(reply.messageId)) === true
+        actions
+          .jumpToMessage(conversationId, reply.messageId, inPlace ? undefined : replyId)
+          .then(
+            (outcome) => {
+              // Overtaken by a later jump, it lands nowhere and nothing is missing.
+              if (outcome === 'absent') notFound()
+            },
+            // The original may well be there: only the read failed, and a second press asks again.
+            () => {
+              toasts.show(PENDING_COPY.messagesLoadFailed, { id: ORIGINAL_UNREAD_TOAST })
+            },
+          )
+          .finally(() => {
+            setFollowingQuoteOf((following) => (following === replyId ? null : following))
+          })
+      },
     }),
-    [conversationId, autoDownload, nameOf],
+    [conversationId, autoDownload, actions, toasts, nameOf],
   )
 
+  // Shown away from the newest message, and while there is a reply to go back to, however near the
+  // end its original is. Only what the reader does forgets the way back, never where a landing
+  // leaves the list.
+  const returnsToReply = transcript.jumpCount > 0
+  const offersLatest = transcript.hasNewer || farFromEnd || returnsToReply
+
+  // A reply scrolled back to by hand is no longer somewhere to return to. Only once it has been
+  // off screen: at the press, the reply is the row under the pointer.
+  const { returnsTo } = transcript
+  const leftBehind = useRef<number | undefined>(undefined)
+  const followRows = useCallback(
+    (keys: ReadonlySet<string>) => {
+      if (returnsTo === undefined) leftBehind.current = undefined
+      else if (!keys.has(String(returnsTo))) leftBehind.current = returnsTo
+      else if (leftBehind.current === returnsTo) {
+        leftBehind.current = undefined
+        actions.forgetJumps(conversationId, 'latest')
+      }
+    },
+    [returnsTo, actions, conversationId],
+  )
+  // The newest message, reached by the reader rather than by a landing, ends the detour.
+  const { hasNewer } = transcript
+  const reachedEnd = useCallback(() => {
+    if (!hasNewer) actions.forgetJumps(conversationId, 'all')
+  }, [hasNewer, actions, conversationId])
+
+  // A read that fails leaves the button as it was, to press again; the store logs it.
   function toLatest(): void {
-    list.current?.scrollToEnd({ animated: true })
+    if (returnsToReply) {
+      actions.returnFromJump(conversationId).catch(() => undefined)
+      return
+    }
+    const nearby =
+      !transcript.hasNewer && (list.current?.viewportsFromEnd() ?? 0) <= LATEST_ANIMATED_VIEWPORTS
+    if (nearby) {
+      list.current?.scrollToEnd({ animated: true })
+      return
+    }
+    // Read in afresh, the newest page is simply where the list is put: nothing to animate from,
+    // and the pages above it are dropped rather than scrolled through.
+    setReloadingFrom(transcript.messages[0]?.id ?? null)
+    setReloadAnswered(false)
+    actions.showNewest(conversationId, { evenWhenHeld: true }).then(
+      () => {
+        setReloadAnswered(true)
+      },
+      () => {
+        setReloadingFrom(null)
+      },
+    )
   }
 
   // The id stands in for the conversation as well as for the name: opening one from a route
@@ -218,13 +492,23 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
           {ready ? (
             <TranscriptWidth flex={1}>
               <YStack flex={1} position="relative">
-                <Transcript
-                  conversationId={conversationId}
-                  transcript={transcript}
-                  list={list}
-                  onFarFromEnd={setFarFromEnd}
-                />
-                {farFromEnd ? (
+                <QuoteJumpContext.Provider value={followingQuoteOf}>
+                  <Transcript
+                    key={listKey}
+                    // Drawn afresh in place, with no screen sliding over it.
+                    showsOnceAtEnd={listKey > 0}
+                    conversationId={conversationId}
+                    transcript={transcript}
+                    // With animations off, for tests that would race the fade, it is held.
+                    held={flag('disableAnimations')}
+                    highlight={highlight}
+                    list={list}
+                    onFarFromEnd={setFarFromEnd}
+                    onAtEnd={reachedEnd}
+                    onRowsOnScreen={followRows}
+                  />
+                </QuoteJumpContext.Provider>
+                {offersLatest ? (
                   // A row across the transcript's foot, so the button sits at its trailing end in
                   // either direction; only the button takes a press.
                   <XStack
@@ -237,8 +521,12 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
                     pointerEvents="box-none"
                   >
                     <ScrollToLatest
-                      returnsToReply={false}
-                      accessibilityLabel={PENDING_COPY.messageScrollToLatest}
+                      returnsToReply={returnsToReply}
+                      accessibilityLabel={
+                        returnsToReply
+                          ? PENDING_COPY.messageBackToReply
+                          : PENDING_COPY.messageScrollToLatest
+                      }
                       onPress={toLatest}
                       testID={ELEMENT.conversation.scrollToLatest}
                     />
@@ -287,8 +575,8 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
                 attachments: files.map((file) => outgoingAttachment(file, { picksAreCopies })),
                 ...(replying === null ? {} : { replyTo: replying.id }),
               })
-              // Kept through a refusal, as the draft is. A reply started while this one was out is
-              // the next message's.
+              // Kept through a refusal, as the draft is; the store has shown the newest page. A
+              // reply started while this one was out is the next message's.
               setReplyingTo((current) => (current?.id === replying?.id ? null : current))
               list.current?.scrollToEnd()
             }}

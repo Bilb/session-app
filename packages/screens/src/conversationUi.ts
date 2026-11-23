@@ -19,12 +19,17 @@ export interface ConversationUi {
   openMenu: (messageId: number, anchor: MenuAnchor) => void
   /** Starts a reply to a message of this conversation, in the composer. */
   reply: (messageId: number) => void
+  /** A press on the quote heading a reply: goes to its original, or says it is not found. */
+  openQuote: (replyId: number) => void
   /**
    * What to call whoever wrote a message here, as a quote names its author: worked out once for
    * the screen, so a reply's row reads no account or conversation of its own.
    */
   nameOf: (author: string) => string
 }
+
+/** The reply whose quote is being followed while its original is read in, or null. */
+export const QuoteJumpContext = createContext<number | null>(null)
 
 export const ConversationUiContext = createContext<ConversationUi | null>(null)
 
