@@ -32,28 +32,14 @@ export function shardCount(override: string | undefined, cores: number): number 
 }
 
 /**
- * Deals the pages into at most `count` shards of near-equal cells: heaviest page first, each to
- * the lightest shard so far, ties to the earlier page and the lower shard, so the same pages always
- * split the same way. Each shard keeps the tier's order, and none is empty.
+ * The pages heaviest first, ties in tier order: the order the apps take them from one shared
+ * queue, so an app that draws faster takes more of them and all finish at nearly the same time.
  */
-export function splitPages<Page extends { cells: number }>(
-  pages: readonly Page[],
-  count: number,
-): Page[][] {
-  const shards = Array.from({ length: Math.min(count, pages.length) }, () => ({
-    cells: 0,
-    at: [] as number[],
-  }))
-  if (shards.length === 0) return []
-  const heaviestFirst = pages
-    .map((page, at) => ({ cells: page.cells, at }))
-    .sort((a, b) => b.cells - a.cells || a.at - b.at)
-  for (const { cells, at } of heaviestFirst) {
-    const lightest = shards.reduce((best, shard) => (shard.cells < best.cells ? shard : best))
-    lightest.cells += cells
-    lightest.at.push(at)
-  }
-  return shards.map((shard) => shard.at.sort((a, b) => a - b).map((at) => pages[at] as Page))
+export function heaviestFirst<Page extends { cells: number }>(pages: readonly Page[]): Page[] {
+  return pages
+    .map((page, at) => ({ page, at }))
+    .sort((a, b) => b.page.cells - a.page.cells || a.at - b.at)
+    .map(({ page }) => page)
 }
 
 /** `CATALOG_PAGES`: comma-separated, each a page id, a `component.story` or a component. */

@@ -29,7 +29,7 @@ mkdir -p "$out"
 docker run --rm --init ${CATALOG_CGROUP_PARENT:+--cgroup-parent "$CATALOG_CGROUP_PARENT"} \
   --user "$(id -u):$(id -g)" \
   --ulimit core=0 \
-  --env HOME=/tmp/home --env COREPACK_HOME=/tmp/corepack \
+  --env HOME=/tmp/home \
   --env CATALOG_TIER="${CATALOG_TIER:-pr}" --env CATALOG_OUT=/out \
   --env CATALOG_SHARDS --env CATALOG_PAGES \
   --env SESSION_FAKE_MEDIA_DIR=/media \

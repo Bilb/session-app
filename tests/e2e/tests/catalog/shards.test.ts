@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest'
 import {
   catalogVerdict,
   filterPages,
+  heaviestFirst,
   MAX_SHARDS,
   parsePageFilter,
   shardCount,
-  splitPages,
   type CatalogPageSummary,
 } from '#catalog/shards'
 
@@ -15,9 +15,6 @@ import { issueKey } from '../../harness/knownIssues'
 
 const weighted = (cells: readonly number[]) =>
   cells.map((count, at) => ({ id: `page-${String(at)}`, cells: count }))
-
-const sum = (pages: readonly { cells: number }[]) =>
-  pages.reduce((total, page) => total + page.cells, 0)
 
 describe('the shard count', () => {
   it('takes CATALOG_SHARDS over the cores', () => {
@@ -37,48 +34,28 @@ describe('the shard count', () => {
   })
 })
 
-describe('the split', () => {
+describe('the queue order', () => {
   const pages = weighted([4, 96, 12, 12, 40, 8, 8, 30, 2, 64, 16, 24, 6, 48, 20])
 
-  it('puts every page in exactly one shard', () => {
-    for (const count of [1, 2, 3, 4, 6, 15, 40]) {
-      const ids = splitPages(pages, count).flatMap((shard) => shard.map((page) => page.id))
-      expect([...ids].sort()).toEqual(pages.map((page) => page.id).sort())
-    }
-  })
-
-  it('keeps the tier order within a shard', () => {
-    for (const shard of splitPages(pages, 4)) {
-      const at = shard.map((page) => pages.indexOf(page))
-      expect(at).toEqual([...at].sort((a, b) => a - b))
-    }
-  })
-
-  it('splits the same pages the same way every time', () => {
-    expect(splitPages([...pages], 4)).toEqual(splitPages(pages, 4))
-    // Equal weights fall to the earlier page and the lower shard.
+  it('holds every page once', () => {
     expect(
-      splitPages(weighted([5, 5, 5, 5]), 2).map((shard) => shard.map((page) => page.id)),
-    ).toEqual([
-      ['page-0', 'page-2'],
-      ['page-1', 'page-3'],
+      heaviestFirst(pages)
+        .map((page) => page.id)
+        .sort(),
+    ).toEqual(pages.map((page) => page.id).sort())
+    expect(heaviestFirst([])).toEqual([])
+  })
+
+  it('puts the heaviest first, equal weights in tier order', () => {
+    expect(heaviestFirst(pages).map((page) => page.cells)).toEqual(
+      pages.map((page) => page.cells).sort((a, b) => b - a),
+    )
+    expect(heaviestFirst(weighted([5, 9, 5, 5])).map((page) => page.id)).toEqual([
+      'page-1',
+      'page-0',
+      'page-2',
+      'page-3',
     ])
-  })
-
-  it('balances cells rather than pages', () => {
-    const shards = splitPages(weighted([90, 10, 10, 10, 10, 10, 10, 10, 10, 10]), 2)
-    expect(shards.map(sum)).toEqual([90, 90])
-    expect(shards.map((shard) => shard.length)).toEqual([1, 9])
-
-    const loads = splitPages(pages, 4).map(sum)
-    // Greedy heaviest-first is within the heaviest page of the ideal.
-    expect(Math.max(...loads) - Math.min(...loads)).toBeLessThanOrEqual(96)
-    expect(Math.max(...loads)).toBeLessThanOrEqual(Math.ceil(sum(pages) / 4) + 96)
-  })
-
-  it('makes no empty shard', () => {
-    expect(splitPages(weighted([3, 1]), 6)).toHaveLength(2)
-    expect(splitPages([], 4)).toEqual([])
   })
 })
 

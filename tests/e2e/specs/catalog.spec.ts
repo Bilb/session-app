@@ -11,7 +11,7 @@ import {
   filterPages,
   parsePageFilter,
   shardCount,
-  splitPages,
+  heaviestFirst,
   type CatalogPageSummary,
   type PageOutcome,
 } from '#catalog/shards'
@@ -161,16 +161,18 @@ async function windowForPage(app: DesktopApp, id: string): Promise<WindowSize | 
 }
 
 /**
- * Captures and audits `pages` in one app, `at` giving each page's place in the tier. A page past
- * the capture window is reported rather than thrown, so one tall story does not blank the run.
+ * Captures and audits pages in one app until `next` has none left, `at` giving each page's place
+ * in the tier. A page past the capture window is reported rather than thrown, so one tall story
+ * does not blank the run.
  */
 async function capturePages(
   app: DesktopApp,
-  pages: readonly { page: CatalogPageSummary; at: number }[],
+  next: () => { page: CatalogPageSummary; at: number } | undefined,
 ): Promise<PageOutcome[]> {
   const outcomes: PageOutcome[] = []
   let windowSize = CAPTURE_WINDOW
-  for (const { page, at } of pages) {
+  for (let item = next(); item !== undefined; item = next()) {
+    const { page, at } = item
     const { id } = page
     // Every page is laid out in the same window whatever came before it, then the window grows to
     // hold it: a capture paints only what lies inside the window, and the rest comes out black.
@@ -204,9 +206,9 @@ async function capturePages(
  * Every catalog page of the tier, captured and audited: a page draws its story in each theme, and
  * the nightly tier in each accent too, so this is where colour contrast is checked.
  *
- * The pages are split by weight across `SHARDS` apps that capture at the same time, each in its
- * own window and data directory. The verdict is taken once over every shard's findings: a known
- * issue one shard did not meet may be on another's page.
+ * `SHARDS` apps capture at the same time, each in its own window and data directory, taking pages
+ * from one queue. The verdict is taken once over every shard's findings: a known issue one shard
+ * did not meet may be on another's page.
  */
 test(`captures and audits the component catalog's ${TIER} pages @catalog`, async () => {
   test.setTimeout(30 * 60_000)
@@ -234,23 +236,33 @@ test(`captures and audits the component catalog's ${TIER} pages @catalog`, async
       writeFileSync(PAGES_OUT, JSON.stringify(pages.map((page) => page.id)))
     }
 
-    const shards = splitPages(
-      pages.map((page, at) => ({ page, at, cells: page.cells })),
-      SHARDS,
-    )
-    const shardApps = [first, ...(await Promise.all(shards.slice(1).map(launchShard)))]
+    const queue = heaviestFirst(pages.map((page, at) => ({ page, at, cells: page.cells })))
+    const appCount = Math.min(SHARDS, queue.length)
     const started = performance.now()
-    const settled = await Promise.allSettled(
-      shards.map(async (shard, index) => {
-        const outcomes = await capturePages(shardApps[index] as DesktopApp, shard)
-        const cells = shard.reduce((sum, { cells: count }) => sum + count, 0)
-        console.log(
-          `shard ${String(index + 1)}/${String(shards.length)}: ${String(shard.length)} pages, ` +
-            `${String(cells)} cells, ${((performance.now() - started) / 1000).toFixed(0)}s`,
-        )
-        return outcomes
-      }),
-    )
+    // The first app starts on the queue while the others are still launching.
+    const capture = async (app: Promise<DesktopApp>, index: number) => {
+      let taken = 0
+      let cells = 0
+      const outcomes = await capturePages(await app, () => {
+        const item = queue.shift()
+        if (item !== undefined) {
+          taken += 1
+          cells += item.cells
+        }
+        return item
+      })
+      console.log(
+        `shard ${String(index + 1)}/${String(appCount)}: ${String(taken)} pages, ` +
+          `${String(cells)} cells, ${((performance.now() - started) / 1000).toFixed(0)}s`,
+      )
+      return outcomes
+    }
+    const settled = await Promise.allSettled([
+      capture(Promise.resolve(first), 0),
+      ...Array.from({ length: Math.max(0, appCount - 1) }, (_, at) =>
+        capture(launchShard(), at + 1),
+      ),
+    ])
     // Every shard finishes its pages before a failure is raised, so the upload holds what it can.
     const failed = settled.find((result) => result.status === 'rejected')
     if (failed !== undefined) throw failed.reason

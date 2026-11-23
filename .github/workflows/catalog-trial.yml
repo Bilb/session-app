@@ -1,7 +1,7 @@
 name: catalog-trial
 
 # Throwaway measurement. The pr-tier catalog on a dozen GitHub-hosted runners (4 shards, capture
-# image pulled from GHCR) and once on the self-hosted runner. Each hosted run then goes to Argos as
+# image pulled from GHCR in the background) and once on the self-hosted runner. Each hosted run then goes to Argos as
 # its own build, compared with the self-hosted pictures uploaded as that build's reference.
 on:
   push:
@@ -34,26 +34,56 @@ jobs:
           tags: ${{ env.IMAGE }}
 
   self:
+    needs: image
     runs-on: [self-hosted, linux, x64, session-catalog]
+    permissions:
+      contents: read
+      packages: read
     env:
       CATALOG_TIER: pr
       CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
     steps:
       - run: nproc && lscpu | grep 'Model name'
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # In the background, behind the install and builds; Capture waits for it.
+      - name: Start pulling the capture image
+        run: |
+          ( docker pull --quiet "$IMAGE" > "$RUNNER_TEMP/pull.log" 2>&1 \
+            && touch "$RUNNER_TEMP/pulled" || touch "$RUNNER_TEMP/pull-failed" ) &
       - uses: actions/checkout@v5
       - run: git submodule update --init --recursive packages/localization/src/localization-src
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
-          check-latest: true
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @session/localization build
       - run: pnpm --filter @session/desktop build
+      - id: dev-media
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/session-app/dev-media
+          key: dev-media-${{ hashFiles('packages/client/scripts/fetchFakeMedia.ts') }}
       - run: pnpm fake-media:fetch
+      - if: steps.dev-media.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/session-app/dev-media
+          key: ${{ steps.dev-media.outputs.cache-primary-key }}
+      - name: Wait for the capture image
+        timeout-minutes: 5
+        run: |
+          until [ -e "$RUNNER_TEMP/pulled" ]; do
+            if [ -e "$RUNNER_TEMP/pull-failed" ]; then cat "$RUNNER_TEMP/pull.log"; exit 1; fi
+            sleep 1
+          done
       - name: Capture
-        run: pnpm --filter @session/e2e test:catalog
+        run: CATALOG_IMAGE="$IMAGE" pnpm --filter @session/e2e test:catalog
       - uses: actions/upload-artifact@v7
         with:
           name: catalog-self
@@ -76,25 +106,44 @@ jobs:
       CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
       CATALOG_SHARDS: '4'
     steps:
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # In the background, behind the install and builds; Capture waits for it.
+      - name: Start pulling the capture image
+        run: |
+          ( docker pull --quiet "$IMAGE" > "$RUNNER_TEMP/pull.log" 2>&1 \
+            && touch "$RUNNER_TEMP/pulled" || touch "$RUNNER_TEMP/pull-failed" ) &
       - uses: actions/checkout@v5
       - run: git submodule update --init --recursive packages/localization/src/localization-src
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
-          check-latest: true
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @session/localization build
       - run: pnpm --filter @session/desktop build
-      - run: pnpm fake-media:fetch
-      - uses: docker/login-action@v4
+      - id: dev-media
+        uses: actions/cache/restore@v6
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Pull the capture image
-        run: docker pull --quiet "$IMAGE"
+          path: ~/.cache/session-app/dev-media
+          key: dev-media-${{ hashFiles('packages/client/scripts/fetchFakeMedia.ts') }}
+      - run: pnpm fake-media:fetch
+      - if: steps.dev-media.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.cache/session-app/dev-media
+          key: ${{ steps.dev-media.outputs.cache-primary-key }}
+      - name: Wait for the capture image
+        timeout-minutes: 5
+        run: |
+          until [ -e "$RUNNER_TEMP/pulled" ]; do
+            if [ -e "$RUNNER_TEMP/pull-failed" ]; then cat "$RUNNER_TEMP/pull.log"; exit 1; fi
+            sleep 1
+          done
       - name: Capture
         run: CATALOG_IMAGE="$IMAGE" pnpm --filter @session/e2e test:catalog
       - run: lscpu | grep 'Model name' > test-results/catalog/cpu.txt
@@ -145,5 +194,5 @@ jobs:
             [ -d "art/catalog-hosted-$n" ] || continue
             echo "hosted-$n: $(cat art/catalog-hosted-$n/cpu.txt)"
             pnpm --filter @session/e2e exec argos upload --build-name "catalog-trial-$n" \
-              --reference-commit "$parent" --ignore '**/cpu.txt' "$GITHUB_WORKSPACE/art/catalog-hosted-$n"
+              --reference-commit "$parent" "$GITHUB_WORKSPACE/art/catalog-hosted-$n"
           done
