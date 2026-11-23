@@ -1,8 +1,7 @@
 name: catalog-trial
 
-# Throwaway measurement. The pr-tier catalog on a dozen GitHub-hosted runners (4 shards, capture
-# image pulled from GHCR in the background) and once on the self-hosted runner. Each hosted run then goes to Argos as
-# its own build, compared with the self-hosted pictures uploaded as that build's reference.
+# Throwaway measurement: the pr-tier catalog on the self-hosted runner at several shard counts,
+# one job at a time so they do not compete for the host.
 on:
   push:
     branches: [trial/catalog-hosted]
@@ -10,114 +9,22 @@ on:
 permissions:
   contents: read
 
-env:
-  IMAGE: ghcr.io/session-foundation/session-catalog-capture:trial-${{ github.sha }}
-
 jobs:
-  image:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - uses: actions/checkout@v5
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v7
-        with:
-          context: tests/e2e/catalog
-          push: true
-          tags: ${{ env.IMAGE }}
-
   self:
-    needs: image
+    name: shards-${{ matrix.shards }}-${{ matrix.rep }}
     runs-on: [self-hosted, linux, x64, session-catalog]
-    permissions:
-      contents: read
-      packages: read
-    env:
-      CATALOG_TIER: pr
-      CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
-    steps:
-      - run: nproc && lscpu | grep 'Model name'
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      # In the background, behind the install and builds; Capture waits for it.
-      - name: Start pulling the capture image
-        # Every descriptor redirected, or the step waits for the pull to close its output.
-        run: |
-          nohup sh -c 'docker pull --quiet "$IMAGE" && touch "$RUNNER_TEMP/pulled" \
-            || touch "$RUNNER_TEMP/pull-failed"' > "$RUNNER_TEMP/pull.log" 2>&1 < /dev/null &
-      - uses: actions/checkout@v5
-      - run: git submodule update --init --recursive packages/localization/src/localization-src
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v5
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter @session/localization build
-      - run: pnpm --filter @session/desktop build
-      - id: dev-media
-        uses: actions/cache/restore@v6
-        with:
-          path: ~/.cache/session-app/dev-media
-          key: dev-media-${{ hashFiles('packages/client/scripts/fetchFakeMedia.ts') }}
-      - run: pnpm fake-media:fetch
-      - if: steps.dev-media.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ~/.cache/session-app/dev-media
-          key: ${{ steps.dev-media.outputs.cache-primary-key }}
-      - name: Wait for the capture image
-        timeout-minutes: 5
-        run: |
-          until [ -e "$RUNNER_TEMP/pulled" ]; do
-            if [ -e "$RUNNER_TEMP/pull-failed" ]; then cat "$RUNNER_TEMP/pull.log"; exit 1; fi
-            sleep 1
-          done
-      - name: Capture
-        run: CATALOG_IMAGE="$IMAGE" pnpm --filter @session/e2e test:catalog
-      - uses: actions/upload-artifact@v7
-        with:
-          name: catalog-self
-          path: test-results/catalog/*.png
-          retention-days: 3
-
-  hosted:
-    needs: image
-    name: hosted-${{ matrix.run }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
-        run: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        rep: [1, 2]
+        shards: ['8', '12', '16', '4']
     env:
       CATALOG_TIER: pr
       CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
-      CATALOG_SHARDS: '4'
+      CATALOG_SHARDS: ${{ matrix.shards }}
     steps:
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      # In the background, behind the install and builds; Capture waits for it.
-      - name: Start pulling the capture image
-        # Every descriptor redirected, or the step waits for the pull to close its output.
-        run: |
-          nohup sh -c 'docker pull --quiet "$IMAGE" && touch "$RUNNER_TEMP/pulled" \
-            || touch "$RUNNER_TEMP/pull-failed"' > "$RUNNER_TEMP/pull.log" 2>&1 < /dev/null &
+      - run: hostname && nproc && uptime
       - uses: actions/checkout@v5
       - run: git submodule update --init --recursive packages/localization/src/localization-src
       - uses: pnpm/action-setup@v6
@@ -128,31 +35,11 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @session/localization build
       - run: pnpm --filter @session/desktop build
-      - id: dev-media
-        uses: actions/cache/restore@v6
-        with:
-          path: ~/.cache/session-app/dev-media
-          key: dev-media-${{ hashFiles('packages/client/scripts/fetchFakeMedia.ts') }}
       - run: pnpm fake-media:fetch
-      - if: steps.dev-media.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: ~/.cache/session-app/dev-media
-          key: ${{ steps.dev-media.outputs.cache-primary-key }}
-      - name: Wait for the capture image
-        timeout-minutes: 5
-        run: |
-          until [ -e "$RUNNER_TEMP/pulled" ]; do
-            if [ -e "$RUNNER_TEMP/pull-failed" ]; then cat "$RUNNER_TEMP/pull.log"; exit 1; fi
-            sleep 1
-          done
+      - name: Build the capture image
+        run: docker build --quiet --tag session-catalog tests/e2e/catalog
       - name: Capture
-        run: CATALOG_IMAGE="$IMAGE" pnpm --filter @session/e2e test:catalog
-      - run: lscpu | grep 'Model name' > test-results/catalog/cpu.txt
-      - uses: actions/upload-artifact@v7
-        with:
-          name: catalog-hosted-${{ matrix.run }}
-          path: |
-            test-results/catalog/*.png
-            test-results/catalog/cpu.txt
-          retention-days: 3
+        run: |
+          uptime
+          pnpm --filter @session/e2e test:catalog
+          uptime
