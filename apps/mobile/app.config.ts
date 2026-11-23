@@ -10,6 +10,7 @@ import type { ConfigContext, ExpoConfig } from 'expo/config'
 // needs an extension on a relative path and finds one in the map.
 import { withBuildVariants } from '#plugins/withBuildVariants'
 import { withFcm } from '#plugins/withFcm'
+import { withHms } from '#plugins/withHms'
 import { withSessionMedia } from '#plugins/withSessionMedia'
 
 /**
@@ -303,9 +304,11 @@ function appGroup(config: ConfigContext['config']): string {
 
 /** The plugins written in this file, which take the computed config rather than a plugin entry. */
 const withLocalPlugins: ConfigPlugins.ConfigPlugin = (config) =>
-  withFcm(
-    withBuildVariants(
-      withSessionMedia(withExportStorageAccess(withNoBackups(withPermissionStrings(config)))),
+  withHms(
+    withFcm(
+      withBuildVariants(
+        withSessionMedia(withExportStorageAccess(withNoBackups(withPermissionStrings(config)))),
+      ),
     ),
   )
 
