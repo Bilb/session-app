@@ -30,6 +30,7 @@ export type {
   AttachmentTransferState,
   MessageTransfers,
   MessageWindow,
+  NotificationMode,
   SessionState,
   StoredAppearance,
 } from './types'
