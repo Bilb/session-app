@@ -23,9 +23,10 @@ export {
   useStartupError,
   useUnreadRequestCount,
 } from './hooks'
+export type { Transcript } from './hooks'
 export { classifyStartupFailure, isClearable } from './startupFailure'
 export type { StartupFailureKind } from './startupFailure'
-export { emptyState, transferKey } from './types'
+export { emptyState, emptyWindow, transferKey } from './types'
 export type {
   AttachmentTransferState,
   MessageTransfers,

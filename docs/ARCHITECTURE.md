@@ -970,3 +970,10 @@ Append one paragraph per decision. Undocumented decisions are what rot.
   closed. Where libsession says gallery and this client cannot draw the set (AVIF, `image/pjpeg`),
   the list wins and the stored value is left alone, so a build that can draw it still shows the
   gallery.
+
+- **2026-11-12 - A history window is a run of messages that need not reach either end.** It keeps
+  libsession's `hasOlder` and `hasNewer` from the read that made it. An announced message is
+  merged by id and placed by (timestamp, id), and one past an end that history goes on beyond is
+  left for paging to read. The transcript is not an inverted list: it opens at its end and
+  follows it, so its rows stay in reading order for the keyboard, a screen reader and a text
+  selection.

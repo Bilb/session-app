@@ -197,14 +197,16 @@ const handlers: { [K in Command['type']]: Handler<K> } = {
     return empty
   },
 
-  getMessages: async (client, cmd) => {
-    const page = await client.getMessages(cmd.conversationId, {
+  getMessages: async (client, cmd) => ({
+    type: 'messagePage',
+    ...(await client.getMessages(cmd.conversationId, {
       limit: cmd.limit,
       includeDeleted: cmd.includeDeleted,
-      ...(cmd.before === undefined ? {} : { before: cmd.before }),
-    })
-    return { type: 'messageList', messages: page.messages }
-  },
+      before: cmd.before,
+      after: cmd.after,
+      around: cmd.around,
+    })),
+  }),
   sendMessage: async (client, cmd) => ({
     type: 'messageId',
     messageId: await client.sendMessage(cmd.conversationId, {

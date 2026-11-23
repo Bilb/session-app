@@ -44,6 +44,13 @@ interface TestAttachment {
   originalFile?: boolean
 }
 
+/** The message a forged message says it answers, named as the wire names one. */
+// Not exported, as `TestAttachment` is not.
+interface TestQuote {
+  author: string
+  timestamp: number
+}
+
 /**
  * Everything the app asks libsession to do. One Request goes in, exactly one Response comes
  * back carrying the same id. Commands are named for what the app wants, not for the C++ method
@@ -244,11 +251,30 @@ export type Command =
   | { type: 'approveConversation'; conversationId: ConversationId }
   | { type: 'deleteConversation'; conversationId: ConversationId; keepMessages: boolean }
   // Messages
+  /**
+   * A page of history: the newest `limit` messages, or with one of `before`, `after` and `around`,
+   * the page that one names. Refused with more than one of them, or a `limit` that is not positive.
+   *
+   * A page is true as of the read. Messages stored later arrive as `messages-added`, and one stored
+   * just before the read can be both in the page and announced after it, so a window merges
+   * announced messages by id and places them by (timestamp, id).
+   */
   | {
       type: 'getMessages'
       conversationId: ConversationId
       limit: number
+      /** The page older than this cursor, which is not repeated. */
       before?: MessageCursor
+      /** The `limit` messages immediately newer than this cursor, which is not repeated. */
+      after?: MessageCursor
+      /**
+       * A window with this message as near its middle as the history allows: of the rest, half
+       * older and half newer, an even limit's spare row newer, and a side that runs out gives what
+       * it lacks to the other. The message is in the page unless it is deleted and `includeDeleted`
+       * is false; the window is placed by it either way. Refused with `message.not_found` for an
+       * id this conversation does not hold.
+       */
+      around?: number
       includeDeleted: boolean
     }
   /**
@@ -374,6 +400,7 @@ export type Command =
       body: string
       timestamp: number
       attachments?: TestAttachment[]
+      replyTo?: TestQuote
     }
   /** This client's own account seed, so the harness can forge messages from it to another. */
   | { type: 'getTestAccountSeed' }
@@ -402,19 +429,20 @@ export type Result =
   | { type: 'conversationList'; conversations: Conversation[] }
   | { type: 'conversation'; conversation: Conversation }
   /**
-   * Oldest first, whatever page it is - the direction a transcript is read. libsession answers
-   * newest first because that is the direction paging runs; the shim reverses. Getting this
-   * wrong shows up as a conversation that reads bottom to top.
-   */
-  /**
-   * A page of history.
+   * A page of history, oldest first whichever page it is: the direction a transcript is read.
+   * libsession answers newest first because that is the direction paging runs; the shim reverses.
+   *
+   * `hasNewer` and `hasOlder` say whether history goes on past the page, counted in the same read
+   * as the messages and over the messages the page would show: with `includeDeleted` false, a
+   * conversation whose only older messages are deleted has `hasOlder` false. For a page read
+   * `before` a cursor `hasNewer` counts from the cursor, and for one read `after`, `hasOlder` does.
    *
    * What each attachment's bytes are doing rides on the attachment itself - `availability`,
    * `fetchDoneBytes`, `fetchTotalBytes` - rather than in a list beside the page. One writer for
    * the first picture and for every correction after it, which is what stops a window drawing an
    * attachment as untouched and then taking it back.
    */
-  | { type: 'messageList'; messages: Message[] }
+  | { type: 'messagePage'; messages: Message[]; hasNewer: boolean; hasOlder: boolean }
   | { type: 'messageId'; messageId: number }
   | { type: 'hex'; hex: string }
   | { type: 'pref'; value?: string }
@@ -481,7 +509,8 @@ export type SessionEvent =
    *
    * Reported for every message in every conversation rather than whichever one is on screen -
    * there is no notion here of what the app is showing, so deciding what to redraw is the app's.
-   * A message can also arrive here because something it *quotes* changed.
+   * A reply is announced as updated when the message it answers arrives, changes or is deleted,
+   * and when what this device holds of one of that message's attachments changes.
    */
   | { type: 'messages-added'; messages: Message[] }
   | { type: 'messages-updated'; messages: Message[] }

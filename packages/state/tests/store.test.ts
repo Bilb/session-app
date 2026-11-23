@@ -483,7 +483,7 @@ describe('the store', () => {
       world.settle()
     }
     await store.actions.loadHistory(bob)
-    expect(store.getState().histories[bob]?.exhausted).toBe(false)
+    expect(store.getState().histories[bob]?.hasOlder).toBe(true)
 
     const older = store.actions.loadOlder(bob)
     store.actions.forgetHistory(bob)
@@ -502,11 +502,11 @@ describe('the store', () => {
     store.actions.forgetHistory(bob)
     const second = store.actions.loadHistory(bob)
 
-    pages[0]?.({ messages: [] })
+    pages[0]?.({ messages: [], hasNewer: false, hasOlder: false })
     await first
     expect(store.getState().histories[bob]?.ready).toBe(false)
 
-    pages[1]?.({ messages: [] })
+    pages[1]?.({ messages: [], hasNewer: false, hasOlder: false })
     await second
     expect(store.getState().histories[bob]?.ready).toBe(true)
   })

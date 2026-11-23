@@ -85,6 +85,11 @@ export type {
   LanguagePickerTestIDs,
 } from './LanguagePicker.types'
 export { List } from './List'
+export {
+  TranscriptList,
+  type TranscriptListHandle,
+  type TranscriptListProps,
+} from './TranscriptList'
 export type { ListFocusEntry } from './listFocus'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { MESSAGE_FRAME_INSET_PX, MessageFrame, type MessageFrameProps } from './MessageFrame'

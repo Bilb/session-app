@@ -6,11 +6,23 @@ import {
   useConversation,
   useMessages,
   useSessionActions,
+  type Transcript as LoadedTranscript,
 } from '@session/state'
 import { isolate, PENDING_COPY, tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
-import { DropOverlay, DropZone, elementMenuAnchor, List, Screen, Text, YStack } from '@session/ui'
-import { useCallback, useMemo, useState } from 'react'
+import {
+  DropOverlay,
+  DropZone,
+  elementMenuAnchor,
+  Screen,
+  ScrollToLatest,
+  Text,
+  TranscriptList,
+  XStack,
+  YStack,
+  type TranscriptListHandle,
+} from '@session/ui'
+import { useCallback, useMemo, useRef, useState, type Ref } from 'react'
 
 import { AttachmentSheet } from './AttachmentSheet'
 import { Composer } from './Composer'
@@ -26,6 +38,7 @@ import { BackButton } from './BackButton'
 import { ConversationHeader } from './ConversationHeader'
 import { conversationAvatarName, conversationTitle } from './conversationTitle'
 import { DateHeaderRow } from './DateHeaderRow'
+import { PageStatus, PageStatusRow } from './PageStatus'
 import { showsDateHeader } from './dateHeaders'
 import { TranscriptWidth } from './TranscriptWidth'
 
@@ -34,11 +47,16 @@ const messageKey = (message: Message) => String(message.id)
 /** The messages, oldest first, each under its date where the day changes. */
 function Transcript({
   conversationId,
-  messages,
+  transcript,
+  list,
+  onFarFromEnd,
 }: {
   conversationId: ConversationId
-  messages: readonly Message[]
+  transcript: LoadedTranscript
+  list: Ref<TranscriptListHandle>
+  onFarFromEnd: (far: boolean) => void
 }) {
+  const { messages, loadOlder, fetchingOlder, olderPageFailed } = transcript
   const { openMenu } = useConversationUi()
   // A row's key is its message's id; see `messageKey`.
   const openRowMenu = useCallback(
@@ -51,12 +69,24 @@ function Transcript({
   )
   return (
     // No itemHeight: a bubble is as tall as its body wraps to, so the list has to measure.
-    <List
+    <TranscriptList
       data={messages}
       keyExtractor={messageKey}
       onRowMenu={openRowMenu}
-      // TODO: enter on the oldest unread message once libsession reports where reading stopped;
-      // it only gives a conversation's unread count.
+      handle={list}
+      onStartReached={loadOlder}
+      onFarFromEnd={onFarFromEnd}
+      header={
+        <PageStatus
+          fetching={fetchingOlder}
+          failed={olderPageFailed}
+          onRetry={loadOlder}
+          loadingTestID={ELEMENT.conversation.olderPageLoading}
+          retryTestID={ELEMENT.conversation.olderPageRetry}
+        />
+      }
+      // TODO: enter on the oldest unread message once the bridge carries libsession's
+      // `first_unread`; a conversation's unread count is all it gives today.
       rovingFocus="last"
       renderItem={(message, index) => (
         <YStack paddingHorizontal="$md" paddingBottom="$sm">
@@ -72,9 +102,12 @@ function Transcript({
 
 function Conversation({ conversationId }: { conversationId: ConversationId }) {
   const conversation = useConversation(conversationId)
-  const { messages, ready } = useMessages(conversationId)
-  const showLoading = useShowAfter(!ready)
+  const transcript = useMessages(conversationId)
+  const { ready, firstPageFailed, reload } = transcript
+  const showLoading = useShowAfter(!ready && !firstPageFailed)
   const actions = useSessionActions()
+  const list = useRef<TranscriptListHandle | null>(null)
+  const [farFromEnd, setFarFromEnd] = useState(false)
   const staging = useStaging((file) => actions.attachmentSendPlan(file.path, file.contentType))
   const [dropping, setDropping] = useState(false)
   const uploadLimitBytes = useAttachmentUploadLimit()
@@ -107,6 +140,10 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
     }),
     [conversationId, autoDownload],
   )
+
+  function toLatest(): void {
+    list.current?.scrollToEnd({ animated: true })
+  }
 
   // The id stands in for the conversation as well as for the name: opening one from a route
   // beats the store hydrating it, and a header that says nothing for a moment is a header
@@ -147,22 +184,58 @@ function Conversation({ conversationId }: { conversationId: ConversationId }) {
         >
           {ready ? (
             <TranscriptWidth flex={1}>
-              <Transcript conversationId={conversationId} messages={messages} />
+              <YStack flex={1} position="relative">
+                <Transcript
+                  conversationId={conversationId}
+                  transcript={transcript}
+                  list={list}
+                  onFarFromEnd={setFarFromEnd}
+                />
+                {farFromEnd ? (
+                  // A row across the transcript's foot, so the button sits at its trailing end in
+                  // either direction; only the button takes a press.
+                  <XStack
+                    position="absolute"
+                    left={0}
+                    right={0}
+                    bottom={0}
+                    padding="$md"
+                    justifyContent="flex-end"
+                    pointerEvents="box-none"
+                  >
+                    <ScrollToLatest
+                      returnsToReply={false}
+                      accessibilityLabel={PENDING_COPY.messageScrollToLatest}
+                      onPress={toLatest}
+                      testID={ELEMENT.conversation.scrollToLatest}
+                    />
+                  </XStack>
+                ) : null}
+              </YStack>
             </TranscriptWidth>
           ) : (
             <YStack flex={1} padding="$md" alignItems="center" justifyContent="center">
-              {showLoading ? <Text tone="secondary">{tr('loading')}</Text> : null}
+              {firstPageFailed ? (
+                <PageStatusRow
+                  state="failed"
+                  onRetry={reload}
+                  testID={ELEMENT.conversation.firstPageRetry}
+                />
+              ) : showLoading ? (
+                <Text tone="secondary">{tr('loading')}</Text>
+              ) : null}
             </YStack>
           )}
 
           <Composer
             staging={staging}
-            onSend={(body, files) => {
+            onSend={async (body, files) => {
               const { picksAreCopies } = requirePorts().files
-              return actions.send(conversationId, {
+              await actions.send(conversationId, {
                 body,
                 attachments: files.map((file) => outgoingAttachment(file, { picksAreCopies })),
               })
+              list.current?.scrollToEnd()
             }}
           />
         </DropZone>

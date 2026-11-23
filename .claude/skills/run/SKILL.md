@@ -123,7 +123,7 @@ pnpm dev:fake               # both; or dev:desktop:fake / dev:mobile:fake
 ```
 
 The fake refuses to start without its photographs and names the command that fixes it. Which
-world it opens is `EXPO_PUBLIC_SESSION_FAKE_FIXTURE` - `friends`, `showcase`, `backlog`,
+world it opens is `EXPO_PUBLIC_SESSION_FAKE_FIXTURE` - `friends`, `showcase`, `replies`, `backlog`,
 `newcomer`, `crowd`, `rows` - with `EXPO_PUBLIC_SESSION_FAKE_CROWD_PEERS` and
 `EXPO_PUBLIC_SESSION_FAKE_CROWD_HISTORY` sizing `crowd`, and `EXPO_PUBLIC_SESSION_FAKE_SLOWDOWN=10`
 makes every transfer ten times slower, on both apps. `EXPO_PUBLIC_SESSION_FAKE_FAILED_START` fails

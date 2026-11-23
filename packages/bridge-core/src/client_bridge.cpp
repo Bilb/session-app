@@ -1166,31 +1166,61 @@ struct ClientBridge::Impl {
                 .delete_conversation(cmd.keep_messages, on(id, [this, id] { ok(id); }));
     }
 
+    static client::MessageCursor cursor(const MessageCursor& from, std::string_view field) {
+        return {from_epoch_ms(whole<int64_t>(from.timestamp, std::string{field} + ".timestamp")),
+                whole<int64_t>(from.id, std::string{field} + ".id")};
+    }
+
+    void read_page(double id, const std::string& conversation_id, client::MessagePage page) {
+        convo(conversation_id)
+                .messages(std::move(page), on(id, [this, id](client::MessagePageResult page) {
+                    std::vector<Message> out;
+                    out.reserve(page.messages.size());
+                    // libsession answers newest first, because that is the direction paging
+                    // runs. The protocol is oldest first, because that is the direction a
+                    // transcript is read, and reversing once here is cheaper than every caller
+                    // remembering to.
+                    for (auto& m : std::views::reverse(page.messages))
+                        out.push_back(to_bridge(std::move(m)));
+                    respond(id, MessagePageResult{std::move(out), page.has_newer, page.has_older});
+                }));
+    }
+
     void handle(double id, const GetMessagesCommand& cmd) {
         client::MessagePage page{
                 .limit = whole<int>(cmd.limit, "getMessages.limit"),
                 .include_deleted = cmd.include_deleted};
         if (cmd.before)
-            page.before = client::MessageCursor{
-                    from_epoch_ms(whole<int64_t>(cmd.before->timestamp, "getMessages.before.timestamp")),
-                    whole<int64_t>(cmd.before->id, "getMessages.before.id")};
-        convo(cmd.conversation_id)
-                .messages(
-                        page,
-                        on(id, [this, id](client::MessagePageResult result) {
-                            auto& messages = result.messages;
-                            std::vector<Message> out;
-                            out.reserve(messages.size());
-                            // libsession answers newest first, because that is the direction
-                            // paging runs. The protocol is oldest first, because that is the
-                            // direction a transcript is read, and reversing once here is cheaper
-                            // than every caller remembering to.
-                            for (auto& m : std::views::reverse(messages))
-                                out.push_back(to_bridge(std::move(m)));
-                            // No second query for what the attachments are doing: availability
-                            // rides on each attachment, so the page is already the whole answer.
-                            respond(id, MessageListResult{std::move(out)});
-                        }));
+            page.before = cursor(*cmd.before, "getMessages.before");
+        if (cmd.after)
+            page.after = cursor(*cmd.after, "getMessages.after");
+        if (!cmd.around) {
+            read_page(id, cmd.conversation_id, std::move(page));
+            return;
+        }
+        // Checked here because the cursor is only read a call later, and libsession's own refusal
+        // of two positions would arrive after a lookup that was never wanted.
+        if (cmd.before || cmd.after) {
+            fail(id, "getMessages takes one of before, after and around");
+            return;
+        }
+        const auto target = whole<int64_t>(*cmd.around, "getMessages.around");
+        const auto conversation_id = cmd.conversation_id;
+        client->message(
+                target,
+                on(id,
+                   [this, id, target, conversation_id, page](
+                           std::optional<client::Message> found) {
+                       if (!found || found->conversation.to_string() != conversation_id) {
+                           fail(id,
+                                not_found("message", std::to_string(target)),
+                                std::string{client::err::message_not_found});
+                           return;
+                       }
+                       auto window = page;
+                       window.around = found->cursor();
+                       read_page(id, conversation_id, std::move(window));
+                   }));
     }
 
     // Not const: the request is this call's to consume, so the body moves.
@@ -1500,6 +1530,12 @@ struct ClientBridge::Impl {
         content.set_sigtimestamp(static_cast<uint64_t>(timestamp));
         auto* data = content.mutable_datamessage();
         data->set_body(cmd.body);
+        if (cmd.reply_to) {
+            auto* quote = data->mutable_quote();
+            quote->set_author(cmd.reply_to->author);
+            quote->set_msgtimestamp(static_cast<uint64_t>(
+                    whole<int64_t>(cmd.reply_to->timestamp, "deliverTestMessage.replyTo.timestamp")));
+        }
         if (cmd.attachments)
             for (const auto& a : *cmd.attachments) {
                 auto* ptr = data->add_attachments();
