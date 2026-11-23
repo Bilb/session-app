@@ -129,6 +129,7 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           path: art
+          pattern: catalog-*
       - name: Reference builds
         run: |
           parent=$(git rev-parse HEAD^)
