@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { AppState } from 'react-native'
 
 import { readCameraAccess, type CameraPermission } from './cameraAccess'
-import { QrScanner, QrScannerView } from './qrScanner'
+import { QrScanner } from './qrScanner'
+import { QrScannerView } from './qrScannerView'
 
 /**
  * Android's camera, behind the port: `modules/qr-scanner`, not expo-camera.
@@ -16,6 +17,8 @@ import { QrScanner, QrScannerView } from './qrScanner'
  * autolinking in package.json, so nothing of it is in the APK.
  */
 export function MobileCameraProvider({ children }: { children: ReactNode }) {
+  // Read once: a camera that is plugged in later is seen the next time the app starts.
+  const [available] = useState(() => QrScanner.hasCamera())
   const [permission, setPermission] = useState<CameraPermission | null>(null)
 
   // Read again whenever the app comes back: the person may have granted it in Settings meanwhile.
@@ -40,6 +43,7 @@ export function MobileCameraProvider({ children }: { children: ReactNode }) {
 
   const camera = useMemo<CameraPort>(
     () => ({
+      available,
       access: readCameraAccess(permission),
       request: async () => readCameraAccess(await request()),
       Preview: ({ onScan, active = true, testID }) => (
@@ -54,7 +58,7 @@ export function MobileCameraProvider({ children }: { children: ReactNode }) {
         />
       ),
     }),
-    [permission, request],
+    [available, permission, request],
   )
 
   return <CameraProvider camera={camera}>{children}</CameraProvider>

@@ -1,8 +1,9 @@
 import { CameraProvider, type CameraPort } from '@session/app'
 import { CameraView, useCameraPermissions } from 'expo-camera'
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 
 import { readCameraAccess } from './cameraAccess'
+import { QrScanner } from './qrScanner'
 
 /**
  * expo-camera, behind the port: iOS's. Android's is `camera.android.tsx`, which does not use
@@ -13,10 +14,13 @@ import { readCameraAccess } from './cameraAccess'
  * the native side.
  */
 export function MobileCameraProvider({ children }: { children: ReactNode }) {
+  // Read once, as Android's is: see `camera.android.tsx`.
+  const [available] = useState(() => QrScanner.hasCamera())
   const [permission, request] = useCameraPermissions()
 
   const camera = useMemo<CameraPort>(
     () => ({
+      available,
       access: readCameraAccess(permission),
       request: async () => readCameraAccess(await request()),
       Preview: ({ onScan, active = true, testID }) => (
@@ -35,7 +39,7 @@ export function MobileCameraProvider({ children }: { children: ReactNode }) {
         />
       ),
     }),
-    [permission, request],
+    [available, permission, request],
   )
 
   return <CameraProvider camera={camera}>{children}</CameraProvider>

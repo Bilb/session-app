@@ -1,6 +1,5 @@
 {
-  "platforms": ["android"],
-  "android": {
-    "modules": ["org.getsession.qrscanner.QrScannerModule"]
-  }
+  "platforms": ["apple", "android"],
+  "apple": { "modules": ["QrScannerModule"] },
+  "android": { "modules": ["org.getsession.qrscanner.QrScannerModule"] }
 }
