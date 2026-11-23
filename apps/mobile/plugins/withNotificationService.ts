@@ -30,7 +30,7 @@ export interface NotificationServiceOptions {
   filtering: boolean
 }
 
-export const NOTIFICATION_SERVICE_TARGET = 'SessionNotificationService'
+const NOTIFICATION_SERVICE_TARGET = 'SessionNotificationService'
 
 /** Where the extension's sources live, relative to apps/mobile. */
 const SOURCE_DIR = 'notification-service'
