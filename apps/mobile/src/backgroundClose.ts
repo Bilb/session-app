@@ -15,7 +15,7 @@ export const CLOSE_WAIT_MS = 10_000
 export const CLOSE_INTERRUPT_MS = 15_000
 
 export interface BackgroundCloseDeps {
-  client: Pick<SessionClient, 'closeClient' | 'reopenClient'>
+  client: Pick<SessionClient, 'closeClient' | 'reopenClient' | 'setReceiving'>
   /** Calls back with each change of the app's state: `background`, `active`, and the others. */
   onAppStateChange: (listener: (state: string) => void) => void
   /** The OS's grace to finish in once the app has left the screen, as `backgroundTask` keeps it. */
@@ -65,6 +65,10 @@ function report(result: ClientClosed): { level: 'info' | 'error' | 'critical'; m
  * container (0xdead10cc): any write in flight at that moment is enough. A closed database holds
  * none. Android has no such rule, and its push handling runs in the app's own process.
  *
+ * **Receiving stops first**, the moment the app leaves the screen, so that what arrives meanwhile
+ * is the notification extension's to receive and show; the close only finishes outbound work. It
+ * restarts when the app comes back, whether the close was cancelled or the Client built again.
+ *
  * One close at a time: one that a return to the app cancelled still has to settle before the next
  * begins, and the next is skipped if the app came back meanwhile.
  */
@@ -102,6 +106,14 @@ export function closeClientInBackground(deps: BackgroundCloseDeps): void {
     if (state === 'background' && !inBackground) {
       inBackground = true
       hold()
+      void client
+        .setReceiving(false)
+        .catch((error: unknown) =>
+          log(
+            'warn',
+            `pausing receiving failed: ${error instanceof Error ? error.message : String(error)}`,
+          ),
+        )
       closing = Promise.all([closing, reopening])
         .then(close)
         .finally(() => {
@@ -109,7 +121,20 @@ export function closeClientInBackground(deps: BackgroundCloseDeps): void {
         })
     } else if (state === 'active' && inBackground) {
       inBackground = false
-      if (!closeAsked) return
+      const resume = () =>
+        client
+          .setReceiving(true)
+          .catch((error: unknown) =>
+            log(
+              'warn',
+              `resuming receiving failed: ${error instanceof Error ? error.message : String(error)}`,
+            ),
+          )
+      if (!closeAsked) {
+        // Not closed, or not yet: the close sees the app back and does nothing.
+        reopening = resume()
+        return
+      }
       closeAsked = false
       // Cancels a close still waiting for outbound work; otherwise builds the Client again,
       // answering once it is back. Not chained behind the close, which may still be waiting.
@@ -117,6 +142,7 @@ export function closeClientInBackground(deps: BackgroundCloseDeps): void {
       reopening = client
         .reopenClient()
         .then(() => log('info', `reopened in ${String(Date.now() - startedMs)} ms`))
+        .then(resume)
         .catch((error: unknown) =>
           log('error', `reopen failed: ${error instanceof Error ? error.message : String(error)}`),
         )

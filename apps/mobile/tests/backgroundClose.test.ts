@@ -36,6 +36,7 @@ function harness() {
         Promise.resolve(CLOSED),
       ),
       reopenClient: vi.fn<BackgroundCloseDeps['client']['reopenClient']>(() => Promise.resolve()),
+      setReceiving: vi.fn<BackgroundCloseDeps['client']['setReceiving']>(() => Promise.resolve()),
     },
     onAppStateChange: (l: (state: string) => void) => {
       listener = l
@@ -64,6 +65,23 @@ describe('closing the database in the background', () => {
     expect(deps.task.end).toHaveBeenCalledTimes(1)
     expect(deps.flushLog.mock.invocationCallOrder[0]).toBeLessThan(
       deps.task.end.mock.invocationCallOrder[0] ?? 0,
+    )
+  })
+
+  it('stops receiving as the app leaves the screen, before the close, and restarts it on return', async () => {
+    const { deps, to } = harness()
+    to('background')
+    expect(deps.client.setReceiving).toHaveBeenCalledWith(false)
+    expect(deps.client.setReceiving.mock.invocationCallOrder[0]).toBeLessThan(
+      deps.client.closeClient.mock.invocationCallOrder[0] ?? Infinity,
+    )
+    await drain()
+    to('active')
+    await drain()
+    expect(deps.client.reopenClient).toHaveBeenCalledTimes(1)
+    expect(deps.client.setReceiving).toHaveBeenLastCalledWith(true)
+    expect(deps.client.setReceiving.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
+      deps.client.reopenClient.mock.invocationCallOrder[0] ?? Infinity,
     )
   })
 

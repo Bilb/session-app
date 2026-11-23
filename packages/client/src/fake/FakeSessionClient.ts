@@ -183,6 +183,12 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve(true)
   }
 
+  /** The fake's messages are delivered by its world rather than fetched, so there is nothing to stop. */
+  setReceiving(): Promise<void> {
+    this.assertOpen()
+    return Promise.resolve()
+  }
+
   clearPushToken(): Promise<void> {
     this.assertOpen()
     this.pushSubscription = null

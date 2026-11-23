@@ -1225,6 +1225,11 @@ struct ClientBridge::Impl {
 
     void handle(double id, const ReopenClientCommand&) { reopen_client(id); }
 
+    void handle(double id, const SetReceivingCommand& cmd) {
+        client->core.set_receiving(cmd.on);
+        ok(id);
+    }
+
     /// Under `client_lock`.
     void reopen_client(double id) {
         switch (background) {

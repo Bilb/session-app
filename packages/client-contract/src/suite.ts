@@ -716,6 +716,17 @@ export function runSessionClientContract(
       expect(await alice.getNotificationContent()).toBe('nameOnly')
     })
 
+    it('stops and restarts receiving, and refuses to while closed for the background', async () => {
+      const { alice } = await harness.friends()
+      await alice.setReceiving(false)
+      await alice.setReceiving(true)
+
+      await alice.closeClient(10_000, 15_000)
+      expect(await failure(() => alice.setReceiving(true))).toBeDefined()
+      await alice.reopenClient()
+      await alice.setReceiving(true)
+    })
+
     it('closes for the background, refusing requests until it is reopened', async () => {
       const { alice, bobId } = await harness.friends()
       const before = await alice.getAccountInfo()
