@@ -251,6 +251,12 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     async reopenClient(): Promise<void> {
       await call({ type: 'reopenClient' })
     },
+    async setPushToken(service, token): Promise<boolean> {
+      return resultOf(await call({ type: 'setPushToken', service, token }), 'bool').value
+    },
+    async clearPushToken(): Promise<void> {
+      await call({ type: 'clearPushToken' })
+    },
     async setBlocked(id, blocked): Promise<void> {
       await call({ type: 'setBlocked', conversationId: id, blocked })
     },

@@ -13,6 +13,7 @@ import type {
   MessageCursor,
   NetworkPaths,
   NetworkStatus,
+  PushService,
   SendPlan,
   SessionEvent,
 } from '@session/bridge-types'
@@ -77,6 +78,9 @@ const FAKE_PROFILE_DELAY_MS = 2500
  * them. Delivery and send-state transitions only happen when the world's clock is advanced,
  * so a test decides when time passes.
  */
+/** How old a push subscription may get before `setPushToken` renews it, as libsession's. */
+const PUSH_RENEW_AFTER_MS = 24 * 60 * 60 * 1000
+
 /** Every request's refusal but a reopen's, once the client is closed for the background. */
 const CLOSED_IN_BACKGROUND = 'the client is closed while the app is in the background'
 
@@ -84,6 +88,8 @@ export class FakeSessionClient implements SessionClient {
   private closed = false
   /** Where `closeClient` is, as the real bridge tracks it: see `closeClient` in the protocol. */
   private background: 'open' | 'waiting' | 'closed' = 'open'
+  /** This device's push subscription, as the push server holds it. */
+  private pushSubscription: { service: PushService; token: string; atMs: number } | null = null
   /** Settles a close that is waiting, as a reopen does; set only while one waits. */
   private cancelClose: (() => void) | null = null
   /** The close the scheduled checks belong to, so a stale check cannot settle a later close. */
@@ -153,6 +159,31 @@ export class FakeSessionClient implements SessionClient {
       interrupted: false,
       interruptedForReopen: false,
     }
+  }
+
+  setPushToken(service: PushService, token: string): Promise<boolean> {
+    this.assertOpen()
+    if (token === '')
+      return Promise.reject(new SessionClientError('setPushToken.token must not be empty'))
+    if (!this.account.haveAccount || !this.account.networkAttached)
+      return Promise.reject(new SessionClientError('no network or no account'))
+    // As libsession decides: sent when there is none, when it differs, or once it is a day old.
+    const now = this.world.now()
+    const recorded = this.pushSubscription
+    const unchanged =
+      recorded !== null &&
+      recorded.service === service &&
+      recorded.token === token &&
+      now - recorded.atMs < PUSH_RENEW_AFTER_MS
+    if (unchanged) return Promise.resolve(false)
+    this.pushSubscription = { service, token, atMs: now }
+    return Promise.resolve(true)
+  }
+
+  clearPushToken(): Promise<void> {
+    this.assertOpen()
+    this.pushSubscription = null
+    return Promise.resolve()
   }
 
   reopenClient(): Promise<void> {
