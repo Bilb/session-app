@@ -1916,7 +1916,7 @@ std::optional<PushResult> ClientBridge::handle_push(
         std::string_view you,
         std::optional<std::string_view> open,
         std::chrono::milliseconds deadline,
-        const PushLog& log) {
+        const std::function<void(std::string_view)>& log) {
     if (!_impl)
         return std::nullopt;
     std::shared_lock use{_impl->push_use, std::defer_lock};
