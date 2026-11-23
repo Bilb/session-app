@@ -2,6 +2,8 @@ package org.getsession.qrscanner
 
 import android.content.Context
 import android.os.SystemClock
+import android.util.Log
+import androidx.camera.core.CameraInfoUnavailableException
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -19,6 +21,14 @@ import zxingcpp.BarcodeReader
 // The same code is reported again only after this long, so a code held in view is not a stream of
 // events but is still picked up again if the screen dropped the first one.
 private const val REPEAT_MS = 1_500L
+
+private const val TAG = "QrScanner"
+
+// Back first, as a scanner is pointed away from the person holding it; then front, as on some
+// tablets and Chromebooks, which the manifest lets install the app; then any other, such as a USB
+// camera.
+private val CAMERAS =
+  listOf(CameraSelector.DEFAULT_BACK_CAMERA, CameraSelector.DEFAULT_FRONT_CAMERA)
 
 /**
  * A camera preview that reads QR codes out of its own frames.
@@ -55,7 +65,15 @@ class QrScannerView(context: Context, appContext: AppContext) : ExpoView(context
     future.addListener(
       {
         if (released) return@addListener
-        provider = future.get()
+        // Caught here because nothing above this listener would: it runs on the main thread, and
+        // a throw there ends the app. No camera then means an empty preview.
+        provider =
+          try {
+            future.get()
+          } catch (error: Exception) {
+            Log.w(TAG, "CameraX did not start", error)
+            null
+          }
         bind()
       },
       ContextCompat.getMainExecutor(context),
@@ -79,14 +97,34 @@ class QrScannerView(context: Context, appContext: AppContext) : ExpoView(context
     camera.unbindAll()
     if (!active || released) return
     val owner = appContext.currentActivity as? LifecycleOwner ?: return
+    val selector =
+      CAMERAS.firstOrNull { camera.has(it) }
+        ?: camera.availableCameraInfos.firstOrNull()?.cameraSelector
+    if (selector == null) {
+      Log.w(TAG, "No camera to scan with")
+      return
+    }
     val shown = Preview.Builder().build().also { it.surfaceProvider = preview.surfaceProvider }
     val analysis =
       ImageAnalysis.Builder()
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
         .build()
         .also { it.setAnalyzer(decoder) { image -> image.use { decode(reader.read(it)) } } }
-    camera.bindToLifecycle(owner, CameraSelector.DEFAULT_BACK_CAMERA, shown, analysis)
+    // Caught for the reason the provider is: from the `active` prop or the listener above, this
+    // runs on the main thread.
+    try {
+      camera.bindToLifecycle(owner, selector, shown, analysis)
+    } catch (error: Exception) {
+      Log.w(TAG, "The camera could not be started", error)
+    }
   }
+
+  private fun ProcessCameraProvider.has(selector: CameraSelector): Boolean =
+    try {
+      hasCamera(selector)
+    } catch (_: CameraInfoUnavailableException) {
+      false
+    }
 
   private fun decode(results: List<BarcodeReader.Result>) {
     val text = results.firstNotNullOfOrNull { it.text?.takeIf(String::isNotEmpty) } ?: return
