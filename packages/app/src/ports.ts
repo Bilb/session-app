@@ -169,6 +169,9 @@ export interface PushTokenSource {
   onChange(listener: () => void): () => void
 }
 
+/** Android's notification channels, whose sound and vibration are set in Android's settings. */
+export type NotificationChannel = 'messages' | 'requests' | 'calls'
+
 /** One delivery mode as the platform offers it. */
 export interface DeliveryModeOffer {
   mode: DeliveryMode
@@ -221,6 +224,26 @@ export interface NotificationsPort {
    * which is also when Instant is unavailable. See `PushTokenSource`.
    */
   readonly pushTokens: PushTokenSource | null
+  /**
+   * Whether a notification makes its sound while the app is in front, until somebody chooses:
+   * the legacy default for the platform, on for Android and off for iOS.
+   */
+  readonly soundWhenOpenDefault: boolean
+  /** Whether the OS lets the app post notifications, or null where it cannot be asked. */
+  readonly notificationsAllowed: (() => Promise<boolean>) | null
+  /** Opens the OS's notification settings for the app, or null where there are none to open. */
+  readonly openSettings: (() => void) | null
+  /** Android's notification channels: opens one channel's own settings. Null elsewhere. */
+  readonly openChannelSettings: ((channel: NotificationChannel) => void) | null
+  /**
+   * Android's battery-optimisation exemption, which the background delivery modes depend on:
+   * whether the app has it, and asking for it or giving it back. Null elsewhere.
+   */
+  readonly backgroundActivity: { allowed(): Promise<boolean>; change(): void } | null
+  /** Whether iOS has Background App Refresh on for the app. Null elsewhere. */
+  readonly backgroundRefreshOn: (() => Promise<boolean>) | null
+  /** Posts a sample notification, or null where the platform cannot post one. */
+  readonly preview: ((sample: { title: string; body: string }) => Promise<void>) | null
   requestPermission(): Promise<boolean>
   show(notification: { conversationId: string; title: string; body: string }): Promise<void>
   onTap(handler: (conversationId: string) => void): () => void

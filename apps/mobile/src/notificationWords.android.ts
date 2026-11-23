@@ -1,4 +1,4 @@
-import { subscribeLocale, tr } from '@session/localization'
+import { singular, subscribeLocale, tr } from '@session/localization'
 import { requireOptionalNativeModule } from 'expo'
 
 const SessionPush = requireOptionalNativeModule<{
@@ -10,7 +10,7 @@ function words(): Record<string, string> {
   return {
     appName: tr('appName'),
     channel: tr('notificationsMessage'),
-    generic: tr('messageNewYouveGot', { count: 1 }),
+    generic: singular('messageNewYouveGot'),
     request: tr('messageRequestsNew'),
     you: tr('you'),
     image: tr('image'),

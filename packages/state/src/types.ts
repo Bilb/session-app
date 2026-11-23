@@ -7,6 +7,7 @@ import type {
   Message,
   MessageCursor,
   NetworkStatus,
+  NotificationContent,
   TransferProgress,
 } from '@session/client'
 
@@ -149,6 +150,16 @@ export interface SessionState {
    * device with no account.
    */
   deliveryMode: DeliveryMode | null
+  /** What notifications show, from libsession's local settings; null without an account. */
+  notificationContent: NotificationContent | null
+  /**
+   * The device's notification preferences, null until chosen, where the platform's default
+   * applies. `soundWhenOpen` is mobile's: whether a notification makes its sound while the app is
+   * in front. `notificationsShown` and `audioNotifications` are desktop's.
+   */
+  soundWhenOpen: boolean | null
+  notificationsShown: boolean | null
+  audioNotifications: boolean | null
 
   /**
    * The feature flags switched in Developer Settings, by name, as stored. Read with the account, as
@@ -187,6 +198,10 @@ export const emptyState: SessionState = {
   appearance: null,
   recoveryPasswordHidden: false,
   deliveryMode: null,
+  notificationContent: null,
+  soundWhenOpen: null,
+  notificationsShown: null,
+  audioNotifications: null,
   flagToggles: {},
   networkStatus: 'unknown',
 }

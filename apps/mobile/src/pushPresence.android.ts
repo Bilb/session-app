@@ -3,6 +3,7 @@ import { AppState } from 'react-native'
 
 const SessionPush = requireOptionalNativeModule<{
   setOpenConversation(id: string | null): void
+  setInFront(inFront: boolean): void
 }>('SessionPush')
 
 let open: string | null = null
@@ -10,6 +11,7 @@ let inFront = AppState.currentState === 'active'
 
 /** What the push handler is told: a conversation only while the app is in front. */
 function tell(): void {
+  SessionPush?.setInFront(inFront)
   SessionPush?.setOpenConversation(inFront ? open : null)
 }
 

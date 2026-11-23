@@ -51,8 +51,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       imageSize: () => Promise.resolve(null),
     },
     notifications: {
-      // No push service on any build yet, so onboarding marks fast mode unavailable rather than
-      // recommending something that would never arrive.
+      // Nothing to choose: see `notificationModesApply`.
       deliveryModes: [],
       // None to name, which is the honest answer for a build with no push service in it.
       pushService: null,
@@ -60,6 +59,13 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       // genuinely this case.
       notificationModesApply: false,
       pushTokens: null,
+      soundWhenOpenDefault: false,
+      notificationsAllowed: null,
+      openSettings: null,
+      openChannelSettings: null,
+      backgroundActivity: null,
+      backgroundRefreshOn: null,
+      preview: null,
       requestPermission: () => Promise.resolve(true),
       show: () => Promise.resolve(),
       onTap: (handler) => {

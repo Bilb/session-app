@@ -2,13 +2,16 @@ import {
   AccountHeader,
   AttachmentCacheFigures,
   DeveloperRestartBanner,
+  DesktopNotificationsContent,
   DeveloperSettingsContent,
   KeyboardShortcutsPage,
+  MessageDeliveryContent,
+  MobileNotificationsContent,
   PathStatsCard,
   RecoveryPasswordPage,
   type PathStats,
 } from '@session/screens'
-import { DEVELOPER_FLAGS } from '@session/app'
+import { DEVELOPER_FLAGS, type DeliveryModeOffer } from '@session/app'
 import { defineStory, type AnyStory } from '@session/ui/catalog'
 
 /** Made up, never an account's: the fake's thirteen words and a 16-byte seed. */
@@ -36,6 +39,23 @@ const CATALOG_LONG_SECRET = {
   ],
   seedHex: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
 }
+
+/** The modes each build offers, as the mobile app lists them. */
+const ANDROID_PLAY_OFFERS: readonly DeliveryModeOffer[] = [
+  { mode: 'instant', unavailable: null },
+  { mode: 'always-connected', unavailable: null },
+  { mode: 'periodic', unavailable: null },
+  { mode: 'while-open', unavailable: null },
+]
+const ANDROID_FDROID_OFFERS: readonly DeliveryModeOffer[] = [
+  { mode: 'instant', unavailable: 'build' },
+  ...ANDROID_PLAY_OFFERS.slice(1),
+]
+const IOS_OFFERS: readonly DeliveryModeOffer[] = [
+  { mode: 'instant', unavailable: null },
+  { mode: 'periodic', unavailable: null },
+  { mode: 'while-open', unavailable: null },
+]
 
 /** For a press the catalog cannot make. */
 const noop = (): void => undefined
@@ -99,6 +119,90 @@ const CATALOG_ACCOUNT_ID = '05b2c7e1d4a8f3906e5c1b7d2a4f8e3c9b6d1a5e7f2c4b8d3a9e
  * combination keeps its order.
  */
 export const SETTINGS_SCENARIOS: readonly AnyStory[] = [
+  // The phones' Notifications page: Android with its channels and Preview, Android with
+  // notifications turned off in its settings, and iOS, which has neither channels nor (yet) a
+  // preview.
+  defineStory<{ platform: 'android' | 'android, notifications off' | 'ios' }>({
+    component: 'settings',
+    story: 'notificationsMobile',
+    width: SECTION_WIDTH,
+    sensitive: { rtl: true, theme: true },
+    variants: {
+      android: { platform: 'android' },
+      'android, notifications off': { platform: 'android, notifications off' },
+      ios: { platform: 'ios' },
+    },
+    render: ({ platform }) => (
+      <MobileNotificationsContent
+        deliveryMode="instant"
+        deliveryTitle="Instant"
+        content="nameAndContent"
+        soundWhenOpen={platform !== 'ios'}
+        notificationsAllowed={platform === 'android, notifications off' ? false : null}
+        channels={platform !== 'ios'}
+        canOpenSettings
+        canPreview={platform !== 'ios'}
+        onDelivery={noop}
+        onContent={noop}
+        onSoundWhenOpen={noop}
+        onChannel={noop}
+        onOpenSettings={noop}
+        onPreview={noop}
+      />
+    ),
+  }),
+  // The delivery choice as each build offers it: a Play build; an F-Droid build, where Instant is
+  // not included and the battery switch shows under Periodic; and iOS, where Background App
+  // Refresh is off under Instant.
+  defineStory<{ build: 'play' | 'fdroid, periodic' | 'ios, refresh off' }>({
+    component: 'settings',
+    story: 'messageDelivery',
+    width: SECTION_WIDTH,
+    sensitive: { rtl: true, theme: true },
+    variants: {
+      play: { build: 'play' },
+      'fdroid, periodic': { build: 'fdroid, periodic' },
+      'ios, refresh off': { build: 'ios, refresh off' },
+    },
+    render: ({ build }) => (
+      <MessageDeliveryContent
+        offers={
+          build === 'play'
+            ? ANDROID_PLAY_OFFERS
+            : build === 'fdroid, periodic'
+              ? ANDROID_FDROID_OFFERS
+              : IOS_OFFERS
+        }
+        pushService={build === 'ios, refresh off' ? 'apple' : build === 'play' ? 'google' : null}
+        selected={build === 'fdroid, periodic' ? 'periodic' : 'instant'}
+        backgroundAllowed={build === 'ios, refresh off' ? null : false}
+        backgroundRefreshOn={build === 'ios, refresh off' ? false : null}
+        onSelect={noop}
+        onBackgroundActivity={noop}
+        onOpenSettings={noop}
+      />
+    ),
+  }),
+  // Desktop's page with notifications shown, and turned off, which hides the rest.
+  defineStory<{ shown: boolean }>({
+    component: 'settings',
+    story: 'notificationsDesktop',
+    width: SECTION_WIDTH,
+    sensitive: { rtl: true },
+    variants: { shown: { shown: true }, off: { shown: false } },
+    render: ({ shown }) => (
+      <DesktopNotificationsContent
+        shown={shown}
+        content="nameOnly"
+        audio={false}
+        canPreview
+        onShown={noop}
+        onContent={noop}
+        onAudio={noop}
+        onPreview={noop}
+      />
+    ),
+  }),
   defineStory<Record<string, never>>({
     component: 'settings',
     story: 'attachmentCache',

@@ -1,4 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <!-- Android 13 and later ask before an app may post notifications. -->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- "Allow background activity" asks for the battery-optimisation exemption with Android's own
+       dialog, for the delivery modes that work in the background without a push service. -->
+  <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>

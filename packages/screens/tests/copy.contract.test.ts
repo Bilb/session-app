@@ -214,6 +214,12 @@ describe('screen copy', () => {
       'deliveryPeriodicDescription',
       'deliveryWhileOpen',
       'deliveryWhileOpenDescription',
+      'notificationsOffForSession',
+      'backgroundActivityDescription',
+      'backgroundRefreshOffPeriodic',
+      'backgroundRefreshOffInstant',
+      'deviceSettingsMessageRequestNotifications',
+      'previewNotificationBody',
     ])
   })
 })

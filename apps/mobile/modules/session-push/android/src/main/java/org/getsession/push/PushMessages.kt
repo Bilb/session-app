@@ -1,7 +1,6 @@
 package org.getsession.push
 
 import android.app.Notification
-import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
@@ -21,7 +20,6 @@ import org.getsession.databasekey.DatabaseKeyStore
  */
 object PushMessages {
   private const val TAG = "SessionPush"
-  private const val CHANNEL = "messages"
 
   /**
    * The conversation on screen while the app is in front, which gets no notification: the app says
@@ -29,6 +27,10 @@ object PushMessages {
    * push started.
    */
   @Volatile var openConversation: String? = null
+
+  /** Whether the app is in front, and whether a notification then makes its sound. */
+  @Volatile var inFront = false
+  @Volatile var soundWhenOpen = true
 
   /** The networks a database may be under, in the order a push is tried against them. */
   private val NETWORKS = listOf("mainnet", "testnet")
@@ -65,15 +67,8 @@ object PushMessages {
   }
 
   private fun post(context: Context, manager: NotificationManager, outcome: PushOutcome) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-      manager.createNotificationChannel(
-          NotificationChannel(
-              CHANNEL,
-              PushStrings.get(context, "channel"),
-              NotificationManager.IMPORTANCE_HIGH,
-          )
-      )
-    }
+    val channel = if (outcome.kind == "message_request") Channel.REQUESTS else Channel.MESSAGES
+    channel.ensure(context)
     val appName = PushStrings.get(context, "appName")
     val (title, body) =
         when (outcome.kind) {
@@ -82,25 +77,68 @@ object PushMessages {
           "message_request" -> appName to PushStrings.get(context, "request")
           else -> appName to PushStrings.get(context, "generic")
         }
-    val builder =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) Notification.Builder(context, CHANNEL)
-        else @Suppress("DEPRECATION") Notification.Builder(context)
     val notification =
-        builder
-            // TODO: a monochrome notification icon. The launcher icon draws as a white square on
-            // Android 5 and later, which tint every small icon to one colour.
-            .setSmallIcon(context.applicationInfo.icon)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setStyle(Notification.BigTextStyle().bigText(body))
+        builder(context, channel, title, body)
             .setWhen(outcome.timestampMs.takeIf { it > 0 } ?: System.currentTimeMillis())
-            .setShowWhen(true)
-            .setAutoCancel(true)
-            .setCategory(Notification.CATEGORY_MESSAGE)
             .setGroup(outcome.thread)
             .setContentIntent(openIntent(context, outcome))
             .build()
     manager.notify(outcome.id, 0, notification)
+  }
+
+  /**
+   * A sample of what a message notification shows with the current settings, for the Notifications
+   * page. Replaces the previous one; tapping it opens the app.
+   */
+  fun preview(context: Context, title: String, body: String) {
+    val manager = context.getSystemService(NotificationManager::class.java) ?: return
+    Channel.MESSAGES.ensure(context)
+    val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
+    val notification =
+        builder(context, Channel.MESSAGES, title, body)
+            .setWhen(System.currentTimeMillis())
+            .setContentIntent(
+                launch?.let {
+                  PendingIntent.getActivity(context, 0, it, PendingIntent.FLAG_IMMUTABLE)
+                }
+            )
+            .build()
+    manager.notify(PREVIEW_TAG, 0, notification)
+  }
+
+  private const val PREVIEW_TAG = "preview"
+
+  /** The group a notification silenced while the app is in front goes in, when it has none. */
+  private const val SILENT_GROUP = "silent"
+
+  private fun builder(
+      context: Context,
+      channel: Channel,
+      title: String,
+      body: String,
+  ): Notification.Builder {
+    val builder =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+          Notification.Builder(context, channel.id)
+        } else {
+          @Suppress("DEPRECATION") Notification.Builder(context)
+        }
+    // Silenced as the support library's setSilent does it: in a group, a notification that alerts
+    // only for the summary makes no sound itself, and these have no summary.
+    if (inFront && !soundWhenOpen && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      builder.setGroupAlertBehavior(Notification.GROUP_ALERT_SUMMARY)
+      builder.setGroup(SILENT_GROUP)
+    }
+    return builder
+        // TODO: a monochrome notification icon. The launcher icon draws as a white square on
+        // Android 5 and later, which tint every small icon to one colour.
+        .setSmallIcon(context.applicationInfo.icon)
+        .setContentTitle(title)
+        .setContentText(body)
+        .setStyle(Notification.BigTextStyle().bigText(body))
+        .setShowWhen(true)
+        .setAutoCancel(true)
+        .setCategory(Notification.CATEGORY_MESSAGE)
   }
 
   /** What a message with no text says instead: its first attachment's kind. */

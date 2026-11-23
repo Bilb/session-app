@@ -16,6 +16,7 @@ internal object PushStrings {
       mapOf(
           "appName" to "Session",
           "channel" to "Message notifications",
+          "requestsChannel" to "Message Requests",
           "generic" to "You've got a new message.",
           "request" to "You have a new message request",
           "you" to "You",

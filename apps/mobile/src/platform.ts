@@ -19,6 +19,7 @@ import { exportFiles, sweepStagedExports } from './files'
 import { flagOverride } from './flagOverrides'
 import { endingRun, logDirectory, logFiles, logWriter, lowPowerRows, osName } from './logs'
 import { pickers } from './pickers'
+import { notificationSettings } from './notificationSettings'
 import { pushTokens } from './pushTokens'
 import { restartProcess, terminateProcess } from './processExit'
 import { SessionLogs } from './sessionLogs'
@@ -174,6 +175,7 @@ const ports = memoryPorts({
     // a tablet as well as a phone: it is the OS that decides this, not the screen size.
     notificationModesApply: true,
     pushTokens,
+    ...notificationSettings,
     deliveryModes: deliveryModes(),
     pushService: VARIANT_TRAITS[VARIANT].pushService,
     requestPermission: () => Promise.resolve(true),

@@ -231,4 +231,19 @@ export const PENDING_COPY = {
   deliveryWhileOpen: 'Only while open',
   deliveryWhileOpenDescription:
     "Nothing runs in the background. You'll see new messages when you open Session.",
+  /** The Notifications page's warning when the OS does not let the app post notifications. */
+  notificationsOffForSession: "Notifications are turned off for Session in your device's settings.",
+  /** Android's "Run App in the Background", which says nothing about what it does. */
+  backgroundActivityDescription:
+    'Stops Android pausing Session to save battery, so background checks happen when they should.',
+  /** iOS, when Background App Refresh is off for the app, by the delivery mode chosen. */
+  backgroundRefreshOffPeriodic:
+    "Background App Refresh is off for Session, so it can't check for new messages in the background.",
+  backgroundRefreshOffInstant:
+    "Background App Refresh is off for Session. Notifications still arrive, but the backup checks for missed messages can't run.",
+  /** The Message Requests channel's row, beside the catalogue's lines for the other channels. */
+  deviceSettingsMessageRequestNotifications:
+    'Open Device Settings for Message Request Notifications.',
+  /** The body of the notification Preview Notification posts when content is shown. */
+  previewNotificationBody: 'This is how a message notification looks.',
 } as const

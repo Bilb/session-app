@@ -17,6 +17,7 @@ import {
 import { createSessionStore } from '@session/state'
 import { PixelRatio, Platform } from 'react-native'
 
+import { followNotificationPrefs } from './notificationSettings'
 import { followNotificationWords } from './notificationWords'
 import { mobileClient } from './client'
 import { followAppLifecycle } from './clientLifecycle'
@@ -180,5 +181,6 @@ export const storePromise = openTransportOrRefusal().then((transport) => {
     },
   })
   followNotificationWords()
+  followNotificationPrefs(store)
   return store
 })

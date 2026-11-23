@@ -5,6 +5,12 @@ export { RequestsScreen } from './RequestsScreen'
 export { AccountHeader } from './settings/AccountHeader'
 export { AttachmentCacheFigures, AttachmentCacheSection } from './settings/AttachmentCacheSection'
 export {
+  DesktopNotificationsContent,
+  MessageDeliveryContent,
+  MobileNotificationsContent,
+  NotificationsPage,
+} from './settings/NotificationsPage'
+export {
   DeveloperRestartBanner,
   DeveloperSettingsContent,
   DeveloperSettingsPage,

@@ -1,7 +1,13 @@
 export { applyEvent } from './applyEvent'
 export { createSessionStore } from './store'
 export type { LogLevel, SessionStoreOptions } from './store'
-export type { CacheSettings, RecoveryPassword, SessionActions, SessionStore } from './store'
+export type {
+  CacheSettings,
+  NotificationSwitch,
+  RecoveryPassword,
+  SessionActions,
+  SessionStore,
+} from './store'
 export {
   SessionStoreProvider,
   useAccount,
@@ -11,6 +17,7 @@ export {
   useConversation,
   useConversations,
   useFlagToggles,
+  useNotificationSettings,
   useHydrated,
   useMessage,
   useMessageTransfers,

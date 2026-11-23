@@ -5,6 +5,7 @@ import type {
   ConversationId,
   Message,
   NetworkPaths,
+  NotificationContent,
   OutgoingMessage,
   SendPlan,
   SessionClient,
@@ -28,6 +29,19 @@ import {
 const THEME_PREF = 'appearance.theme'
 const ACCENT_PREF = 'appearance.accent'
 const NOTIFICATION_MODE_PREF = 'notifications.mode'
+
+/** The device's notification switches, stored as `on` or `off`; see `SessionState`. */
+const NOTIFICATION_SWITCH_PREFS = {
+  soundWhenOpen: 'notifications.soundWhenOpen',
+  notificationsShown: 'notifications.shown',
+  audioNotifications: 'notifications.audio',
+} as const
+
+export type NotificationSwitch = keyof typeof NOTIFICATION_SWITCH_PREFS
+
+function parseSwitch(stored: string | null | undefined): boolean | null {
+  return stored === 'on' ? true : stored === 'off' ? false : null
+}
 
 /**
  * The stored delivery mode, or null for none. `fast` and `slow` are what builds before there were
@@ -117,6 +131,10 @@ export interface SessionActions {
   setAppearance: (appearance: StoredAppearance) => Promise<void>
   /** Stores how new messages reach this device. See `deliveryMode`. */
   setDeliveryMode: (mode: DeliveryMode) => Promise<void>
+  /** Stores what notifications show, in libsession's local settings. */
+  setNotificationContent: (content: NotificationContent) => Promise<void>
+  /** Stores one of the device's notification switches. */
+  setNotificationSwitch: (name: NotificationSwitch, value: boolean) => Promise<void>
   /**
    * The recovery password, handed straight to the caller and never kept in the store: a string in
    * JavaScript cannot be wiped, so the fewer places hold it the better, and none of them a log.
@@ -544,16 +562,21 @@ export function createSessionStore(
         return
       }
 
-      const [theme, accent, hidden, toggles, mode] = await Promise.all([
-        client.getPref(THEME_PREF),
-        client.getPref(ACCENT_PREF),
-        client.getRecoveryPasswordHidden(),
-        client.getPref(FLAG_TOGGLES_PREF),
-        client.getPref(NOTIFICATION_MODE_PREF),
-        readList('conversations'),
-        readList('requests'),
-        askNetworkStatus(),
-      ])
+      const [theme, accent, hidden, toggles, mode, content, sound, shown, audio] =
+        await Promise.all([
+          client.getPref(THEME_PREF),
+          client.getPref(ACCENT_PREF),
+          client.getRecoveryPasswordHidden(),
+          client.getPref(FLAG_TOGGLES_PREF),
+          client.getPref(NOTIFICATION_MODE_PREF),
+          client.getNotificationContent(),
+          client.getPref(NOTIFICATION_SWITCH_PREFS.soundWhenOpen),
+          client.getPref(NOTIFICATION_SWITCH_PREFS.notificationsShown),
+          client.getPref(NOTIFICATION_SWITCH_PREFS.audioNotifications),
+          readList('conversations'),
+          readList('requests'),
+          askNetworkStatus(),
+        ])
 
       // In the same update as `hydrated`, so the screen the account opens on is drawn once, in its
       // theme and with its switched flags. Both or neither: an accent without its theme is half a
@@ -564,6 +587,10 @@ export function createSessionStore(
         recoveryPasswordHidden: hidden,
         flagToggles: parseFlagToggles(toggles),
         deliveryMode: parseDeliveryMode(mode),
+        notificationContent: content,
+        soundWhenOpen: parseSwitch(sound),
+        notificationsShown: parseSwitch(shown),
+        audioNotifications: parseSwitch(audio),
         hydrated: true,
       })
     },
@@ -584,6 +611,18 @@ export function createSessionStore(
       await client.setPref(THEME_PREF, appearance.theme)
       await client.setPref(ACCENT_PREF, appearance.accent)
       store.setState({ appearance })
+    },
+
+    async setNotificationContent(content): Promise<void> {
+      if (store.getState().account?.haveAccount !== true) return
+      await client.setNotificationContent(content)
+      store.setState({ notificationContent: content })
+    },
+
+    async setNotificationSwitch(name, value): Promise<void> {
+      if (store.getState().account?.haveAccount !== true) return
+      await client.setPref(NOTIFICATION_SWITCH_PREFS[name], value ? 'on' : 'off')
+      store.setState({ [name]: value })
     },
 
     async setDeliveryMode(mode): Promise<void> {

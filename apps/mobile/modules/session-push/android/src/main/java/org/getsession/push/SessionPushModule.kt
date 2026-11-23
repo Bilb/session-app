@@ -46,6 +46,37 @@ class SessionPushModule : Module() {
     /** The conversation on screen while the app is in front, or null: see [PushMessages]. */
     Function("setOpenConversation") { id: String? -> PushMessages.openConversation = id }
 
+    /** Whether a notification makes its sound while the app is in front. */
+    Function("setSoundWhenOpen") { on: Boolean -> PushMessages.soundWhenOpen = on }
+
+    Function("setInFront") { inFront: Boolean -> PushMessages.inFront = inFront }
+
+    AsyncFunction("notificationsAllowed") {
+      appContext.reactContext?.let { DeviceSettings.notificationsAllowed(it) } ?: false
+    }
+
+    Function("openNotificationSettings") {
+      appContext.reactContext?.let { DeviceSettings.openNotifications(it) }
+    }
+
+    /** One channel's settings: `messages` or `requests`. */
+    Function("openChannelSettings") { id: String ->
+      val context = appContext.reactContext ?: return@Function
+      Channel.named(id)?.let { DeviceSettings.openChannel(context, it) }
+    }
+
+    AsyncFunction("backgroundAllowed") {
+      appContext.reactContext?.let { DeviceSettings.backgroundAllowed(it) } ?: false
+    }
+
+    Function("changeBackground") {
+      appContext.reactContext?.let { DeviceSettings.changeBackground(it) }
+    }
+
+    Function("preview") { title: String, body: String ->
+      appContext.reactContext?.let { PushMessages.preview(it, title, body) }
+    }
+
     OnStartObserving { stopListening = PushTokens.addListener { sendEvent("onTokenChange") } }
     OnStopObserving {
       stopListening?.invoke()

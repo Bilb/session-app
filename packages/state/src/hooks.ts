@@ -17,6 +17,7 @@ import {
   type ReactNode,
 } from 'react'
 import { useStore } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 
 import {
   conversationSelector,
@@ -31,6 +32,7 @@ import type {
   AttachmentTransferState,
   MessageTransfers,
   MessageWindow,
+  SessionState,
   StoredAppearance,
 } from './types'
 
@@ -87,6 +89,29 @@ export function useAppearance(): StoredAppearance | null {
 export function useRecoveryPasswordHidden(): boolean {
   const store = useSessionStore()
   return useStore(store, (state) => state.recoveryPasswordHidden)
+}
+
+/** The device's notification settings, as the Notifications page shows them. */
+interface NotificationSettings {
+  deliveryMode: SessionState['deliveryMode']
+  notificationContent: SessionState['notificationContent']
+  soundWhenOpen: boolean | null
+  notificationsShown: boolean | null
+  audioNotifications: boolean | null
+}
+
+export function useNotificationSettings(): NotificationSettings {
+  const store = useSessionStore()
+  return useStore(
+    store,
+    useShallow((state) => ({
+      deliveryMode: state.deliveryMode,
+      notificationContent: state.notificationContent,
+      soundWhenOpen: state.soundWhenOpen,
+      notificationsShown: state.notificationsShown,
+      audioNotifications: state.audioNotifications,
+    })),
+  )
 }
 
 /** The flags switched in Developer Settings. See `flagToggles`. */
