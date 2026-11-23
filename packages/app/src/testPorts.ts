@@ -59,6 +59,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       // Nothing suspends a memory implementation. The mobile app overrides this; desktop is
       // genuinely this case.
       notificationModesApply: false,
+      pushTokens: null,
       requestPermission: () => Promise.resolve(true),
       show: () => Promise.resolve(),
       onTap: (handler) => {

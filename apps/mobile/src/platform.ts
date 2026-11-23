@@ -143,6 +143,8 @@ const ports = memoryPorts({
     // notification delivery something to choose rather than something that just happens. True on
     // a tablet as well as a phone: it is the OS that decides this, not the screen size.
     notificationModesApply: true,
+    // No token source yet on either platform: FCM and APNs follow.
+    pushTokens: null,
     // TODO: true only when all three hold, which no build trait alone can say:
     // - the variant names a push service (`VARIANT_TRAITS[VARIANT].pushService`);
     // - registration with that service exists, which it does not yet;

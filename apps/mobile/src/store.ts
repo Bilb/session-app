@@ -1,4 +1,4 @@
-import { followFlagToggles } from '@session/app'
+import { followFlagToggles, followPushRegistration, requirePorts } from '@session/app'
 import {
   netidForTransport,
   parseDevnetConfig,
@@ -170,5 +170,13 @@ export const storePromise = openTransportOrRefusal().then((transport) => {
   watchStore(store)
   followFlagToggles(store)
   followAppLifecycle(client)
+  followPushRegistration({
+    store,
+    client,
+    source: requirePorts().notifications.pushTokens,
+    log: (level, message) => {
+      storeLog(level, 'push', message)
+    },
+  })
   return store
 })
