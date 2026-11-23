@@ -311,8 +311,9 @@ const withLocalPlugins: ConfigPlugins.ConfigPlugin = (config) =>
       ),
     ),
     {
-      bundleId: bundleId(config),
-      appGroup: appGroup(config),
+      // What the app was given above, already suffixed: computing them again would suffix twice.
+      bundleId: config.ios?.bundleIdentifier ?? bundleId(config),
+      appGroup: config.ios?.infoPlist?.['SessionAppGroup'] ?? appGroup(config),
       // Granted by Apple per app on request; see the plugin. A host knob, as signing is.
       filtering: process.env['SESSION_IOS_NOTIFICATION_FILTERING'] === '1',
     },

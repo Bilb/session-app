@@ -19,7 +19,7 @@ import {
  */
 
 export interface NotificationServiceOptions {
-  /** The app's bundle identifier; the extension's is this plus `.NotificationService`. */
+  /** The app's bundle identifier; the extension's is this plus `.NotificationServiceExtension`. */
   bundleId: string
   appGroup: string
   /**
@@ -141,7 +141,7 @@ export const withNotificationService: ConfigPlugin<NotificationServiceOptions> =
       name,
       'app_extension',
       name,
-      `${options.bundleId}.NotificationService`,
+      `${options.bundleId}.NotificationServiceExtension`,
     )
     const group = project.addPbxGroup(
       ['NotificationService.mm', 'Info.plist', `${name}.entitlements`],
@@ -174,7 +174,7 @@ export const withNotificationService: ConfigPlugin<NotificationServiceOptions> =
 
     const settings = {
       PRODUCT_NAME: quoted('$(TARGET_NAME)'),
-      PRODUCT_BUNDLE_IDENTIFIER: quoted(`${options.bundleId}.NotificationService`),
+      PRODUCT_BUNDLE_IDENTIFIER: quoted(`${options.bundleId}.NotificationServiceExtension`),
       INFOPLIST_FILE: quoted(`${name}/Info.plist`),
       CODE_SIGN_ENTITLEMENTS: quoted(`${name}/${name}.entitlements`),
       CODE_SIGN_STYLE: 'Automatic',
