@@ -443,7 +443,8 @@ export type Result =
    * `waitedMs` is how long it waited for outbound work, `closeMs` how long destroying the Client
    * took, `outboundBusy` whether outbound work was still in flight when it did -- a send that will
    * show as interrupted when the Client is back -- and `interrupted` whether the database's SQL had
-   * to be interrupted.
+   * to be interrupted. `interruptedForReopen`: interrupted early, because `reopenClient` came while
+   * the Client was being destroyed and the app was in front again.
    */
   | {
       type: 'clientClosed'
@@ -452,6 +453,7 @@ export type Result =
       closeMs: number
       outboundBusy: boolean
       interrupted: boolean
+      interruptedForReopen: boolean
     }
   /** The answer to a seed read once the recovery password is hidden: see `hideRecoveryPassword`. */
   | { type: 'seedHidden' }

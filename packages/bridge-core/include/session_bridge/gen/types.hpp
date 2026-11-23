@@ -492,7 +492,8 @@ struct BoolResult {
 /// `waitedMs` is how long it waited for outbound work, `closeMs` how long destroying the Client
 /// took, `outboundBusy` whether outbound work was still in flight when it did -- a send that will
 /// show as interrupted when the Client is back -- and `interrupted` whether the database's SQL had
-/// to be interrupted.
+/// to be interrupted. `interruptedForReopen`: interrupted early, because `reopenClient` came while
+/// the Client was being destroyed and the app was in front again.
 struct ClientClosedResult {
     static constexpr std::string_view type_tag = "clientClosed";
 
@@ -501,9 +502,10 @@ struct ClientClosedResult {
     double close_ms;
     bool outbound_busy;
     bool interrupted;
+    bool interrupted_for_reopen;
 
-    ClientClosedResult(bool closed_, double waited_ms_, double close_ms_, bool outbound_busy_, bool interrupted_) :
-            closed{std::move(closed_)}, waited_ms{std::move(waited_ms_)}, close_ms{std::move(close_ms_)}, outbound_busy{std::move(outbound_busy_)}, interrupted{std::move(interrupted_)} {}
+    ClientClosedResult(bool closed_, double waited_ms_, double close_ms_, bool outbound_busy_, bool interrupted_, bool interrupted_for_reopen_) :
+            closed{std::move(closed_)}, waited_ms{std::move(waited_ms_)}, close_ms{std::move(close_ms_)}, outbound_busy{std::move(outbound_busy_)}, interrupted{std::move(interrupted_)}, interrupted_for_reopen{std::move(interrupted_for_reopen_)} {}
 };
 
 /// The answer to a seed read once the recovery password is hidden: see `hideRecoveryPassword`.

@@ -447,6 +447,18 @@ struct ClientBridge::Impl {
     /// Set once it has answered, so that the next close can join it without waiting.
     std::thread closer;
     std::atomic<bool> closer_done{true};
+    /// What a destroy for the background is waiting on, shared with its watchdog: whether it is
+    /// done, and whether its SQL was interrupted, at the deadline or because the app came back.
+    struct CloseWatch {
+        std::mutex m;
+        std::condition_variable cv;
+        bool done = false;
+        bool interrupted = false;
+        bool for_reopen = false;
+        std::shared_ptr<sqlite::InterruptHandle> handle;
+    };
+    /// The destroy under way, if any. Under `client_lock`.
+    std::shared_ptr<CloseWatch> close_watch;
 
     explicit Impl(Sink s, InitOptions o) : sink{std::move(s)}, options{std::move(o)} {}
 
@@ -1134,45 +1146,41 @@ struct ClientBridge::Impl {
         auto waited_ms = since(started);
 
         std::unique_ptr<client::Client> dying;
-        std::shared_ptr<sqlite::InterruptHandle> handle;
+        auto watch = std::make_shared<CloseWatch>();
         {
             std::lock_guard lock{client_lock};
             if (close_cancelled) {
-                respond(id, ClientClosedResult{false, waited_ms, 0, busy, false});
+                respond(id, ClientClosedResult{false, waited_ms, 0, busy, false, false});
                 return;
             }
             background = Background::destroying;
-            handle = client->core.database().interrupt_handle();
+            watch->handle = client->core.database().interrupt_handle();
+            close_watch = watch;
             dying = std::move(client);
         }
 
         // Destroying the Client waits for whatever SQL Core is running. Still going at the
         // deadline, the SQL is interrupted and rolled back, so that the database is closed before
-        // the OS suspends the process. Shared with the watchdog, which can outlive this by a
-        // moment.
-        struct Watch {
-            std::mutex m;
-            std::condition_variable cv;
-            bool done = false;
-            bool interrupted = false;
-        };
-        auto watch = std::make_shared<Watch>();
-        std::thread watchdog([watch, handle, deadline = started + interrupt_after] {
+        // the OS suspends the process; a reopen does the same at once (see `reopen_client`). The
+        // watchdog can outlive this by a moment, hence shared.
+        std::thread watchdog([watch, deadline = started + interrupt_after] {
             std::unique_lock w{watch->m};
-            if (watch->cv.wait_until(w, deadline, [&] { return watch->done; }))
+            if (watch->cv.wait_until(
+                        w, deadline, [&] { return watch->done || watch->interrupted; }))
                 return;
             watch->interrupted = true;
             w.unlock();
-            handle->interrupt();
+            watch->handle->interrupt();
         });
         auto destroying = std::chrono::steady_clock::now();
         dying.reset();
         auto close_ms = since(destroying);
-        bool interrupted;
+        bool interrupted, for_reopen;
         {
             std::lock_guard w{watch->m};
             watch->done = true;
             interrupted = watch->interrupted;
+            for_reopen = watch->for_reopen;
         }
         watch->cv.notify_all();
         watchdog.join();
@@ -1181,9 +1189,10 @@ struct ClientBridge::Impl {
         {
             std::lock_guard lock{client_lock};
             background = Background::closed;
+            close_watch.reset();
             reopen = std::exchange(reopen_waiting, std::nullopt);
         }
-        respond(id, ClientClosedResult{true, waited_ms, close_ms, busy, interrupted});
+        respond(id, ClientClosedResult{true, waited_ms, close_ms, busy, interrupted, for_reopen});
         // Not while the bridge itself is closing, which sets `close_cancelled` to end this.
         if (reopen && close_cancelled) {
             fail(*reopen, "reopenClient: the bridge is closing");
@@ -1209,6 +1218,21 @@ struct ClientBridge::Impl {
                 if (reopen_waiting)
                     fail(*reopen_waiting, "reopenClient: asked again before the client was back");
                 reopen_waiting = id;
+                // The app is in front again, so the deadline no longer matters: whatever SQL the
+                // destroy is waiting on is interrupted now rather than left to run to it. Rolled
+                // back as it would have been there, and answered once the Client is built again.
+                if (auto watch = close_watch) {
+                    bool interrupt_now = false;
+                    {
+                        std::lock_guard w{watch->m};
+                        if (!watch->done && !watch->interrupted) {
+                            watch->interrupted = watch->for_reopen = interrupt_now = true;
+                        }
+                    }
+                    watch->cv.notify_all();
+                    if (interrupt_now)
+                        watch->handle->interrupt();
+                }
                 return;
             case Background::closed: break;
         }

@@ -20,13 +20,20 @@ export interface BackgroundCloseDeps {
   onAppStateChange: (listener: (state: string) => void) => void
   /** The OS's grace to finish in once the app has left the screen, as `backgroundTask` keeps it. */
   task: { begin: () => void; end: () => void }
-  log: (level: 'info' | 'warn' | 'error', message: string) => void
+  log: (level: 'info' | 'warn' | 'error' | 'critical', message: string) => void
   /** Writes the log out: the process is suspended the moment the task ends. */
   flushLog: () => Promise<void>
 }
 
-/** The close's outcome as one log line, at error level where something was lost. */
-function report(result: ClientClosed): { level: 'info' | 'error'; message: string } {
+/**
+ * The close's outcome as one log line: error level where something was lost, critical where SQL was
+ * still running when the app came back. Nothing in libsession should run that long, so that one is
+ * a bug to find, and the app has rolled it back to be usable again.
+ *
+ * **No thirteen words in a row**: the log writer redacts that as the shape of a recovery phrase, so
+ * a long sentence reaches the file as `<13 words>`. A number or a colon breaks the run.
+ */
+function report(result: ClientClosed): { level: 'info' | 'error' | 'critical'; message: string } {
   if (!result.closed)
     return { level: 'info', message: `close cancelled after ${String(result.waitedMs)} ms` }
   const timing =
@@ -34,11 +41,20 @@ function report(result: ClientClosed): { level: 'info' | 'error'; message: strin
     `in ${String(result.closeMs)} ms`
   const lost = [
     ...(result.outboundBusy ? ['a send still in flight will show as interrupted'] : []),
-    ...(result.interrupted ? ['the database was interrupted and its statement rolled back'] : []),
+    ...(result.interruptedForReopen
+      ? [
+          `SQL was still running ${String(result.closeMs)} ms into the close when the app ` +
+            'came back: interrupted and rolled back',
+        ]
+      : result.interrupted
+        ? ['the database was interrupted and its statement rolled back']
+        : []),
   ]
-  return lost.length === 0
-    ? { level: 'info', message: timing }
-    : { level: 'error', message: `${timing}: ${lost.join('; ')}` }
+  if (lost.length === 0) return { level: 'info', message: timing }
+  return {
+    level: result.interruptedForReopen ? 'critical' : 'error',
+    message: `${timing}: ${lost.join('; ')}`,
+  }
 }
 
 /**

@@ -134,10 +134,25 @@ export class FakeSessionClient implements SessionClient {
     })
     const waitedMs = this.world.now() - startedAt
     const outboundBusy = this.account.outboundBusy()
-    if (cancelled) return { closed: false, waitedMs, closeMs: 0, outboundBusy, interrupted: false }
+    if (cancelled)
+      return {
+        closed: false,
+        waitedMs,
+        closeMs: 0,
+        outboundBusy,
+        interrupted: false,
+        interruptedForReopen: false,
+      }
     this.background = 'closed'
     // The fake runs no SQL that could still be going, so nothing is ever interrupted.
-    return { closed: true, waitedMs, closeMs: 0, outboundBusy, interrupted: false }
+    return {
+      closed: true,
+      waitedMs,
+      closeMs: 0,
+      outboundBusy,
+      interrupted: false,
+      interruptedForReopen: false,
+    }
   }
 
   reopenClient(): Promise<void> {

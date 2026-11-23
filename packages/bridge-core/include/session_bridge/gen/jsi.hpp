@@ -622,7 +622,8 @@ struct JSIConverter<::session_bridge::ClientClosedResult> final {
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "waitedMs"))),
                 JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "closeMs"))),
                 JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "outboundBusy"))),
-                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "interrupted"))));
+                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "interrupted"))),
+                JSIConverter<bool>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "interruptedForReopen"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::ClientClosedResult& arg) {
         jsi::Object obj(runtime);
@@ -632,6 +633,7 @@ struct JSIConverter<::session_bridge::ClientClosedResult> final {
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "closeMs"), JSIConverter<double>::toJSI(runtime, arg.close_ms));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "outboundBusy"), JSIConverter<bool>::toJSI(runtime, arg.outbound_busy));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "interrupted"), JSIConverter<bool>::toJSI(runtime, arg.interrupted));
+        obj.setProperty(runtime, PropNameIDCache::get(runtime, "interruptedForReopen"), JSIConverter<bool>::toJSI(runtime, arg.interrupted_for_reopen));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {

@@ -1,4 +1,5 @@
 import type { ClientClosed } from '@session/client'
+import { emptyCounts, Pseudonyms, sweep } from '@session/logging'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
@@ -14,6 +15,7 @@ const CLOSED: ClientClosed = {
   closeMs: 40,
   outboundBusy: false,
   interrupted: false,
+  interruptedForReopen: false,
 }
 
 /** A promise and the means to settle it, for a close or reopen the test finishes by hand. */
@@ -76,6 +78,35 @@ describe('closing the database in the background', () => {
     await drain()
     expect(log).toHaveBeenCalledWith('error', expect.stringContaining('show as interrupted'))
     expect(log).toHaveBeenCalledWith('error', expect.stringContaining('rolled back'))
+  })
+
+  it('logs SQL still running when the app came back as critical', async () => {
+    const { deps, log, to } = harness()
+    deps.client.closeClient.mockResolvedValueOnce({
+      ...CLOSED,
+      interrupted: true,
+      interruptedForReopen: true,
+    })
+    to('background')
+    await drain()
+    expect(log).toHaveBeenCalledWith('critical', expect.stringContaining('when the app came back'))
+  })
+
+  it('writes every outcome as it is, rather than as a redacted run of words', async () => {
+    const outcomes: ClientClosed[] = [
+      CLOSED,
+      { ...CLOSED, closed: false },
+      { ...CLOSED, outboundBusy: true, interrupted: true },
+      { ...CLOSED, outboundBusy: true, interrupted: true, interruptedForReopen: true },
+    ]
+    for (const outcome of outcomes) {
+      const { deps, log, to } = harness()
+      deps.client.closeClient.mockResolvedValueOnce(outcome)
+      to('background')
+      await drain()
+      const message = log.mock.calls[0]?.[1] ?? ''
+      expect(sweep(message, new Pseudonyms(new Uint8Array(16)), emptyCounts())).toBe(message)
+    }
   })
 
   it('reopens on return without waiting for a close that is still waiting', async () => {

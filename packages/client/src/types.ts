@@ -45,6 +45,8 @@ export interface ClientClosed {
   outboundBusy: boolean
   /** Whether the database's SQL had to be interrupted for the Client to go in time. */
   interrupted: boolean
+  /** Interrupted early, because the app came back while the Client was being destroyed. */
+  interruptedForReopen: boolean
 }
 
 /** Everything a network needs, so that attaching one is a single decision. */

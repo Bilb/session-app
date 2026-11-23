@@ -590,6 +590,7 @@ struct Codec<::session_bridge::ClientClosedResult> {
         obj.Set("closeMs", Codec<double>::to(env, value.close_ms));
         obj.Set("outboundBusy", Codec<bool>::to(env, value.outbound_busy));
         obj.Set("interrupted", Codec<bool>::to(env, value.interrupted));
+        obj.Set("interruptedForReopen", Codec<bool>::to(env, value.interrupted_for_reopen));
         return obj;
     }
     static ::session_bridge::ClientClosedResult from(const Napi::Value& value, std::string_view where) {
@@ -599,7 +600,8 @@ struct Codec<::session_bridge::ClientClosedResult> {
                 Codec<double>::from(obj.Get("waitedMs"), "ClientClosedResult.waitedMs"),
                 Codec<double>::from(obj.Get("closeMs"), "ClientClosedResult.closeMs"),
                 Codec<bool>::from(obj.Get("outboundBusy"), "ClientClosedResult.outboundBusy"),
-                Codec<bool>::from(obj.Get("interrupted"), "ClientClosedResult.interrupted"));
+                Codec<bool>::from(obj.Get("interrupted"), "ClientClosedResult.interrupted"),
+                Codec<bool>::from(obj.Get("interruptedForReopen"), "ClientClosedResult.interruptedForReopen"));
     }
 };
 
