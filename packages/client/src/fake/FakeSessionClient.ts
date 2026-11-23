@@ -17,7 +17,13 @@ import type {
   SessionEvent,
 } from '@session/bridge-types'
 
-import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
+import type {
+  ClientClosed,
+  MessagePage,
+  NetworkAttachment,
+  OutgoingMessage,
+  SessionClient,
+} from '../types'
 import { FAKE_UPLOAD_LIMIT_BYTES } from './sendPlan'
 import type { FakeAccount, FakeStagedFiles, FakeWorld, LocatedAttachment } from './world'
 
@@ -71,8 +77,17 @@ const FAKE_PROFILE_DELAY_MS = 2500
  * them. Delivery and send-state transitions only happen when the world's clock is advanced,
  * so a test decides when time passes.
  */
+/** Every request's refusal but a reopen's, once the client is closed for the background. */
+const CLOSED_IN_BACKGROUND = 'the client is closed while the app is in the background'
+
 export class FakeSessionClient implements SessionClient {
   private closed = false
+  /** Where `closeClient` is, as the real bridge tracks it: see `closeClient` in the protocol. */
+  private background: 'open' | 'waiting' | 'closed' = 'open'
+  /** Settles a close that is waiting, as a reopen does; set only while one waits. */
+  private cancelClose: (() => void) | null = null
+  /** The close the scheduled checks belong to, so a stale check cannot settle a later close. */
+  private closeToken: object | null = null
   private readonly unsubscribes: Array<() => void> = []
 
   constructor(
@@ -88,6 +103,53 @@ export class FakeSessionClient implements SessionClient {
 
   private assertOpen(): void {
     if (this.closed) throw new BridgeClosedError()
+    if (this.background === 'closed') throw new SessionClientError(CLOSED_IN_BACKGROUND)
+  }
+
+  async closeClient(waitMs: number, interruptMs: number): Promise<ClientClosed> {
+    this.assertOpen()
+    if (!(waitMs >= 0) || !(interruptMs >= 0))
+      throw new SessionClientError('closeClient: waitMs and interruptMs must not be negative')
+    if (this.background !== 'open')
+      throw new SessionClientError('closeClient: the client is already closing')
+    this.background = 'waiting'
+    // On the world's clock, which is what moves a send along: checked each tick until nothing is
+    // outbound, `waitMs` has passed or a reopen cancels it.
+    const startedAt = this.world.now()
+    const token = {}
+    this.closeToken = token
+    const cancelled = await new Promise<boolean>((resolve) => {
+      this.cancelClose = () => {
+        this.cancelClose = null
+        resolve(true)
+      }
+      const check = () => {
+        if (this.closeToken !== token || this.background !== 'waiting') return
+        if (!this.account.outboundBusy() || this.world.now() - startedAt >= waitMs) {
+          this.cancelClose = null
+          resolve(false)
+        } else this.world.schedule(1, check)
+      }
+      check()
+    })
+    const waitedMs = this.world.now() - startedAt
+    const outboundBusy = this.account.outboundBusy()
+    if (cancelled) return { closed: false, waitedMs, closeMs: 0, outboundBusy, interrupted: false }
+    this.background = 'closed'
+    // The fake runs no SQL that could still be going, so nothing is ever interrupted.
+    return { closed: true, waitedMs, closeMs: 0, outboundBusy, interrupted: false }
+  }
+
+  reopenClient(): Promise<void> {
+    if (this.closed) throw new BridgeClosedError()
+    if (this.background === 'waiting') {
+      this.background = 'open'
+      this.cancelClose?.()
+    } else if (this.background === 'closed') {
+      this.background = 'open'
+      this.account.reopen()
+    }
+    return Promise.resolve()
   }
 
   getAccountInfo(): Promise<AccountInfo> {
@@ -140,6 +202,8 @@ export class FakeSessionClient implements SessionClient {
 
   discardAccount(): Promise<void> {
     this.assertOpen()
+    // Nothing may replace the Client while a close waits on it.
+    if (this.background !== 'open') throw new SessionClientError(CLOSED_IN_BACKGROUND)
     // The real bridge deletes the database and opens a new one, so what survives is nothing the
     // account put there. Modelled as the account being emptied rather than the client being
     // replaced, because a caller keeps the same client across a discard either way.

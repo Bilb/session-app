@@ -70,6 +70,7 @@ export type {
   AttachmentMedia,
   AttachmentThumbhash,
   BridgeTransport,
+  ClientClosed,
   DecodePlan,
   DecodePlanner,
   MediaSource,

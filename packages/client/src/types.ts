@@ -35,6 +35,18 @@ import type {
 
 export type Unsubscribe = () => void
 
+/** How `closeClient` went: see the `clientClosed` result in the protocol. */
+export interface ClientClosed {
+  /** False when `reopenClient` cancelled the close while it waited. */
+  closed: boolean
+  waitedMs: number
+  closeMs: number
+  /** Outbound work still in flight when the Client went: it comes back interrupted. */
+  outboundBusy: boolean
+  /** Whether the database's SQL had to be interrupted for the Client to go in time. */
+  interrupted: boolean
+}
+
 /** Everything a network needs, so that attaching one is a single decision. */
 export interface NetworkAttachment {
   netid: string
@@ -129,6 +141,15 @@ export interface SessionClient {
    * argument.
    */
   setPollInterval(intervalMs: number): Promise<void>
+  /**
+   * Closes the database before the OS suspends the process, once nothing is outbound or after
+   * `waitMs`, interrupting its SQL `interruptMs` in if the Client is still not gone. While it
+   * waits the client works as before and `reopenClient` cancels it; once closed, every request but
+   * `reopenClient` is refused. For iOS: see `closeClient` in the protocol.
+   */
+  closeClient(waitMs: number, interruptMs: number): Promise<ClientClosed>
+  /** Cancels a waiting `closeClient`, or builds the Client again once it has closed. */
+  reopenClient(): Promise<void>
 
   getConversations(): Promise<Conversation[]>
   getMessageRequests(): Promise<Conversation[]>
