@@ -1,15 +1,18 @@
 #pragma once
 
 #include <array>
+#include <chrono>
 #include <cstddef>
 #include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "session_bridge/gen/types.hpp"
+#include "session_bridge/push_handler.hpp"
 
 namespace session_bridge {
 
@@ -245,6 +248,20 @@ class ClientBridge {
     ///
     /// Returns a cancel, which answers `cb` with "cancelled" unless it has been answered already.
     std::function<void()> fetch_staged_thumbnail(std::string path, MediaHandler cb);
+
+    /// Handles one push on this bridge's Client, for a push that arrives while the app is
+    /// running: see `session_bridge::handle_push`. Nullopt when there is no Client to handle it on
+    /// (closed for the background, closing, or never opened), and the caller handles it with a
+    /// Client of its own (`handle_cold_push`).
+    ///
+    /// Blocks until done, so it must not be called on Core's loop or the JavaScript thread.
+    /// Requests carry on meanwhile; a close or a discard waits for it.
+    std::optional<PushResult> handle_push(
+            std::string_view enc_payload,
+            std::string_view you,
+            std::optional<std::string_view> open,
+            std::chrono::milliseconds deadline,
+            const PushLog& log);
 
     /// Stops delivering frames and destroys the Client, which joins Core's loop. Idempotent, and
     /// implied by the destructor. Handlers for calls still in flight are dropped rather than

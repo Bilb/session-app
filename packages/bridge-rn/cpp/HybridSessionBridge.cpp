@@ -2,6 +2,7 @@
 
 #include "JsMediaSource.hpp"
 #include "MediaSource.hpp"
+#include "PushTarget.hpp"
 
 #include <NitroModules/JSICache.hpp>
 #include <session_bridge/client_bridge.hpp>
@@ -321,6 +322,7 @@ void HybridSessionBridge::init(const SessionBridgeOptions& options) {
             });
     _media = std::make_shared<::session_bridge_rn::BridgeMediaSource>(*_bridge);
     ::session_bridge_rn::set_media_source(_media);
+    ::session_bridge_rn::set_push_bridge(_bridge.get());
     _opened = true;
 }
 
@@ -507,6 +509,9 @@ void HybridSessionBridge::close() {
         ::session_bridge_rn::clear_media_source(_media.get());
         _media->detach();
     }
+    // Waits for a push being handled on the bridge, which the bridge must outlive.
+    if (_bridge)
+        ::session_bridge_rn::clear_push_bridge(_bridge.get());
     // Destroy before dropping the sink: destroying joins Core's loop, so nothing can be
     // produced afterwards, and a frame in flight still has somewhere to go.
     _bridge.reset();

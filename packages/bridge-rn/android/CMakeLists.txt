@@ -10,6 +10,8 @@ add_library(SessionBridgeRN SHARED
     ../cpp/BridgeMediaSource.cpp
     ../cpp/JsMediaSource.cpp
     ../cpp/MediaSource.cpp
+    ../cpp/PushTarget.cpp
+    PushJni.cpp
     OnLoad.cpp
     SessionMediaJni.cpp)
 
