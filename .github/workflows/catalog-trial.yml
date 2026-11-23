@@ -76,7 +76,6 @@ jobs:
       CATALOG_OUT: ${{ github.workspace }}/test-results/catalog
       CATALOG_SHARDS: '4'
     steps:
-      - run: nproc && lscpu | grep 'Model name' | tee cpu.txt
       - uses: actions/checkout@v5
       - run: git submodule update --init --recursive packages/localization/src/localization-src
       - uses: pnpm/action-setup@v6
@@ -98,7 +97,7 @@ jobs:
         run: docker pull --quiet "$IMAGE"
       - name: Capture
         run: CATALOG_IMAGE="$IMAGE" pnpm --filter @session/e2e test:catalog
-      - run: cp cpu.txt test-results/catalog/
+      - run: lscpu | grep 'Model name' > test-results/catalog/cpu.txt
       - uses: actions/upload-artifact@v7
         with:
           name: catalog-hosted-${{ matrix.run }}
