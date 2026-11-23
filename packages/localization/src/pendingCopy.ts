@@ -198,4 +198,37 @@ export const PENDING_COPY = {
    */
   onionRoutingPathYourMessages: 'Your messages',
   onionRoutingPathContactsGroups: 'Contacts and groups',
+  /**
+   * How new messages reach the device: the mobile setting that replaced Fast and Slow Mode, with
+   * four choices on Android and three on iOS. The names are to be reviewed with the team before
+   * keys are added.
+   */
+  messageDelivery: 'Message delivery',
+  messageDeliveryDescription:
+    "Choose how new messages reach this device while you're not using Session.",
+  deliveryInstant: 'Instant',
+  /** By the push service the build uses; the generic one where the build names none. */
+  deliveryInstantDescriptionGoogle:
+    'Push notifications through Google. Google learns when a message arrives, not who sent it or what it says.',
+  deliveryInstantDescriptionApple:
+    'Push notifications through Apple. Apple learns when a message arrives, not who sent it or what it says.',
+  deliveryInstantDescriptionHuawei:
+    'Push notifications through Huawei. Huawei learns when a message arrives, not who sent it or what it says.',
+  deliveryInstantDescription:
+    "Push notifications through your device's notification service. It learns when a message arrives, not who sent it or what it says.",
+  /** Under Instant: communities have no push, so their messages wait for a background check. */
+  deliveryInstantCommunities: 'Community messages arrive with periodic checks.',
+  deliveryUnavailableBuild: "Push notifications aren't included in this build.",
+  deliveryUnavailableDeviceGoogle: 'Not available on this device: it needs Google Play services.',
+  deliveryUnavailableDeviceHuawei: 'Not available on this device: it needs Huawei Mobile Services.',
+  deliveryUnavailableDevice: 'Not available on this device.',
+  deliveryAlwaysConnected: 'Always connected',
+  deliveryAlwaysConnectedDescription:
+    'Session stays connected and shows a permanent notification. No one else is involved, but it uses more battery.',
+  deliveryPeriodic: 'Periodic',
+  deliveryPeriodicDescription:
+    'Session checks for new messages now and then, when your device allows. Messages can arrive late.',
+  deliveryWhileOpen: 'Only while open',
+  deliveryWhileOpenDescription:
+    "Nothing runs in the background. You'll see new messages when you open Session.",
 } as const

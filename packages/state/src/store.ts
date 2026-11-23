@@ -18,7 +18,8 @@ import {
   emptyState,
   type ListName,
   type MessageWindow,
-  type NotificationMode,
+  DELIVERY_MODES,
+  type DeliveryMode,
   type SessionState,
   type StoredAppearance,
 } from './types'
@@ -27,6 +28,16 @@ import {
 const THEME_PREF = 'appearance.theme'
 const ACCENT_PREF = 'appearance.accent'
 const NOTIFICATION_MODE_PREF = 'notifications.mode'
+
+/**
+ * The stored delivery mode, or null for none. `fast` and `slow` are what builds before there were
+ * four modes stored, and mean `instant` and `periodic`.
+ */
+function parseDeliveryMode(stored: string | null | undefined): DeliveryMode | null {
+  if (stored === 'fast') return 'instant'
+  if (stored === 'slow') return 'periodic'
+  return DELIVERY_MODES.find((mode) => mode === stored) ?? null
+}
 /** Where the flags switched in Developer Settings are kept: a JSON object of name to value. */
 const FLAG_TOGGLES_PREF = 'developer.flagToggles'
 
@@ -104,8 +115,8 @@ export interface SessionActions {
    * the Appearance screen, once built, will too.
    */
   setAppearance: (appearance: StoredAppearance) => Promise<void>
-  /** Stores how this device hears about messages. See `notificationMode`. */
-  setNotificationMode: (mode: NotificationMode) => Promise<void>
+  /** Stores how new messages reach this device. See `deliveryMode`. */
+  setDeliveryMode: (mode: DeliveryMode) => Promise<void>
   /**
    * The recovery password, handed straight to the caller and never kept in the store: a string in
    * JavaScript cannot be wiped, so the fewer places hold it the better, and none of them a log.
@@ -552,7 +563,7 @@ export function createSessionStore(
         appearance,
         recoveryPasswordHidden: hidden,
         flagToggles: parseFlagToggles(toggles),
-        notificationMode: mode === 'fast' || mode === 'slow' ? mode : null,
+        deliveryMode: parseDeliveryMode(mode),
         hydrated: true,
       })
     },
@@ -575,10 +586,10 @@ export function createSessionStore(
       store.setState({ appearance })
     },
 
-    async setNotificationMode(mode): Promise<void> {
+    async setDeliveryMode(mode): Promise<void> {
       if (store.getState().account?.haveAccount !== true) return
       await client.setPref(NOTIFICATION_MODE_PREF, mode)
-      store.setState({ notificationMode: mode })
+      store.setState({ deliveryMode: mode })
     },
 
     async getRecoveryPassword(): Promise<RecoveryPassword> {

@@ -54,8 +54,24 @@ export function transferKey(transfer: AttachmentTransfer, index: number): string
 /** One message's live transfers, keyed by `transferKey`. */
 export type MessageTransfers = Record<string, AttachmentTransferState>
 
-/** See `SessionState.notificationMode`. */
-export type NotificationMode = 'fast' | 'slow'
+/**
+ * How new messages reach this device while Session is not on screen. See
+ * `SessionState.deliveryMode`.
+ *
+ * - `instant`: a push service (APNs, FCM, Huawei's) wakes the app when a message arrives.
+ * - `always-connected`: a foreground service keeps the app connected, with a permanent
+ *   notification (Android).
+ * - `periodic`: the app checks in the background windows the OS grants.
+ * - `while-open`: nothing in the background; the app polls only while it is open.
+ */
+export type DeliveryMode = 'instant' | 'always-connected' | 'periodic' | 'while-open'
+
+export const DELIVERY_MODES: readonly DeliveryMode[] = [
+  'instant',
+  'always-connected',
+  'periodic',
+  'while-open',
+]
 
 export interface SessionState {
   hydrated: boolean
@@ -128,11 +144,11 @@ export interface SessionState {
   recoveryPasswordHidden: boolean
 
   /**
-   * How this device hears about messages while the app isn't running: `fast` through a push
-   * service, `slow` through the background windows the OS grants. Device-local, as each device has
-   * its own push token; null until onboarding has asked, and on a device with no account.
+   * How new messages reach this device while the app isn't on screen; see `DeliveryMode`.
+   * Device-local, as each device has its own push token; null until onboarding has asked, and on a
+   * device with no account.
    */
-  notificationMode: NotificationMode | null
+  deliveryMode: DeliveryMode | null
 
   /**
    * The feature flags switched in Developer Settings, by name, as stored. Read with the account, as
@@ -170,7 +186,7 @@ export const emptyState: SessionState = {
   transfers: {},
   appearance: null,
   recoveryPasswordHidden: false,
-  notificationMode: null,
+  deliveryMode: null,
   flagToggles: {},
   networkStatus: 'unknown',
 }

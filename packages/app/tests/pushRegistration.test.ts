@@ -47,8 +47,8 @@ function harness(initial: Partial<SessionState>, token = 'token-1') {
 const drain = () => new Promise((resolve) => setTimeout(resolve, 0))
 
 describe('keeping the push subscription in step with the notification mode', () => {
-  it('subscribes in fast mode once there is an account and a network', async () => {
-    const { store, client } = harness({ account: ACCOUNT, notificationMode: 'fast' })
+  it('subscribes with Instant once there is an account and a network', async () => {
+    const { store, client } = harness({ account: ACCOUNT, deliveryMode: 'instant' })
     await drain()
     expect(client.setPushToken).not.toHaveBeenCalled()
 
@@ -65,14 +65,14 @@ describe('keeping the push subscription in step with the notification mode', () 
     expect(client.clearPushToken).not.toHaveBeenCalled()
   })
 
-  it('removes the subscription when slow mode is chosen, once', async () => {
+  it('removes the subscription when a mode without push is chosen, once', async () => {
     const { store, client } = harness({
       account: ACCOUNT,
-      notificationMode: 'fast',
+      deliveryMode: 'instant',
       networkStatus: 'connected',
     })
     await drain()
-    store.set({ notificationMode: 'slow' })
+    store.set({ deliveryMode: 'periodic' })
     await drain()
     store.set({ networkStatus: 'connecting' })
     store.set({ networkStatus: 'connected' })
@@ -80,10 +80,23 @@ describe('keeping the push subscription in step with the notification mode', () 
     expect(client.clearPushToken).toHaveBeenCalledTimes(1)
   })
 
+  it('removes it for every mode without push, as well as Periodic', async () => {
+    for (const mode of ['always-connected', 'while-open'] as const) {
+      const { client } = harness({
+        account: ACCOUNT,
+        deliveryMode: mode,
+        networkStatus: 'connected',
+      })
+      await drain()
+      expect(client.clearPushToken, mode).toHaveBeenCalledTimes(1)
+      expect(client.setPushToken, mode).not.toHaveBeenCalled()
+    }
+  })
+
   it('sends again when the service issues a new token', async () => {
     const { client, tokenChanged } = harness({
       account: ACCOUNT,
-      notificationMode: 'fast',
+      deliveryMode: 'instant',
       networkStatus: 'connected',
     })
     await drain()
@@ -95,7 +108,7 @@ describe('keeping the push subscription in step with the notification mode', () 
   it('tries again when the network comes back after a refusal', async () => {
     const { store, client, log } = harness({
       account: ACCOUNT,
-      notificationMode: 'fast',
+      deliveryMode: 'instant',
       networkStatus: 'connected',
     })
     client.setPushToken.mockRejectedValueOnce(new Error('no network or no account'))
@@ -111,7 +124,7 @@ describe('keeping the push subscription in step with the notification mode', () 
   it('ignores changes that decide nothing, such as a new message', async () => {
     const { store, tokenOf } = harness({
       account: ACCOUNT,
-      notificationMode: 'fast',
+      deliveryMode: 'instant',
       networkStatus: 'connected',
     })
     await drain()

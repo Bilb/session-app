@@ -3,6 +3,7 @@ import {
   memoryPorts,
   resolveBuildVariant,
   setPorts,
+  type DeliveryModeOffer,
   type MediaPort,
 } from '@session/app'
 import { mediaUrl } from '@session/app/mediaUrl'
@@ -116,6 +117,34 @@ async function diagnosticsSnapshot(): Promise<DiagnosticsSnapshot> {
 }
 
 /**
+ * The delivery modes this build offers. Always connected is Android's: iOS lets no app keep a
+ * connection open in the background.
+ *
+ * Instant needs a token source, which exists only where the build registered a push service with
+ * the device at startup -- on Android, also a device that has that service (Play Services or
+ * microG, HMS Core). Without one it is the build's doing when the variant names no push service,
+ * and the device's when it does.
+ */
+function deliveryModes(): DeliveryModeOffer[] {
+  const instant: DeliveryModeOffer = {
+    mode: 'instant',
+    unavailable:
+      pushTokens !== null
+        ? null
+        : VARIANT_TRAITS[VARIANT].pushService === null
+          ? 'build'
+          : 'device',
+  }
+  const background: DeliveryModeOffer[] = [
+    { mode: 'periodic', unavailable: null },
+    { mode: 'while-open', unavailable: null },
+  ]
+  return Platform.OS === 'android'
+    ? [instant, { mode: 'always-connected', unavailable: null }, ...background]
+    : [instant, ...background]
+}
+
+/**
  * The mobile app's OS ports.
  *
  * Real where a screen has arrived that needs it, and a memory implementation everywhere else.
@@ -145,9 +174,7 @@ const ports = memoryPorts({
     // a tablet as well as a phone: it is the OS that decides this, not the screen size.
     notificationModesApply: true,
     pushTokens,
-    // A source exists only where the build registered a push service with the device at startup,
-    // which on Android also means the device has that service (Play Services, or microG).
-    fastModeAvailable: pushTokens !== null,
+    deliveryModes: deliveryModes(),
     pushService: VARIANT_TRAITS[VARIANT].pushService,
     requestPermission: () => Promise.resolve(true),
     show: () => Promise.resolve(),

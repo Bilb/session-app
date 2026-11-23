@@ -25,12 +25,12 @@ export {
 } from './hooks'
 export { classifyStartupFailure, isClearable } from './startupFailure'
 export type { StartupFailureKind } from './startupFailure'
-export { emptyState, transferKey } from './types'
+export { DELIVERY_MODES, emptyState, transferKey } from './types'
 export type {
   AttachmentTransferState,
   MessageTransfers,
   MessageWindow,
-  NotificationMode,
+  DeliveryMode,
   SessionState,
   StoredAppearance,
 } from './types'

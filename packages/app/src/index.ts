@@ -34,6 +34,7 @@ export type {
   MediaPort,
   MediaProbePort,
   NotificationsPort,
+  DeliveryModeOffer,
   PushToken,
   PushTokenSource,
   PickedFile,

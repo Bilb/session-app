@@ -1,6 +1,7 @@
 import type { NetworkName, QrMark, WithSpan } from '@session/basic-types'
 import type { AttachmentRef, PixelSize, PushService } from '@session/client'
 import type { BuildFacts, DiagnosticsSnapshot, ExportPart, LogFileInfo } from '@session/logging'
+import type { DeliveryMode } from '@session/state'
 
 import type { BuildVariant } from './buildVariant'
 /**
@@ -168,19 +169,28 @@ export interface PushTokenSource {
   onChange(listener: () => void): () => void
 }
 
+/** One delivery mode as the platform offers it. */
+export interface DeliveryModeOffer {
+  mode: DeliveryMode
+  /**
+   * Why the mode cannot be used, or null when it can: `build` when this build leaves it out (no
+   * push service in an F-Droid build), `device` when the device lacks what it needs (no Play
+   * services).
+   */
+  unavailable: 'build' | 'device' | null
+}
+
 export interface NotificationsPort {
   /**
-   * Whether this build has a push service behind it.
+   * The delivery modes this platform offers, in the order they are listed, each with whether it can
+   * be used here. Empty where `notificationModesApply` is false.
    *
-   * Onboarding asks which of two notification modes to use, and marks the push one either
-   * `recommended` or `unavailable`. Which of those it is depends on how the build was assembled --
-   * a Play build has FCM, an F-Droid or web-download build does not, and desktop has neither --
-   * so it is answered at the app edge rather than guessed at from the platform.
-   *
-   * False everywhere today: there is no push service wired up on any of the three. It turns true
-   * per build as one arrives.
+   * A mode that cannot be used stays in the list, marked, rather than being dropped: Instant is the
+   * recommended choice wherever it exists, and leaving it out makes the others look like the only
+   * design rather than the fallback. Which modes there are, and whether each works, depends on how
+   * the build was assembled and on the device, so it is answered at the app edge.
    */
-  readonly fastModeAvailable: boolean
+  readonly deliveryModes: readonly DeliveryModeOffer[]
   /**
    * Which push service fast mode would use.
    *
@@ -208,7 +218,7 @@ export interface NotificationsPort {
   readonly notificationModesApply: boolean
   /**
    * Where fast mode gets its push token: null where this build has no push service behind it,
-   * which is also when `fastModeAvailable` is false. See `PushTokenSource`.
+   * which is also when Instant is unavailable. See `PushTokenSource`.
    */
   readonly pushTokens: PushTokenSource | null
   requestPermission(): Promise<boolean>

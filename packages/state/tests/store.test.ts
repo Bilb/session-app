@@ -212,6 +212,42 @@ describe('the switched feature flags', () => {
   })
 })
 
+describe('the delivery mode', () => {
+  function alice() {
+    const { clients } = friends(['Alice', 'Bob'])
+    const client = clients['Alice']
+    if (!client) throw new Error('fixture did not produce a client')
+    return { client, store: createSessionStore(client) }
+  }
+
+  it('is stored on the device and read back', async () => {
+    const { client, store } = alice()
+    await store.actions.hydrate()
+    expect(store.getState().deliveryMode).toBeNull()
+
+    await store.actions.setDeliveryMode('while-open')
+    const next = createSessionStore(client)
+    await next.actions.hydrate()
+    expect(next.getState().deliveryMode).toBe('while-open')
+  })
+
+  it('reads what builds with two modes stored as the modes they meant, and nothing else', async () => {
+    const { client, store } = alice()
+    await store.actions.hydrate()
+    for (const [stored, read] of [
+      ['fast', 'instant'],
+      ['slow', 'periodic'],
+      ['always-connected', 'always-connected'],
+      ['loud', null],
+    ] as const) {
+      await client.setPref('notifications.mode', stored)
+      const next = createSessionStore(client)
+      await next.actions.hydrate()
+      expect(next.getState().deliveryMode, stored).toBe(read)
+    }
+  })
+})
+
 describe('the recovery password', () => {
   function alice() {
     const { world, clients } = friends(['Alice', 'Bob'])
