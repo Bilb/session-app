@@ -15,9 +15,16 @@ repo=$(cd "$here/../../.." && pwd)
 out=${CATALOG_OUT:-$repo/test-results/catalog}
 media=${SESSION_FAKE_MEDIA_DIR:-$HOME/.cache/session-app/dev-media}
 
-# Run by the ID this build printed: another job on this host's daemon can retag session-catalog
-# from its own Dockerfile in between.
-image=$(docker build --quiet --tag session-catalog "$here")
+# CATALOG_IMAGE: one already pulled or built. Otherwise a tag of its own: a concurrent build on the
+# same daemon can take a shared tag, and the ID it named can vanish before docker run. --force: a
+# cancelled job's container can outlive this script and hold it.
+if [ -n "${CATALOG_IMAGE:-}" ]; then
+  image=$CATALOG_IMAGE
+else
+  image=session-catalog:$$-$RANDOM
+  docker build --quiet --tag "$image" "$here" >/dev/null
+  trap 'docker image rm --force "$image" >/dev/null || true' EXIT
+fi
 # Made here, so the container's user owns nothing the host cannot clean up.
 mkdir -p "$out"
 
@@ -29,7 +36,7 @@ mkdir -p "$out"
 docker run --rm --init ${CATALOG_CGROUP_PARENT:+--cgroup-parent "$CATALOG_CGROUP_PARENT"} \
   --user "$(id -u):$(id -g)" \
   --ulimit core=0 \
-  --env HOME=/tmp/home --env COREPACK_HOME=/tmp/corepack \
+  --env HOME=/tmp/home \
   --env CATALOG_TIER="${CATALOG_TIER:-pr}" --env CATALOG_OUT=/out \
   --env CATALOG_SHARDS --env CATALOG_PAGES \
   --env SESSION_FAKE_MEDIA_DIR=/media \
