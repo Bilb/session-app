@@ -169,6 +169,19 @@ export interface PushTokenSource {
   onChange(listener: () => void): () => void
 }
 
+/**
+ * Whether this install has subscribed for pushes, kept where an uninstall always removes it.
+ *
+ * libsession keeps the subscription it last sent in the database and sends nothing while it still
+ * matches. On iOS the database can be in the app group, which can outlive the app: a reinstall
+ * then finds a matching record for a subscription the push server may have dropped, and gets no
+ * pushes until the record is a day old. So the first subscription of an install is forced.
+ */
+export interface PushInstallMarker {
+  subscribed(): boolean
+  markSubscribed(): void
+}
+
 /** Android's notification channels, whose sound and vibration are set in Android's settings. */
 export type NotificationChannel = 'messages' | 'requests' | 'calls'
 
@@ -224,6 +237,8 @@ export interface NotificationsPort {
    * which is also when Instant is unavailable. See `PushTokenSource`.
    */
   readonly pushTokens: PushTokenSource | null
+  /** Null where there is no push service. See `PushInstallMarker`. */
+  readonly pushInstallMarker: PushInstallMarker | null
   /**
    * Whether a notification makes its sound while the app is in front, until somebody chooses. On
    * for both phones, though legacy iOS has it off.

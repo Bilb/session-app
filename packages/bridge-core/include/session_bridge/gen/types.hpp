@@ -1525,14 +1525,19 @@ struct EnumTraits<PushService> {
 ///
 /// Answers `bool`: true when a request went out and was accepted, false when nothing needed
 /// sending. Refused without a network or an account.
+///
+/// `force` sends whatever is stored. A reinstall on iOS can keep the database, which lives in the
+/// app group, while the push server has dropped the subscription; the stored one then matches
+/// and nothing would be sent for up to a day.
 struct SetPushTokenCommand {
     static constexpr std::string_view type_tag = "setPushToken";
 
     ::session_bridge::PushService service;
     std::string token;
+    std::optional<bool> force;
 
-    SetPushTokenCommand(::session_bridge::PushService service_, std::string token_) :
-            service{std::move(service_)}, token{std::move(token_)} {}
+    SetPushTokenCommand(::session_bridge::PushService service_, std::string token_, std::optional<bool> force_) :
+            service{std::move(service_)}, token{std::move(token_)}, force{std::move(force_)} {}
 };
 
 /// Removes this device's push subscription, as when somebody switches to slow mode. Answers `ok`

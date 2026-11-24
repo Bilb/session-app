@@ -27,7 +27,7 @@ import { attachmentsBytes, databaseSizes } from './storageSizes'
 import { readDatabaseKey, writeDatabaseKey } from './storage/databaseKey'
 import { SecureScreen } from './secureScreen'
 import { plainPath } from './storage/layout'
-import { exportsDirectory, File } from './storage/roots'
+import { exportsDirectory, File, pushInstallMarker } from './storage/roots'
 import { sweepStaged } from './storage/staging'
 
 /** The name the share sheet offers for a QR code. */
@@ -175,6 +175,7 @@ const ports = memoryPorts({
     // a tablet as well as a phone: it is the OS that decides this, not the screen size.
     notificationModesApply: true,
     pushTokens,
+    pushInstallMarker,
     ...notificationSettings,
     deliveryModes: deliveryModes(),
     pushService: VARIANT_TRAITS[VARIANT].pushService,
