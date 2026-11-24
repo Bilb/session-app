@@ -9,7 +9,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 
 build() {
   echo "Building $IMAGE: $1"
-  docker build --quiet --tag "$IMAGE" "$here" >/dev/null
+  docker build --quiet --tag "$IMAGE" "$here/image" >/dev/null
 }
 
 if [ "${FORK:-false}" = true ]; then

@@ -336,7 +336,7 @@ width), and that decides which extra pages it gets. The `pr` tier draws two them
 accent with the forced states, plus one unforced page in every accent for a story that draws the
 accent; `nightly` draws every theme and accent, every night. The desktop app opens the catalog instead of the app under the
 `componentCatalog` flag; `catalog.spec.ts` captures each page and runs axe over it, inside the image
-`tests/e2e/catalog/Dockerfile` pins (fonts, fontconfig, the libraries Electron draws with) so a
+`tests/e2e/catalog/image/Dockerfile` pins (fonts, fontconfig, the libraries Electron draws with) so a
 capture is the same on any Linux x86_64 host, and the `catalog` workflow uploads the captures to Argos.
 A capture paints only what lies inside the window, so each page is laid out in a 3000x2400 window
 and the window then grows to hold the page, the height alone unless the page is wider too

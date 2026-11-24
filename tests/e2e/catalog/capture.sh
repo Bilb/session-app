@@ -22,7 +22,7 @@ if [ -n "${CATALOG_IMAGE:-}" ]; then
   image=$CATALOG_IMAGE
 else
   image=session-catalog:$$-$RANDOM
-  docker build --quiet --tag "$image" "$here" >/dev/null
+  docker build --quiet --tag "$image" "$here/image" >/dev/null
   trap 'docker image rm --force "$image" >/dev/null || true' EXIT
 fi
 # Made here, so the container's user owns nothing the host cannot clean up.

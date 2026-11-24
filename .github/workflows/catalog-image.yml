@@ -1,13 +1,12 @@
 name: catalog-image
 
-# The catalog's capture image, tagged by a hash of the files it is built from: catalog.yml pulls the
-# tag its own checkout names, and builds the image itself while that tag is not published.
+# The catalog's capture image, tagged by a hash of its build context, tests/e2e/catalog/image:
+# catalog.yml pulls the tag its own checkout names, and builds the image while it is not published.
 on:
   push:
     branches: [main]
     paths:
-      - tests/e2e/catalog/Dockerfile
-      - tests/e2e/catalog/fonts.conf
+      - tests/e2e/catalog/image/**
       - .github/workflows/catalog-image.yml
   # A publish that failed is otherwise not retried until the next change to the image.
   workflow_dispatch:
@@ -31,7 +30,7 @@ jobs:
       # A tag already published is left as it is: a capture may be pulling it.
       - id: tag
         run: |
-          image=ghcr.io/${{ github.repository_owner }}/session-catalog-capture:${{ hashFiles('tests/e2e/catalog/Dockerfile', 'tests/e2e/catalog/fonts.conf') }}
+          image=ghcr.io/${{ github.repository_owner }}/session-catalog-capture:${{ hashFiles('tests/e2e/catalog/image/**') }}
           echo "image=$image" >> "$GITHUB_OUTPUT"
           if docker manifest inspect "$image" > /dev/null 2>&1; then echo "published=true" >> "$GITHUB_OUTPUT"; fi
       - if: steps.tag.outputs.published != 'true'
@@ -39,6 +38,6 @@ jobs:
       - if: steps.tag.outputs.published != 'true'
         uses: docker/build-push-action@v7
         with:
-          context: tests/e2e/catalog
+          context: tests/e2e/catalog/image
           push: true
           tags: ${{ steps.tag.outputs.image }}

@@ -44,7 +44,7 @@ jobs:
       # joins it. Every descriptor is redirected, or the step waits for the fetch to close its output.
       - name: Fetch the capture image
         env:
-          IMAGE: ghcr.io/${{ github.repository_owner }}/session-catalog-capture:${{ hashFiles('tests/e2e/catalog/Dockerfile', 'tests/e2e/catalog/fonts.conf') }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/session-catalog-capture:${{ hashFiles('tests/e2e/catalog/image/**') }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository && github.event_name == 'pull_request' }}
         run: |
@@ -102,7 +102,7 @@ jobs:
             exit 1
           fi
 
-      # In the pinned image: see tests/e2e/catalog/Dockerfile.
+      # In the pinned image: see tests/e2e/catalog/image/Dockerfile.
       - id: capture
         run: pnpm --filter @session/e2e test:catalog
 
