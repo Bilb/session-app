@@ -4,7 +4,7 @@ name: catalog-image
 # catalog.yml pulls the tag its own checkout names, and builds the image while it is not published.
 on:
   push:
-    branches: [main]
+    branches: [trial/catalog-publish]
     paths:
       - tests/e2e/catalog/image/**
       - .github/workflows/catalog-image.yml
@@ -15,7 +15,6 @@ permissions: {}
 
 jobs:
   publish:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
