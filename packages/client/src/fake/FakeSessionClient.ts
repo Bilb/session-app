@@ -1,23 +1,31 @@
 import { isHex64, isIpv4, isPort } from '@session/basic-types'
 
 import { BridgeClosedError, SessionClientError } from '../errors'
-import type {
-  AccountInfo,
-  AttachmentRef,
-  AutoDownload,
-  ConfigSize,
-  Conversation,
-  ConversationId,
-  Deletion,
-  ExportAttachmentOptions,
-  MessageCursor,
-  NetworkPaths,
-  NetworkStatus,
-  SendPlan,
-  SessionEvent,
+import {
+  MESSAGE_NOT_FOUND,
+  type AccountInfo,
+  type AttachmentRef,
+  type AutoDownload,
+  type ConfigSize,
+  type Conversation,
+  type ConversationId,
+  type Deletion,
+  type ExportAttachmentOptions,
+  type Message,
+  type MessageCursor,
+  type NetworkPaths,
+  type NetworkStatus,
+  type SendPlan,
+  type SessionEvent,
 } from '@session/bridge-types'
 
-import type { MessagePage, NetworkAttachment, OutgoingMessage, SessionClient } from '../types'
+import type {
+  MessagePage,
+  MessagePageOptions,
+  NetworkAttachment,
+  OutgoingMessage,
+  SessionClient,
+} from '../types'
 import { FAKE_UPLOAD_LIMIT_BYTES } from './sendPlan'
 import type { FakeAccount, FakeStagedFiles, FakeWorld, LocatedAttachment } from './world'
 
@@ -54,6 +62,11 @@ function networkRefusal(config: NetworkAttachment): string | undefined {
   }
 
   return undefined
+}
+
+/** History's order: by timestamp, then id, so messages sharing a timestamp keep one order. */
+function compareToCursor(message: Message, cursor: MessageCursor): number {
+  return message.timestamp - cursor.timestamp || message.id - cursor.id
 }
 
 /**
@@ -346,34 +359,72 @@ export class FakeSessionClient implements SessionClient {
     return Promise.resolve()
   }
 
-  getMessages(
-    id: ConversationId,
-    options?: { limit?: number; before?: MessageCursor; includeDeleted?: boolean },
-  ): Promise<MessagePage> {
+  getMessages(id: ConversationId, options: MessagePageOptions = {}): Promise<MessagePage> {
     this.assertOpen()
+    const { limit = 50, before, after, around } = options
     // A limit is a page size, not a sentinel: there is no value meaning "all of it", because
     // history grows without bound.
-    if (options?.limit !== undefined && options.limit <= 0) {
+    if (limit <= 0) {
       return Promise.reject(new SessionClientError('getMessages.limit must be greater than zero'))
     }
+    if ([before, after, around].filter((position) => position !== undefined).length > 1) {
+      return Promise.reject(
+        new SessionClientError('getMessages takes one of before, after and around'),
+      )
+    }
+    const stored = this.account.messages(id)
     // Deleted rows are dropped before the limit is applied, as libsession drops them in the
     // query: filtering a page after the fact would hand back short pages with nothing to say
-    // that another page is warranted.
-    const all = options?.includeDeleted
-      ? this.account.messages(id)
-      : this.account.messages(id).filter((m) => m.deleted === undefined)
-    const before = options?.before
-    const older = before
-      ? all.filter(
-          (m) =>
-            m.timestamp < before.timestamp ||
-            (m.timestamp === before.timestamp && m.id < before.id),
+    // that another page is warranted. The flags count the same rows.
+    const visible = options.includeDeleted ? stored : stored.filter((m) => m.deleted === undefined)
+    const page = (
+      messages: Message[],
+      hasNewer: boolean,
+      hasOlder: boolean,
+    ): Promise<MessagePage> =>
+      Promise.resolve({ messages: this.account.withAvailability(messages), hasNewer, hasOlder })
+
+    if (around !== undefined) {
+      // Placed by the message even when it is deleted and so not in the page.
+      const target = stored.find((m) => m.id === around)
+      if (target === undefined) {
+        return Promise.reject(
+          new SessionClientError(`message ${String(around)} does not exist`, MESSAGE_NOT_FOUND),
         )
-      : all
-    const limit = options?.limit ?? 50
-    // Newest-first paging, returned oldest-first so a transcript can render it directly.
-    const messages = older.slice(Math.max(0, older.length - limit))
-    return Promise.resolve({ messages: this.account.withAvailability(messages) })
+      }
+      const newer = visible.filter((m) => compareToCursor(m, target) >= 0)
+      const older = visible.filter((m) => compareToCursor(m, target) < 0).reverse()
+      // Half older and half newer, an even limit's spare row newer; a short side gives its share
+      // to the other.
+      let wantOlder = Math.floor((limit - 1) / 2)
+      let wantNewer = limit - wantOlder
+      if (newer.length < wantNewer) wantOlder = limit - newer.length
+      else if (older.length < wantOlder) wantNewer = limit - older.length
+      wantOlder = Math.min(wantOlder, older.length)
+      wantNewer = Math.min(wantNewer, newer.length)
+      return page(
+        [...older.slice(0, wantOlder).reverse(), ...newer.slice(0, wantNewer)],
+        newer.length > wantNewer,
+        older.length > wantOlder,
+      )
+    }
+
+    if (after !== undefined) {
+      const newer = visible.filter((m) => compareToCursor(m, after) > 0)
+      return page(
+        newer.slice(0, limit),
+        newer.length > limit,
+        visible.some((m) => compareToCursor(m, after) < 0),
+      )
+    }
+
+    const older =
+      before === undefined ? visible : visible.filter((m) => compareToCursor(m, before) < 0)
+    return page(
+      older.slice(Math.max(0, older.length - limit)),
+      before !== undefined && visible.some((m) => compareToCursor(m, before) > 0),
+      older.length > limit,
+    )
   }
 
   downloadAttachment(messageId: number, index: number): Promise<void> {

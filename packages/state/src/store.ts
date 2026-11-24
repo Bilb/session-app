@@ -4,18 +4,21 @@ import type {
   ConfigSize,
   ConversationId,
   Message,
+  MessagePage,
   NetworkPaths,
   OutgoingMessage,
   SendPlan,
   SessionClient,
 } from '@session/client'
-import { SessionClientError } from '@session/client'
+import { MESSAGE_NOT_FOUND, SessionClientError } from '@session/client'
 import { createStore, type StoreApi } from 'zustand/vanilla'
 
 import { applyEvent, mergePages, recordRefusal, withoutHistory } from './applyEvent'
 import { classifyStartupFailure, type StartupFailureKind } from './startupFailure'
 import {
   emptyState,
+  emptyWindow,
+  MAX_JUMPS,
   type ListName,
   type MessageWindow,
   type SessionState,
@@ -127,9 +130,54 @@ export interface SessionActions {
    * what loses a change that lands in the gap.
    */
   hydrate: () => Promise<void>
+  /**
+   * Reads the newest page into a window that has none. A read that fails is logged and marks the
+   * window `firstPageFailed` rather than rejecting.
+   */
   loadHistory: (id: ConversationId) => Promise<void>
+  /**
+   * The page before the window's oldest message, joined to it; nothing while one is out. A read
+   * that fails is logged and marks the window `olderPageFailed` rather than rejecting.
+   */
   loadOlder: (id: ConversationId) => Promise<void>
-  /** Rejects, storing nothing, when libsession refuses it: a file that cannot be read, say. */
+  /**
+   * The page after the window's newest message, for a window that does not reach the newest. A
+   * read that fails is logged and marks the window `newerPageFailed` rather than rejecting.
+   */
+  loadNewer: (id: ConversationId) => Promise<void>
+  /**
+   * Puts the reader on a message: `landing` names it, and where the window does not hold it the
+   * window is replaced by one read around it. `from` is the reply whose quote was followed, kept
+   * as the way back.
+   *
+   * `absent`, changing nothing, where the message is not there to land on: deleted, or gone by
+   * the time it is read. `superseded` where a later jump, or leaving the conversation, took the
+   * window while the read was out: it then lands nowhere, and nothing is wrong.
+   */
+  jumpToMessage: (id: ConversationId, messageId: number, from?: number) => Promise<JumpOutcome>
+  /**
+   * Walks back one jump, landing on the reply it started from and reading a window around it
+   * where it is no longer held. A reply deleted since is skipped for the one before it. A read
+   * that fails rejects and keeps the jump, for the next press.
+   */
+  returnFromJump: (id: ConversationId) => Promise<void>
+  /**
+   * Forgets the way back: the latest jump alone, once its reply is back on screen by other means,
+   * or with `all`, every jump, once the reader is back at the newest message.
+   */
+  forgetJumps: (id: ConversationId, which: 'latest' | 'all') => void
+  /**
+   * Replaces a window that does not reach the newest message with the newest page. With
+   * `evenWhenHeld`, a window that does reach it is replaced too, dropping the pages above.
+   */
+  showNewest: (
+    id: ConversationId,
+    options?: { evenWhenHeld?: boolean | undefined },
+  ) => Promise<void>
+  /**
+   * Rejects, storing nothing, when libsession refuses it: a file that cannot be read, say. Once
+   * stored, the window shows the newest page, where the message is, and forgets its jumps.
+   */
   send: (id: ConversationId, message: OutgoingMessage) => Promise<void>
   /** What sending the file at `path` would do with it: whether the composer may stage it. */
   attachmentSendPlan: (path: string, contentType?: string) => Promise<SendPlan>
@@ -245,6 +293,9 @@ export interface SessionActions {
   dispose: () => void
 }
 
+/** How a jump ended. See `SessionActions.jumpToMessage`. */
+export type JumpOutcome = 'landed' | 'absent' | 'superseded'
+
 export type SessionStore = StoreApi<SessionState> & { actions: SessionActions }
 
 /**
@@ -284,6 +335,17 @@ export interface SessionStoreOptions {
 }
 
 const PAGE = 30
+/**
+ * What a conversation opens on: about two screens, so the first draw is short. Every row of it is
+ * drawn before the transcript is shown, and the page before is read once the start is in reach.
+ */
+const FIRST_PAGE = 15
+/**
+ * What a jump reads around the message it lands on: about a page either side, so even a tall
+ * window lands with rows held beyond what it shows, rather than asking for a page each way at
+ * once. Every row of it is drawn again, which on a phone is about 120 ms more than one page.
+ */
+const JUMP_WINDOW = 2 * PAGE
 const LIST_NAMES: readonly ListName[] = ['conversations', 'requests']
 
 export function createSessionStore(
@@ -337,6 +399,46 @@ export function createSessionStore(
     }
   }
 
+  // A read is the window's only while nothing has replaced or forgotten that window since it was
+  // asked for: a page landing after a forget or a history-replaced must not bring the window back,
+  // even when a new load for the same id has started since (StrictMode's mount, cleanup, mount),
+  // and a page read beside one window must not be joined to the next.
+  const generations = new Map<ConversationId, number>()
+  const generationOf = (id: ConversationId): number => generations.get(id) ?? 0
+  /** Makes every read still out for `id` land nowhere, and answers the generation after them. */
+  function supersede(id: ConversationId): number {
+    const next = generationOf(id) + 1
+    generations.set(id, next)
+    return next
+  }
+
+  /** Per conversation, one map per read of its history that is out: what was announced since. */
+  const heardDuringReads = new Map<ConversationId, Set<Map<number, Message>>>()
+
+  /**
+   * Runs a read of a conversation's history, then applies again every message announced while it
+   * was out. A message stored after the read executed is not in its page, and one past the end of
+   * a window that does not reach the newest message, or of no window yet, was turned away by
+   * `applyEvent`: once the page has landed, the window decides afresh where each belongs. Every
+   * event carries a whole message, so applying one twice is harmless.
+   */
+  async function whileReading<T>(id: ConversationId, read: () => Promise<T>): Promise<T> {
+    const heard = new Map<number, Message>()
+    const reads = heardDuringReads.get(id) ?? new Set()
+    reads.add(heard)
+    heardDuringReads.set(id, reads)
+    try {
+      return await read()
+    } finally {
+      reads.delete(heard)
+      if (reads.size === 0) heardDuringReads.delete(id)
+      if (heard.size > 0) {
+        const messages = [...heard.values()]
+        store.setState((state) => applyEvent(state, { type: 'messages-updated', messages }))
+      }
+    }
+  }
+
   const unsubscribe = client.onEvent((event) => {
     // libsession's own logging, when the bridge was asked for it. Passed straight through
     // rather than stored: it is not state, and it is the only place the *reason* for a send
@@ -345,40 +447,136 @@ export function createSessionStore(
       options.libsessionLog?.(event.level, event.category, event.message)
       return
     }
+    if (event.type === 'messages-added' || event.type === 'messages-updated') {
+      for (const message of event.messages)
+        for (const heard of heardDuringReads.get(message.conversationId) ?? [])
+          heard.set(message.id, message)
+    }
+    // The window is dropped and read again: a page read before it may hold messages deleted since,
+    // or leave a hole joined to the new one.
+    if (event.type === 'history-replaced') supersede(event.conversationId)
     store.setState((state) => applyEvent(state, event))
     // Before the first read a placement has nothing to land on, and that read clears it.
     if (store.getState().hydrated) rereadListsOutOfStep()
   })
 
-  // A page that lands after its window was forgotten must not bring it back, even when a new load
-  // for the same id has started since (StrictMode's mount, cleanup, mount).
-  const forgotten = new Map<ConversationId, number>()
-  const generationOf = (id: ConversationId): number => forgotten.get(id) ?? 0
+  let landings = 0
 
   function patchWindow(id: ConversationId, patch: Partial<MessageWindow>): void {
+    store.setState((state) => ({
+      histories: {
+        ...state.histories,
+        [id]: { ...(state.histories[id] ?? emptyWindow), ...patch },
+      },
+    }))
+  }
+
+  /** The jumps with one more, and the landing it made. */
+  function landed(jumps: readonly number[], messageId: number, from?: number) {
+    landings += 1
+    return {
+      landing: { messageId, serial: landings },
+      jumps: from === undefined ? jumps : [...jumps, from].slice(-MAX_JUMPS),
+    }
+  }
+
+  /**
+   * The window as a page read it, in place of whatever was held, keeping the jumps. With `land`,
+   * the landing is part of the same update: a screen never sees the new window without it.
+   */
+  function replaceWindow(
+    id: ConversationId,
+    page: MessagePage,
+    land?: { messageId: number; from: number | undefined },
+  ): void {
     store.setState((state) => {
-      const current: MessageWindow = state.histories[id] ?? {
-        ready: false,
-        messages: [],
-        exhausted: false,
+      const previous = state.histories[id] ?? emptyWindow
+      const kept = new Set(page.messages.map((m) => m.id))
+      const window: MessageWindow = {
+        ready: true,
+        messages: page.messages,
+        hasOlder: page.hasOlder,
+        hasNewer: page.hasNewer,
         fetching: false,
+        firstPageFailed: false,
+        fetchingOlder: false,
+        olderPageFailed: false,
+        fetchingNewer: false,
+        newerPageFailed: false,
+        jumps: previous.jumps,
+        ...(land === undefined ? {} : landed(previous.jumps, land.messageId, land.from)),
       }
-      return { histories: { ...state.histories, [id]: { ...current, ...patch } } }
+      return {
+        histories: { ...state.histories, [id]: window },
+        transfers: withoutHistory(
+          state.transfers,
+          previous.messages.filter((m) => !kept.has(m.id)),
+        ),
+      }
     })
   }
 
-  function windowFrom(messages: Message[], previous: Message[] = []): Partial<MessageWindow> {
-    const all = mergePages(messages, previous)
-    const oldest = all[0]
+  function land(id: ConversationId, messageId: number, from?: number): void {
+    patchWindow(id, landed(store.getState().histories[id]?.jumps ?? [], messageId, from))
+  }
+
+  /**
+   * Makes every read still out for `id` land nowhere, ahead of one that may replace the window.
+   * `resume` asks again for the pages that were on their way, for when that read leaves the window
+   * as it was: their ends would otherwise wait for a scroll, with no Retry row to press.
+   */
+  function interruptPaging(id: ConversationId): { generation: number; resume: () => void } {
+    const window = store.getState().histories[id]
+    const older = window?.fetchingOlder === true
+    const newer = window?.fetchingNewer === true
+    const generation = supersede(id)
+    patchWindow(id, { fetchingOlder: false, fetchingNewer: false })
     return {
-      ready: true,
-      fetching: false,
-      messages: all,
-      exhausted: messages.length < PAGE,
-      ...(oldest === undefined
-        ? {}
-        : { oldestCursor: { timestamp: oldest.timestamp, id: oldest.id } }),
+      generation,
+      resume: () => {
+        if (generationOf(id) !== generation) return
+        // Each logs and marks its own failure.
+        if (older) void actions.loadOlder(id)
+        if (newer) void actions.loadNewer(id)
+      },
     }
+  }
+
+  /** Lands on a message, reading a window around it where the one held lacks it. */
+  async function reveal(
+    id: ConversationId,
+    messageId: number,
+    from?: number,
+  ): Promise<JumpOutcome> {
+    const window = store.getState().histories[id]
+    if (window?.ready !== true) return 'superseded'
+    const held = window.messages.find((m) => m.id === messageId)
+    if (held !== undefined) {
+      if (held.deleted !== undefined) return 'absent'
+      land(id, messageId, from)
+      return 'landed'
+    }
+    const { generation, resume } = interruptPaging(id)
+    return whileReading(id, async (): Promise<JumpOutcome> => {
+      let page: MessagePage
+      try {
+        page = await client.getMessages(id, { limit: JUMP_WINDOW, around: messageId })
+      } catch (error) {
+        resume()
+        // Purged since the reply was drawn: not there to land on, as a deleted one is not.
+        if (error instanceof SessionClientError && error.code === MESSAGE_NOT_FOUND)
+          return generationOf(id) === generation ? 'absent' : 'superseded'
+        throw error
+      }
+      if (generationOf(id) !== generation) return 'superseded'
+      // A deleted message places the window and is left out of it.
+      if (!page.messages.some((m) => m.id === messageId)) {
+        resume()
+        return 'absent'
+      }
+      replaceWindow(id, page, { messageId, from })
+      return 'landed'
+    })
   }
 
   /**
@@ -589,26 +787,130 @@ export function createSessionStore(
     async loadHistory(id): Promise<void> {
       const existing = store.getState().histories[id]
       if (existing?.fetching) return
-      patchWindow(id, { fetching: true })
+      patchWindow(id, { fetching: true, firstPageFailed: false })
       const generation = generationOf(id)
-      const page = await client.getMessages(id, { limit: PAGE })
-      if (generationOf(id) !== generation) return
-      patchWindow(id, windowFrom(page.messages))
+      await whileReading(id, async () => {
+        let page: MessagePage
+        try {
+          page = await client.getMessages(id, { limit: FIRST_PAGE })
+        } catch (error) {
+          log('warn', 'session', `could not read a conversation's first page: ${String(error)}`)
+          if (generationOf(id) === generation)
+            patchWindow(id, { fetching: false, firstPageFailed: true })
+          return
+        }
+        if (generationOf(id) !== generation) return
+        replaceWindow(id, page)
+      })
     },
 
     async loadOlder(id): Promise<void> {
       const window = store.getState().histories[id]
-      if (!window || window.fetching || window.exhausted || !window.oldestCursor) return
+      const oldest = window?.messages[0]
+      if (!window?.ready || window.fetchingOlder || !window.hasOlder || oldest === undefined) return
 
-      patchWindow(id, { fetching: true })
+      patchWindow(id, { fetchingOlder: true, olderPageFailed: false })
       const generation = generationOf(id)
-      const page = await client.getMessages(id, { limit: PAGE, before: window.oldestCursor })
-      if (generationOf(id) !== generation) return
-      patchWindow(id, windowFrom(page.messages, store.getState().histories[id]?.messages ?? []))
+      await whileReading(id, async () => {
+        let page: MessagePage
+        try {
+          page = await client.getMessages(id, {
+            limit: PAGE,
+            before: { timestamp: oldest.timestamp, id: oldest.id },
+          })
+        } catch (error) {
+          log('warn', 'session', `could not read an older page: ${String(error)}`)
+          // Free to ask again: a flag left set would end paging for as long as the window lives.
+          if (generationOf(id) === generation)
+            patchWindow(id, { fetchingOlder: false, olderPageFailed: true })
+          return
+        }
+        if (generationOf(id) !== generation) return
+        patchWindow(id, {
+          fetchingOlder: false,
+          hasOlder: page.hasOlder,
+          messages: mergePages(page.messages, store.getState().histories[id]?.messages ?? []),
+        })
+      })
+    },
+
+    async loadNewer(id): Promise<void> {
+      const window = store.getState().histories[id]
+      const newest = window?.messages[window.messages.length - 1]
+      if (!window?.ready || window.fetchingNewer || !window.hasNewer || newest === undefined) return
+
+      patchWindow(id, { fetchingNewer: true, newerPageFailed: false })
+      const generation = generationOf(id)
+      await whileReading(id, async () => {
+        let page: MessagePage
+        try {
+          page = await client.getMessages(id, {
+            limit: PAGE,
+            after: { timestamp: newest.timestamp, id: newest.id },
+          })
+        } catch (error) {
+          log('warn', 'session', `could not read a newer page: ${String(error)}`)
+          if (generationOf(id) === generation)
+            patchWindow(id, { fetchingNewer: false, newerPageFailed: true })
+          return
+        }
+        if (generationOf(id) !== generation) return
+        patchWindow(id, {
+          fetchingNewer: false,
+          hasNewer: page.hasNewer,
+          messages: mergePages(store.getState().histories[id]?.messages ?? [], page.messages),
+        })
+      })
+    },
+
+    jumpToMessage(id, messageId, from): Promise<JumpOutcome> {
+      return reveal(id, messageId, from)
+    },
+
+    async returnFromJump(id): Promise<void> {
+      for (;;) {
+        const jumps = store.getState().histories[id]?.jumps ?? []
+        const reply = jumps[jumps.length - 1]
+        if (reply === undefined) return
+        const rest = jumps.slice(0, -1)
+        patchWindow(id, { jumps: rest })
+        let outcome: JumpOutcome
+        try {
+          outcome = await reveal(id, reply)
+        } catch (error) {
+          log('warn', 'session', `could not walk back from a jump: ${String(error)}`)
+          // Kept for the next press, unless the way back has changed since.
+          if (store.getState().histories[id]?.jumps === rest) patchWindow(id, { jumps })
+          throw error
+        }
+        // Deleted since: on to the reply before it. Anything else ends the walk.
+        if (outcome !== 'absent') return
+      }
+    },
+
+    forgetJumps(id, which): void {
+      const jumps = store.getState().histories[id]?.jumps ?? []
+      if (jumps.length === 0) return
+      patchWindow(id, { jumps: which === 'all' ? [] : jumps.slice(0, -1) })
+    },
+
+    async showNewest(id, { evenWhenHeld = false } = {}): Promise<void> {
+      const window = store.getState().histories[id]
+      if (window?.ready !== true || (!window.hasNewer && !evenWhenHeld)) return
+      const { generation, resume } = interruptPaging(id)
+      await whileReading(id, async () => {
+        const page = await client.getMessages(id, { limit: FIRST_PAGE }).catch((error: unknown) => {
+          log('warn', 'session', `could not read the newest page: ${String(error)}`)
+          resume()
+          throw error
+        })
+        if (generationOf(id) !== generation) return
+        replaceWindow(id, page)
+      })
     },
 
     forgetHistory(id): void {
-      forgotten.set(id, generationOf(id) + 1)
+      supersede(id)
       store.setState((state) => {
         const { [id]: dropped, ...histories } = state.histories
         if (dropped === undefined) return state
@@ -621,6 +923,11 @@ export function createSessionStore(
       // it as message-added, so inventing one here would only produce a duplicate to
       // reconcile.
       await client.sendMessage(id, message)
+      if (store.getState().histories[id]?.ready !== true) return
+      patchWindow(id, { jumps: [] })
+      // The message is stored: a read that fails after it must not be reported as a refusal,
+      // which keeps the draft and invites sending it twice. `showNewest` logs it.
+      await actions.showNewest(id).catch(() => undefined)
     },
 
     attachmentSendPlan(path, contentType): Promise<SendPlan> {

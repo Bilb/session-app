@@ -12,7 +12,7 @@ import {
   FOOTER_ACTION_ID,
 } from '@session/expectations'
 import { byId, declared, nodeOf } from '@session/render-tier'
-import { createSessionStore, type SessionStore } from '@session/state'
+import { createSessionStore, emptyWindow, type SessionStore } from '@session/state'
 import { tr } from '@session/localization'
 import { ELEMENT } from '@session/test-ids'
 
@@ -70,7 +70,7 @@ function storeWith(shown: Message): SessionStore {
   const store = createSessionStore(client)
   store.setState({
     histories: {
-      [CONVERSATION]: { ready: true, messages: [shown], exhausted: true, fetching: false },
+      [CONVERSATION]: { ...emptyWindow, ready: true, messages: [shown] },
     },
   })
   return store
@@ -80,9 +80,12 @@ function conversation(): ConversationUi {
   return {
     conversationId: CONVERSATION,
     requestAutoDownloadPrompt: vi.fn(),
+    nameOf: (author) => author,
     openViewer: vi.fn(),
     openSheet: vi.fn(),
     openMenu: vi.fn(),
+    reply: vi.fn(),
+    openQuote: vi.fn(),
   }
 }
 

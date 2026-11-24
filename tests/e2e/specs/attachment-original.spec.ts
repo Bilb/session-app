@@ -6,6 +6,7 @@ import { _electron, expect, test, type ElectronApplication } from '@playwright/t
 import { ELEMENT } from '@session/test-ids'
 
 import { FAKE_LAUNCH_ENV } from '../harness/fakeEnv'
+import { scrollUntilMounted } from '../harness/transcriptScroll'
 
 const repoRoot = join(import.meta.dirname, '../../..')
 
@@ -67,6 +68,8 @@ test('exports a picture sent as the original file instead of opening it @desktop
     const album = page
       .getByTestId(/^message-row-\d+$/)
       .filter({ hasText: 'Two photos sent as the originals' })
+    const screen = page.getByTestId(ELEMENT.conversation.screen).first()
+    await scrollUntilMounted(screen, album)
     await album.scrollIntoViewIfNeeded()
     // Not here yet, so the tap fetches the set, asking first what this chat should fetch alone.
     await album.getByTestId(ELEMENT.conversation.attachmentTile).first().click()
