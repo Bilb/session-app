@@ -18,7 +18,7 @@ type NotificationSettings = Pick<
  * need the notification work iOS has not had yet, so they are null for now and their rows absent.
  */
 export const notificationSettings: NotificationSettings = {
-  soundWhenOpenDefault: false,
+  soundWhenOpenDefault: true,
   notificationsAllowed: null,
   // iOS opens the app's own page in Settings, which is where its notification switches are.
   openSettings: () => {
