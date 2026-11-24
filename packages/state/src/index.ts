@@ -3,6 +3,7 @@ export { createSessionStore } from './store'
 export type { LogLevel, SessionStoreOptions } from './store'
 export type {
   CacheSettings,
+  JumpOutcome,
   NotificationSwitch,
   RecoveryPassword,
   SessionActions,
@@ -21,6 +22,7 @@ export {
   useHydrated,
   useMessage,
   useMessageTransfers,
+  useHeldMessages,
   useMessages,
   useNetworkStatus,
   useRecoveryPasswordHidden,
@@ -30,11 +32,13 @@ export {
   useStartupError,
   useUnreadRequestCount,
 } from './hooks'
+export type { Transcript } from './hooks'
 export { classifyStartupFailure, isClearable } from './startupFailure'
 export type { StartupFailureKind } from './startupFailure'
-export { DELIVERY_MODES, emptyState, transferKey } from './types'
+export { DELIVERY_MODES, emptyState, emptyWindow, MAX_JUMPS, transferKey } from './types'
 export type {
   AttachmentTransferState,
+  Landing,
   MessageTransfers,
   MessageWindow,
   DeliveryMode,

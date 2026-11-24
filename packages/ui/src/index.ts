@@ -85,6 +85,11 @@ export type {
   LanguagePickerTestIDs,
 } from './LanguagePicker.types'
 export { List } from './List'
+export {
+  TranscriptList,
+  type TranscriptListHandle,
+  type TranscriptListProps,
+} from './TranscriptList'
 export type { ListFocusEntry } from './listFocus'
 export { MessageBubble, type MessageBubbleProps } from './MessageBubble'
 export { MESSAGE_FRAME_INSET_PX, MessageFrame, type MessageFrameProps } from './MessageFrame'
@@ -93,6 +98,7 @@ export { type Haptics, HapticsProvider } from './haptics'
 export { replyAction } from './replyAction'
 export { SwipeToReply, type SwipeToReplyProps } from './SwipeToReply'
 export { ScrollToLatest, type ScrollToLatestProps } from './ScrollToLatest'
+export { LANDING_FADE_MS } from './landingMetrics'
 export { MessageQuote, type MessageQuoteProps } from './MessageQuote'
 export {
   quotePreview,

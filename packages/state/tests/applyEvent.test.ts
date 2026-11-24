@@ -2,7 +2,7 @@ import type { Conversation, ListPlacement, Message, SessionEvent } from '@sessio
 import { describe, expect, it } from 'vitest'
 
 import { applyEvent, mergePages, recordRefusal } from '#src/applyEvent'
-import { emptyState, type SessionState } from '#src/types'
+import { emptyState, emptyWindow, type SessionState } from '#src/types'
 
 function conversation(overrides: Partial<Conversation> = {}): Conversation {
   return {
@@ -47,7 +47,7 @@ function loaded(messages: Message[] = [message()]): SessionState {
   return {
     ...emptyState,
     histories: {
-      '05alice': { ready: true, messages, exhausted: true, fetching: false },
+      '05alice': { ...emptyWindow, ready: true, messages },
     },
   }
 }
@@ -143,27 +143,76 @@ describe('applyEvent', () => {
     expect(state.histories['05alice']).toBeUndefined()
   })
 
-  it('puts an added message on the end, rather than deciding where it belongs', () => {
-    const seeded: SessionState = {
+  /** A window of the messages dated 2000 and 3000, which history may go on past either way. */
+  function windowOf(ends: { hasOlder?: boolean; hasNewer?: boolean } = {}): SessionState {
+    return {
       ...emptyState,
       histories: {
         '05alice': {
+          ...emptyWindow,
           ready: true,
-          messages: [message({ id: 1, timestamp: 1000 }), message({ id: 3, timestamp: 3000 })],
-          exhausted: true,
-          fetching: false,
+          messages: [message({ id: 2, timestamp: 2000 }), message({ id: 4, timestamp: 4000 })],
+          ...ends,
         },
       },
     }
+  }
+  const idsAfter = (seeded: SessionState, arrived: Partial<Message>): number[] | undefined =>
+    applyEvent(seeded, { type: 'messages-added', messages: [message(arrived)] }).histories[
+      '05alice'
+    ]?.messages.map((m) => m.id)
 
-    // A timestamp that would sort between the two, to show it is not sorted in: the event
-    // reports what libsession just recorded, and the transcript reads in libsession's order.
+  it('places an added message by its own time, not by when it arrived', () => {
+    expect(idsAfter(windowOf(), { id: 9, timestamp: 3000 })).toEqual([2, 9, 4])
+    expect(idsAfter(windowOf(), { id: 9, timestamp: 5000 })).toEqual([2, 4, 9])
+    expect(idsAfter(windowOf(), { id: 9, timestamp: 1000 })).toEqual([9, 2, 4])
+  })
+
+  it('orders messages sharing a timestamp by id', () => {
+    expect(idsAfter(windowOf(), { id: 3, timestamp: 2000 })).toEqual([2, 3, 4])
+    expect(idsAfter(windowOf(), { id: 1, timestamp: 2000 })).toEqual([1, 2, 4])
+  })
+
+  it('leaves out a message past an end history goes on beyond, which paging reads', () => {
+    const newerUnread = windowOf({ hasNewer: true })
+    expect(idsAfter(newerUnread, { id: 9, timestamp: 5000 })).toEqual([2, 4])
+    // Between the ends it is the window's, whichever way history goes on.
+    expect(idsAfter(newerUnread, { id: 9, timestamp: 3000 })).toEqual([2, 9, 4])
+    expect(idsAfter(newerUnread, { id: 9, timestamp: 1000 })).toEqual([9, 2, 4])
+
+    const olderUnread = windowOf({ hasOlder: true })
+    expect(idsAfter(olderUnread, { id: 9, timestamp: 1000 })).toEqual([2, 4])
+    expect(idsAfter(olderUnread, { id: 9, timestamp: 5000 })).toEqual([2, 4, 9])
+  })
+
+  it('takes an update to a message the window does not hold only where it belongs', () => {
+    const seeded = windowOf({ hasOlder: true })
+    const state = applyEvent(seeded, {
+      type: 'messages-updated',
+      messages: [message({ id: 1, timestamp: 1000 })],
+    })
+    expect(state).toBe(seeded)
+  })
+
+  it('leaves out a deleted message it does not hold, as a page does', () => {
+    const seeded = windowOf()
+    const state = applyEvent(seeded, {
+      type: 'messages-updated',
+      messages: [message({ id: 3, timestamp: 3000, body: '', deleted: 'everywhere' })],
+    })
+    expect(state).toBe(seeded)
+  })
+
+  it('holds a message once when it is announced after the page that read it', () => {
+    const seeded = windowOf()
     const state = applyEvent(seeded, {
       type: 'messages-added',
-      messages: [message({ id: 2, timestamp: 2000 })],
+      messages: [message({ id: 4, timestamp: 4000, body: 'again' })],
     })
-
-    expect(state.histories['05alice']?.messages.map((m) => m.id)).toEqual([1, 3, 2])
+    expect(state.histories['05alice']?.messages.map((m) => [m.id, m.body])).toEqual([
+      [2, 'hello'],
+      [4, 'again'],
+    ])
   })
 
   it('replaces a message in place when its send state changes', () => {
@@ -171,10 +220,9 @@ describe('applyEvent', () => {
       ...emptyState,
       histories: {
         '05alice': {
+          ...emptyWindow,
           ready: true,
           messages: [message({ id: 1, sendState: 'sending' })],
-          exhausted: true,
-          fetching: false,
         },
       },
     }
@@ -193,7 +241,7 @@ describe('applyEvent', () => {
     const seeded: SessionState = {
       ...emptyState,
       histories: {
-        '05alice': { ready: true, messages: [message()], exhausted: true, fetching: false },
+        '05alice': { ...emptyWindow, ready: true, messages: [message()] },
       },
     }
 
@@ -385,10 +433,9 @@ describe('applyEvent', () => {
       ...emptyState,
       histories: {
         '05alice': {
+          ...emptyWindow,
           ready: true,
           messages: [message({ id: 1, timestamp: 1000 }), message({ id: 2, timestamp: 2000 })],
-          exhausted: true,
-          fetching: false,
         },
       },
     }
@@ -406,16 +453,14 @@ describe('applyEvent', () => {
       ...emptyState,
       histories: {
         '05alice': {
+          ...emptyWindow,
           ready: true,
           messages: [message({ id: 1 })],
-          exhausted: true,
-          fetching: false,
         },
         '05bob': {
+          ...emptyWindow,
           ready: true,
           messages: [message({ id: 2, conversationId: '05bob' })],
-          exhausted: true,
-          fetching: false,
         },
       },
     }
@@ -441,7 +486,7 @@ describe('applyEvent', () => {
     const msg = message()
     const seeded: SessionState = {
       ...emptyState,
-      histories: { '05alice': { ready: true, messages: [], exhausted: true, fetching: false } },
+      histories: { '05alice': { ...emptyWindow, ready: true, messages: [] } },
     }
     const state = replay([added(convo), { type: 'messages-added', messages: [msg] }], seeded)
 
@@ -451,26 +496,17 @@ describe('applyEvent', () => {
 })
 
 describe('mergePages', () => {
-  it('puts an older page in front of the loaded window without sorting', () => {
+  it('puts the older run in front of the newer one', () => {
     const older = [message({ id: 1, timestamp: 1000 }), message({ id: 2, timestamp: 2000 })]
-    const previous = [message({ id: 3, timestamp: 3000 })]
+    const newer = [message({ id: 3, timestamp: 3000 })]
 
-    expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 2, 3])
+    expect(mergePages(older, newer).map((m) => m.id)).toEqual([1, 2, 3])
   })
 
   it('returns the page itself when nothing was loaded yet', () => {
     const page = [message({ id: 1 })]
     expect(mergePages(page, [])).toBe(page)
-  })
-
-  it('joins the pages as they came, without reordering the seam', () => {
-    const older = [message({ id: 1, timestamp: 1000 }), message({ id: 3, timestamp: 3000 })]
-    const previous = [message({ id: 2, timestamp: 2000 })]
-
-    // Timestamps that interleave across the seam, which a sort would have straightened out.
-    // A page is asked for from before the oldest message loaded, so an overlap is libsession
-    // answering something other than what was asked - not something to paper over here.
-    expect(mergePages(older, previous).map((m) => m.id)).toEqual([1, 3, 2])
+    expect(mergePages([], page)).toBe(page)
   })
 })
 
@@ -571,16 +607,14 @@ describe('attachment transfers', () => {
       ...emptyState,
       histories: {
         '05alice': {
+          ...emptyWindow,
           ready: true,
           messages: [message({ id: 1 })],
-          exhausted: true,
-          fetching: false,
         },
         '05bob': {
+          ...emptyWindow,
           ready: true,
           messages: [message({ id: 2, conversationId: '05bob' })],
-          exhausted: true,
-          fetching: false,
         },
       },
     }

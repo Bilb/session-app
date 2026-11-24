@@ -162,6 +162,21 @@ const harness: ContractHarness = {
     })
   },
 
+  receivesMessages() {
+    const { world, clients } = friends(['Alice', 'Bob'])
+    const alice = clients['Alice']
+    if (!alice) throw new Error('fixture did not produce a client')
+    const bob = world.account('Bob')
+    return Promise.resolve({
+      client: alice,
+      conversationId: bob.sessionId,
+      receive({ body, timestamp, replyTo }) {
+        world.account('Alice').deliverFrom(bob, body, timestamp, [], replyTo)
+        return Promise.resolve()
+      },
+    })
+  },
+
   restart(client: SessionClient) {
     if (!(client instanceof FakeSessionClient)) {
       throw new Error('the fake harness can only restart a fake client')

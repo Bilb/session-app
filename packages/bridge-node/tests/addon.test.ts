@@ -571,7 +571,17 @@ describeEcho('the generated converters', () => {
     attachments: [fullAttachment, bareAttachment],
     galleryViewable: true,
     gallery: true,
-    replyTo: { author, timestamp: 1_699_999_999_999, messageId: 7, body: 'orig' },
+    replyTo: {
+      author,
+      timestamp: 1_699_999_999_999,
+      messageId: 7,
+      message: {
+        id: 7,
+        outgoing: false,
+        body: 'orig',
+        attachments: [fullAttachment, bareAttachment],
+      },
+    },
     deleted: 'here',
   }
   const bareMessage: Message = {
@@ -586,6 +596,18 @@ describeEcho('the generated converters', () => {
     galleryViewable: false,
     gallery: false,
   }
+  /** A reply whose original was deleted, and one whose original never arrived. */
+  const replyToDeleted: Message = {
+    ...bareMessage,
+    id: 2,
+    replyTo: {
+      author,
+      timestamp: 5,
+      messageId: 3,
+      message: { id: 3, outgoing: true, body: '', attachments: [], deleted: 'everywhere' },
+    },
+  }
+  const replyToMissing: Message = { ...bareMessage, id: 4, replyTo: { author, timestamp: 6 } }
 
   const frames: Frame[] = [
     {
@@ -630,8 +652,10 @@ describeEcho('the generated converters', () => {
       response: {
         id: 900_007,
         result: {
-          type: 'messageList',
-          messages: [fullMessage, bareMessage],
+          type: 'messagePage',
+          messages: [fullMessage, bareMessage, replyToDeleted, replyToMissing],
+          hasNewer: true,
+          hasOlder: false,
         },
       },
     },
