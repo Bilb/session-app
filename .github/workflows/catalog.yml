@@ -70,18 +70,16 @@ jobs:
       - uses: actions/checkout@v5
 
       # Behind the install and builds; "Wait for the capture image" joins it. Every descriptor is
-      # redirected, or the step waits for the pull to close its output. Built here when it cannot be
-      # pulled: a fork's token cannot read the package, and a changed Dockerfile is not published yet.
+      # redirected, or the step waits for the fetch to close its output.
       - name: Fetch the capture image
         env:
           IMAGE: ghcr.io/${{ github.repository_owner }}/session-catalog-capture:${{ hashFiles('tests/e2e/catalog/Dockerfile', 'tests/e2e/catalog/fonts.conf') }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORK: ${{ github.event.pull_request.head.repo.full_name != github.repository && github.event_name == 'pull_request' }}
         run: |
           echo "CATALOG_IMAGE=$IMAGE" >> "$GITHUB_ENV"
-          nohup sh -c '
-            { echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin && docker pull --quiet "$IMAGE"; } ||
-              docker build --quiet --tag "$IMAGE" tests/e2e/catalog
-            echo $? > "$RUNNER_TEMP/image-status"' > "$RUNNER_TEMP/image.log" 2>&1 < /dev/null &
+          nohup sh -c 'tests/e2e/catalog/fetch-image.sh; echo $? > "$RUNNER_TEMP/image-status"' \
+            > "$RUNNER_TEMP/image.log" 2>&1 < /dev/null &
 
       # Only the localization submodule is built here. libsession-util drags in protobuf and
       # session-deps, and nothing in these checks compiles C++.
@@ -128,7 +126,10 @@ jobs:
         run: |
           until [ -e "$RUNNER_TEMP/image-status" ]; do sleep 1; done
           cat "$RUNNER_TEMP/image.log"
-          [ "$(cat "$RUNNER_TEMP/image-status")" = 0 ]
+          if [ "$(cat "$RUNNER_TEMP/image-status")" != 0 ]; then
+            echo "::error::The capture image could not be fetched; its log is above"
+            exit 1
+          fi
 
       # In the pinned image: see tests/e2e/catalog/Dockerfile.
       - id: capture
