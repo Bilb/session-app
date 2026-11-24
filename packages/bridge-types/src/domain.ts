@@ -366,14 +366,36 @@ export interface MessageCursor {
 }
 
 /**
- * The message a reply points at, resolved one level deep only: a reply to a reply shows its own
- * parent, not the whole chain, so `body` is absent on a nested reply even when `messageId` is set.
+ * The message a reply answers, as this device stores it: never the sender's snippet of it.
+ *
+ * It carries no reply of its own. libsession loads one level, so a reply to a reply shows its own
+ * parent and not the chain.
+ */
+export interface QuotedMessage {
+  id: number
+  outgoing: boolean
+  /** Empty once deleted, as `attachments` is. */
+  body: string
+  /** Each addressed by this message's `id` and its own `index`, as any attachment is. */
+  attachments: Attachment[]
+  deleted?: Deletion
+}
+
+/**
+ * What a message is a reply to. The wire names a message by who sent it and when, so `author` and
+ * `timestamp` are always known, even when the message is not here.
+ *
+ * Not to be cached beside the message: the reply is announced again as `messages-updated` when
+ * its original arrives, changes, is deleted, or when what this device holds of one of the
+ * original's attachments changes.
  */
 export interface Reply {
   author: string
   timestamp: number
+  /** Unset means this device does not have the original. */
   messageId?: number
-  body?: string
+  /** Set exactly when `messageId` is; a deleted original is still here, with `deleted` set. */
+  message?: QuotedMessage
 }
 
 export interface Message {

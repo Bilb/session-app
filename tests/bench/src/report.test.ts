@@ -1,4 +1,4 @@
-import { applyEvent, emptyState, type SessionState } from '@session/state'
+import { applyEvent, emptyState, emptyWindow, type SessionState } from '@session/state'
 import { afterAll, it } from 'vitest'
 
 import { makeCorpus, messageAddedFrame } from './fixtures'
@@ -33,10 +33,9 @@ it('one new message arriving in a transcript that is already loaded', () => {
       ...emptyState,
       histories: {
         [conversationId]: {
+          ...emptyWindow,
           ready: true,
           messages,
-          exhausted: true,
-          fetching: false,
         },
       },
     }

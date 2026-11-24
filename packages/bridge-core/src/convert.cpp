@@ -126,21 +126,32 @@ Attachment to_bridge(::session::client::Attachment&& from) {
             from.saved_at ? std::optional<double>{epoch_ms(*from.saved_at)} : std::nullopt);
 }
 
+namespace {
+
+    // Copies: the quoted message is libsession's own, shared with every reply that answers it.
+    QuotedMessage quoted(const ::session::client::Message& from) {
+        std::vector<Attachment> attachments;
+        attachments.reserve(from.attachments.size());
+        for (const auto& a : from.attachments)
+            attachments.push_back(to_bridge(::session::client::Attachment{a}));
+        return QuotedMessage(
+                static_cast<double>(from.id),
+                from.outgoing,
+                from.body,
+                std::move(attachments),
+                from.deleted ? std::optional{deletion(*from.deleted)} : std::nullopt);
+    }
+
+}  // namespace
+
 Message to_bridge(::session::client::Message&& from) {
     std::optional<Reply> reply;
-    if (from.reply) {
-        // One level deep: a message reached through a reply carries what it answered but not the
-        // answer itself, so the body is absent on a nested reply even when message_id is set.
-        // Copied, not moved: the quoted message is shared with libsession's own copy.
-        std::optional<std::string> body;
-        if (from.reply->message)
-            body = from.reply->message->body;
+    if (from.reply)
         reply = Reply(
                 oxenc::to_hex(from.reply->author),
                 epoch_ms(from.reply->timestamp),
                 number(from.reply->message_id),
-                std::move(body));
-    }
+                from.reply->message ? std::optional{quoted(*from.reply->message)} : std::nullopt);
 
     std::optional<Deletion> deleted;
     if (from.deleted)

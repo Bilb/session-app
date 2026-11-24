@@ -4,11 +4,21 @@ import { ELEMENT } from '@session/test-ids'
 
 import type { ISessionApp } from './ISessionApp'
 
-/** Opens the top conversation from the list, which is Bob's, where the attachments are seeded. */
-export async function openFirstConversation(app: ISessionApp): Promise<void> {
+/** Opens the top conversation from the list, which is Bob's, on its newest message. */
+export async function openFirstConversationAtNewest(app: ISessionApp): Promise<void> {
   await app.waitForVisible(ELEMENT.conversationList.screen)
   await app.tap(ELEMENT.conversationList.row(0))
   await app.waitForVisible(ELEMENT.conversation.screen)
+}
+
+/**
+ * Opens the top conversation from the list, which is Bob's, and goes to its first message: the
+ * attachments are seeded from there down, and a conversation opens on its newest message.
+ */
+export async function openFirstConversation(app: ISessionApp): Promise<void> {
+  await openFirstConversationAtNewest(app)
+  await app.waitForVisible(ELEMENT.conversation.messageBody)
+  await app.scrollToStart(ELEMENT.conversation.screen)
 }
 
 /**

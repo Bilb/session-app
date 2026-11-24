@@ -30,11 +30,12 @@ import type { StartupFailureKind } from './startupFailure'
 import type { SessionActions, SessionStore } from './store'
 import type {
   AttachmentTransferState,
+  Landing,
   MessageTransfers,
-  MessageWindow,
   SessionState,
   StoredAppearance,
 } from './types'
+import { emptyWindow } from './types'
 
 const StoreContext = createContext<SessionStore | null>(null)
 
@@ -162,11 +163,33 @@ export function useConversation(id: ConversationId | undefined): Conversation | 
   )
 }
 
-const EMPTY_WINDOW: MessageWindow = {
-  ready: false,
-  messages: [],
-  exhausted: false,
-  fetching: false,
+/** A conversation's loaded window and the reads that move it. */
+export interface Transcript {
+  messages: Message[]
+  ready: boolean
+  /** Whether history goes on past the window's oldest and newest messages. */
+  hasOlder: boolean
+  hasNewer: boolean
+  /** How many jumps there are to walk back through. */
+  jumpCount: number
+  /** The reply the latest jump started from, which the next walk back lands on. */
+  returnsTo: number | undefined
+  /** The last message a jump landed on, to scroll to and highlight. */
+  landing: Landing | undefined
+  /** The last read of the first page failed, and nothing will ask for it again until `reload`. */
+  firstPageFailed: boolean
+  /** The page before the window is being read. */
+  fetchingOlder: boolean
+  /** The last read of the page before the window failed: `loadOlder` asks again. */
+  olderPageFailed: boolean
+  /** The page after the window is being read. */
+  fetchingNewer: boolean
+  /** The last read of the page after the window failed: `loadNewer` asks again. */
+  newerPageFailed: boolean
+  loadOlder: () => void
+  loadNewer: () => void
+  /** Reads the first page again, after it failed. */
+  reload: () => void
 }
 
 /**
@@ -175,22 +198,20 @@ const EMPTY_WINDOW: MessageWindow = {
  * `ready` is separate from an empty list on purpose: a conversation nobody has said
  * anything in and one that has not been read off disk yet look identical otherwise.
  */
-export function useMessages(id: ConversationId | undefined): {
-  messages: Message[]
-  ready: boolean
-  exhausted: boolean
-  loadOlder: () => void
-} {
+export function useMessages(id: ConversationId | undefined): Transcript {
   const store = useSessionStore()
-  const window = useStore(store, (state) =>
-    id === undefined ? EMPTY_WINDOW : (state.histories[id] ?? EMPTY_WINDOW),
+  const transcript = useHeldMessages(id)
+  const { ready, firstPageFailed } = transcript
+  const fetching = useStore(store, (state) =>
+    id === undefined ? false : (state.histories[id]?.fetching ?? false),
   )
 
   useEffect(() => {
     if (id === undefined) return
-    // Also covers history-replaced, which drops the window and leaves ready false.
-    if (!window.ready && !window.fetching) void store.actions.loadHistory(id)
-  }, [id, window.ready, window.fetching, store])
+    // Also covers history-replaced, which drops the window and leaves ready false. A failed read
+    // waits for `reload`, or this would ask again the moment it failed.
+    if (!ready && !fetching && !firstPageFailed) void store.actions.loadHistory(id)
+  }, [id, ready, fetching, firstPageFailed, store])
 
   // Dropped when this stops showing `id`, and reloaded on the way back.
   //
@@ -204,18 +225,48 @@ export function useMessages(id: ConversationId | undefined): {
     }
   }, [id, store])
 
+  return transcript
+}
+
+/**
+ * A conversation's transcript as the store holds it, neither loading it nor forgetting it when
+ * this is no longer shown: for a view drawn beside another that owns it, such as the catalog's.
+ */
+export function useHeldMessages(id: ConversationId | undefined): Transcript {
+  const store = useSessionStore()
+  const window = useStore(store, (state) =>
+    id === undefined ? emptyWindow : (state.histories[id] ?? emptyWindow),
+  )
+
   const loadOlder = useCallback(() => {
     if (id !== undefined) void store.actions.loadOlder(id)
+  }, [id, store])
+  const loadNewer = useCallback(() => {
+    if (id !== undefined) void store.actions.loadNewer(id)
+  }, [id, store])
+  const reload = useCallback(() => {
+    if (id !== undefined) void store.actions.loadHistory(id)
   }, [id, store])
 
   return useMemo(
     () => ({
       messages: window.messages,
       ready: window.ready,
-      exhausted: window.exhausted,
+      hasOlder: window.hasOlder,
+      hasNewer: window.hasNewer,
+      jumpCount: window.jumps.length,
+      returnsTo: window.jumps[window.jumps.length - 1],
+      landing: window.landing,
+      firstPageFailed: window.firstPageFailed,
+      fetchingOlder: window.fetchingOlder,
+      olderPageFailed: window.olderPageFailed,
+      fetchingNewer: window.fetchingNewer,
+      newerPageFailed: window.newerPageFailed,
       loadOlder,
+      loadNewer,
+      reload,
     }),
-    [window, loadOlder],
+    [window, loadOlder, loadNewer, reload],
   )
 }
 
