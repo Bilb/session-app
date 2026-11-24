@@ -1,0 +1,307 @@
+import { fireEvent } from '@testing-library/react'
+import { createRef } from 'react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { byId } from '@session/render-tier'
+import { ELEMENT } from '@session/test-ids'
+
+import { Text } from '#src/Text'
+import { TranscriptList, type TranscriptListHandle } from '#src/TranscriptList'
+
+import { renderInUI } from './support/render'
+
+const ROW = ELEMENT.conversation.messageRow
+
+interface Item {
+  id: string
+}
+
+const key = (item: Item) => item.id
+
+describe('TranscriptList', () => {
+  const LIST = ELEMENT.conversation.screen
+  /** Past the 100 ms after its last event at which react-native-web calls a scroll ended. */
+  const SCROLL_END_MS = 150
+  const paged = (count: number): Item[] =>
+    Array.from({ length: count }, (_, index) => ({ id: `m${String(index)}` }))
+
+  function Paged({ data, onStartReached }: { data: readonly Item[]; onStartReached?: () => void }) {
+    return (
+      <TranscriptList
+        data={data}
+        keyExtractor={key}
+        onStartReached={onStartReached}
+        testID={LIST}
+        renderItem={(item, index) => <Text testID={ROW(index)}>{item.id}</Text>}
+      />
+    )
+  }
+
+  /** Scrolls the list to `scrollTop` in a 400 px viewport over `scrollHeight` of content. */
+  async function scrollTo(scrollTop: number, scrollHeight: number): Promise<void> {
+    const scroller = byId(LIST)
+    for (const [name, value] of Object.entries({
+      scrollTop,
+      scrollHeight,
+      offsetHeight: 400,
+      clientHeight: 400,
+    }))
+      Object.defineProperty(scroller, name, { configurable: true, writable: true, value })
+    fireEvent.scroll(scroller)
+    // Past the scroller's own throttle, so the next event is reported too.
+    await new Promise((resolve) => setTimeout(resolve, 20))
+  }
+
+  it('draws every row on the first pass, and no more than that many for good', () => {
+    const { rerender } = renderInUI(<Paged data={paged(12)} />)
+    expect(document.querySelectorAll('[data-testid^="message-row-"]')).toHaveLength(12)
+    rerender(<Paged data={paged(200)} />)
+    expect(document.querySelectorAll('[data-testid^="message-row-"]').length).toBeLessThan(200)
+  })
+
+  it('follows its end as rows arrive only when it holds the newest message', async () => {
+    function Window({ moreAfter }: { moreAfter: boolean }) {
+      return (
+        <TranscriptList
+          data={paged(30)}
+          keyExtractor={key}
+          moreAfter={moreAfter}
+          testID={LIST}
+          renderItem={(item, index) => <Text testID={ROW(index)}>{item.id}</Text>}
+        />
+      )
+    }
+    const { rerender } = renderInUI(<Window moreAfter />)
+    await scrollTo(1600, 2000)
+    // A page lands below a window short of the newest: the reader stays where they were.
+    await scrollTo(1600, 2500)
+    expect(byId(LIST).scrollTop).toBe(1600)
+
+    // Holding the newest, it follows what arrives.
+    rerender(<Window moreAfter={false} />)
+    await scrollTo(2100, 2500)
+    await scrollTo(2100, 2600)
+    expect(byId(LIST).scrollTop).not.toBe(2100)
+
+    await new Promise((resolve) => setTimeout(resolve, SCROLL_END_MS))
+  })
+
+  it('does not follow a window’s end to the newest message when the page reaching it lands, and was far from it all along', async () => {
+    const onFarFromEnd = vi.fn()
+    function Window({ count, moreAfter }: { count: number; moreAfter: boolean }) {
+      return (
+        <TranscriptList
+          data={paged(count)}
+          keyExtractor={key}
+          moreAfter={moreAfter}
+          onFarFromEnd={onFarFromEnd}
+          testID={LIST}
+          renderItem={(item, index) => <Text testID={ROW(index)}>{item.id}</Text>}
+        />
+      )
+    }
+    const { rerender } = renderInUI(<Window count={30} moreAfter />)
+    // Resting at the last row of a window short of the newest message.
+    await scrollTo(1600, 2000)
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    await scrollTo(1600, 2000)
+    // Far from the newest message, although at the window's end.
+    expect(onFarFromEnd).toHaveBeenLastCalledWith(true)
+
+    // The page that reaches the newest message lands below: the reader has not read it.
+    rerender(<Window count={60} moreAfter={false} />)
+    await scrollTo(1600, 4000)
+    expect(byId(LIST).scrollTop).toBe(1600)
+    expect(onFarFromEnd).not.toHaveBeenCalledWith(false)
+
+    await new Promise((resolve) => setTimeout(resolve, SCROLL_END_MS))
+  })
+
+  it('says the newest message is near once a newer read finds nothing past its window', async () => {
+    const onFarFromEnd = vi.fn()
+    function Window({ moreAfter }: { moreAfter: boolean }) {
+      return (
+        <TranscriptList
+          data={paged(30)}
+          keyExtractor={key}
+          moreAfter={moreAfter}
+          onFarFromEnd={onFarFromEnd}
+          testID={LIST}
+          renderItem={(item, index) => <Text testID={ROW(index)}>{item.id}</Text>}
+        />
+      )
+    }
+    const { rerender } = renderInUI(<Window moreAfter />)
+    await scrollTo(1600, 2000)
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    await scrollTo(1600, 2000)
+    expect(onFarFromEnd).toHaveBeenLastCalledWith(true)
+
+    // The messages past the window were deleted meanwhile: no rows, and nothing changes size.
+    rerender(<Window moreAfter={false} />)
+    expect(onFarFromEnd).toHaveBeenLastCalledWith(false)
+
+    await new Promise((resolve) => setTimeout(resolve, SCROLL_END_MS))
+  })
+
+  it('says the reader resting at a window’s end is at the newest message once a newer read finds nothing', async () => {
+    const onAtEnd = vi.fn()
+    function Window({ moreAfter }: { moreAfter: boolean }) {
+      return (
+        <TranscriptList
+          data={paged(30)}
+          keyExtractor={key}
+          moreAfter={moreAfter}
+          onAtEnd={onAtEnd}
+          testID={LIST}
+          renderItem={(item, index) => <Text testID={ROW(index)}>{item.id}</Text>}
+        />
+      )
+    }
+    const { rerender } = renderInUI(<Window moreAfter />)
+    fireEvent.wheel(byId(LIST))
+    await scrollTo(1200, 2000)
+    await scrollTo(1600, 2000)
+    expect(onAtEnd).toHaveBeenCalledTimes(1)
+
+    rerender(<Window moreAfter={false} />)
+    expect(onAtEnd).toHaveBeenCalledTimes(2)
+
+    // Away from the end, a window found to reach the newest message is not the reader there.
+    rerender(<Window moreAfter />)
+    fireEvent.wheel(byId(LIST))
+    await scrollTo(1200, 2000)
+    rerender(<Window moreAfter={false} />)
+    expect(onAtEnd).toHaveBeenCalledTimes(2)
+
+    await new Promise((resolve) => setTimeout(resolve, SCROLL_END_MS))
+  })
+
+  it('lets a reader who scrolls up on the way to the end stay there when a row arrives', async () => {
+    const handle = createRef<TranscriptListHandle>()
+    renderInUI(
+      <TranscriptList
+        data={paged(12)}
+        keyExtractor={key}
+        handle={handle}
+        testID={LIST}
+        renderItem={(item, index) => <Text testID={ROW(index)}>{item.id}</Text>}
+      />,
+    )
+    await scrollTo(1000, 2000)
+    handle.current?.scrollToEnd({ animated: true })
+    await scrollTo(1200, 2000)
+    // Up, before the animated scroll got there: the reader's.
+    await scrollTo(900, 2000)
+    // A row arrives, which would draw a list at its end down to it.
+    await scrollTo(900, 2100)
+    expect(byId(LIST).scrollTop).toBe(900)
+
+    await new Promise((resolve) => setTimeout(resolve, SCROLL_END_MS))
+  })
+
+  describe('landing on a row', () => {
+    // jsdom lays nothing out and scrolls nothing: the landing's scroll is the test's.
+    const scrollBy = vi.fn()
+    const scrollIntoView = vi.fn()
+    beforeEach(() => {
+      Element.prototype.scrollBy = scrollBy
+      Element.prototype.scrollIntoView = scrollIntoView
+    })
+    afterEach(() => {
+      Reflect.deleteProperty(Element.prototype, 'scrollBy')
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+      scrollBy.mockReset()
+      scrollIntoView.mockReset()
+    })
+
+    function Landed({
+      handle,
+      onStartReached,
+      onAtEnd,
+    }: {
+      handle: React.Ref<TranscriptListHandle>
+      onStartReached?: () => void
+      onAtEnd?: () => void
+    }) {
+      return (
+        <TranscriptList
+          data={paged(30)}
+          keyExtractor={key}
+          handle={handle}
+          onStartReached={onStartReached}
+          onAtEnd={onAtEnd}
+          testID={LIST}
+          renderItem={(item, index) => <Text testID={ROW(index)}>{item.id}</Text>}
+        />
+      )
+    }
+
+    it('scrolls its own scroller to the row, never the page around it', () => {
+      const handle = createRef<TranscriptListHandle>()
+      renderInUI(<Landed handle={handle} />)
+
+      handle.current?.scrollToKey('m3')
+      expect(scrollBy).toHaveBeenCalledTimes(1)
+      expect(scrollBy.mock.contexts[0]).toBe(byId(LIST))
+      // scrollIntoView would move every scrolling ancestor, a catalog page or a pane included.
+      expect(scrollIntoView).not.toHaveBeenCalled()
+
+      scrollBy.mockClear()
+      handle.current?.scrollToKey('m99')
+      expect(scrollBy).not.toHaveBeenCalled()
+      expect(handle.current?.isOnScreen('m99')).toBe(false)
+    })
+
+    it('says the reader is back at the end, which the landing itself never is', async () => {
+      const onAtEnd = vi.fn()
+      const handle = createRef<TranscriptListHandle>()
+      renderInUI(<Landed handle={handle} onAtEnd={onAtEnd} />)
+      await scrollTo(1600, 2000)
+      expect(onAtEnd).not.toHaveBeenCalled()
+
+      handle.current?.scrollToKey('m25')
+      // The rows drawn around the landing leave the scroll at the window's end.
+      await scrollTo(1600, 2000)
+      expect(onAtEnd).not.toHaveBeenCalled()
+
+      fireEvent.wheel(byId(LIST))
+      await scrollTo(1200, 2000)
+      await scrollTo(1600, 2000)
+      await scrollTo(1600, 2000)
+      expect(onAtEnd).toHaveBeenCalledTimes(1)
+
+      await new Promise((resolve) => setTimeout(resolve, SCROLL_END_MS))
+    })
+
+    it.each([
+      ['a wheel', (scroller: HTMLElement) => fireEvent.wheel(scroller)],
+      ['a scroll key', (scroller: HTMLElement) => fireEvent.keyDown(scroller, { key: 'PageDown' })],
+      ['the scrollbar', (scroller: HTMLElement) => fireEvent.pointerDown(scroller)],
+    ])('ends a landing as soon as the reader moves the list by %s', async (_by, move) => {
+      const onAtEnd = vi.fn()
+      const handle = createRef<TranscriptListHandle>()
+      renderInUI(<Landed handle={handle} onAtEnd={onAtEnd} />)
+      await scrollTo(1600, 2000)
+
+      handle.current?.scrollToKey('m25')
+      // Still landing: back at the end is the landing's own placing.
+      await scrollTo(1200, 2000)
+      await scrollTo(1600, 2000)
+      expect(onAtEnd).not.toHaveBeenCalled()
+
+      // A key that scrolls nothing is not the reader moving the list.
+      fireEvent.keyDown(byId(LIST), { key: 'a' })
+      await scrollTo(1200, 2000)
+      await scrollTo(1600, 2000)
+      expect(onAtEnd).not.toHaveBeenCalled()
+
+      move(byId(LIST))
+      await scrollTo(1200, 2000)
+      await scrollTo(1600, 2000)
+      expect(onAtEnd).toHaveBeenCalledTimes(1)
+
+      await new Promise((resolve) => setTimeout(resolve, SCROLL_END_MS))
+    })
+  })
+})

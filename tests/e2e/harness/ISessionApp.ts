@@ -94,6 +94,8 @@ export interface ISessionApp {
   frame(id: ElementId, at?: number): Promise<Frame | null>
   /** Scrolls `within` until the `at`th carrying `id` is wholly on screen. */
   reveal(id: ElementId, within: ElementId, at?: number): Promise<void>
+  /** Scrolls what scrolls under `within` to its start: a transcript's first message. */
+  scrollToStart(within: ElementId): Promise<void>
   screenshot(name: string): Promise<void>
   close(): Promise<void>
 }

@@ -364,18 +364,6 @@ struct Attachment {
             index{std::move(index_)}, content_type{std::move(content_type_)}, filename{std::move(filename_)}, size_bytes{std::move(size_bytes_)}, voice_message{std::move(voice_message_)}, width{std::move(width_)}, height{std::move(height_)}, has_thumbhash{std::move(has_thumbhash_)}, thumbhash_aspect{std::move(thumbhash_aspect_)}, has_thumbnail{std::move(has_thumbnail_)}, thumbnail_width_px{std::move(thumbnail_width_px_)}, thumbnail_height_px{std::move(thumbnail_height_px_)}, has_rendition{std::move(has_rendition_)}, rendition_refused{std::move(rendition_refused_)}, original_file{std::move(original_file_)}, uploaded{std::move(uploaded_)}, availability{std::move(availability_)}, fetch_done_bytes{std::move(fetch_done_bytes_)}, fetch_total_bytes{std::move(fetch_total_bytes_)}, saved_at_ms{std::move(saved_at_ms_)} {}
 };
 
-/// The message a reply points at, resolved one level deep only: a reply to a reply shows its own
-/// parent, not the whole chain, so `body` is absent on a nested reply even when `messageId` is set.
-struct Reply {
-    std::string author;
-    double timestamp;
-    std::optional<double> message_id;
-    std::optional<std::string> body;
-
-    Reply(std::string author_, double timestamp_, std::optional<double> message_id_, std::optional<std::string> body_) :
-            author{std::move(author_)}, timestamp{std::move(timestamp_)}, message_id{std::move(message_id_)}, body{std::move(body_)} {}
-};
-
 enum class Deletion {
     here,
     everywhere,
@@ -396,6 +384,41 @@ struct EnumTraits<Deletion> {
                 return static_cast<Deletion>(i);
         return std::nullopt;
     }
+};
+
+/// The message a reply answers, as this device stores it: never the sender's snippet of it.
+///
+/// It carries no reply of its own. libsession loads one level, so a reply to a reply shows its own
+/// parent and not the chain.
+struct QuotedMessage {
+    double id;
+    bool outgoing;
+    /// Empty once deleted, as `attachments` is.
+    std::string body;
+    /// Each addressed by this message's `id` and its own `index`, as any attachment is.
+    std::vector<::session_bridge::Attachment> attachments;
+    std::optional<::session_bridge::Deletion> deleted;
+
+    QuotedMessage(double id_, bool outgoing_, std::string body_, std::vector<::session_bridge::Attachment> attachments_, std::optional<::session_bridge::Deletion> deleted_) :
+            id{std::move(id_)}, outgoing{std::move(outgoing_)}, body{std::move(body_)}, attachments{std::move(attachments_)}, deleted{std::move(deleted_)} {}
+};
+
+/// What a message is a reply to. The wire names a message by who sent it and when, so `author` and
+/// `timestamp` are always known, even when the message is not here.
+///
+/// Not to be cached beside the message: the reply is announced again as `messages-updated` when
+/// its original arrives, changes, is deleted, or when what this device holds of one of the
+/// original's attachments changes.
+struct Reply {
+    std::string author;
+    double timestamp;
+    /// Unset means this device does not have the original.
+    std::optional<double> message_id;
+    /// Set exactly when `messageId` is; a deleted original is still here, with `deleted` set.
+    std::optional<::session_bridge::QuotedMessage> message;
+
+    Reply(std::string author_, double timestamp_, std::optional<double> message_id_, std::optional<::session_bridge::QuotedMessage> message_) :
+            author{std::move(author_)}, timestamp{std::move(timestamp_)}, message_id{std::move(message_id_)}, message{std::move(message_)} {}
 };
 
 struct Message {
@@ -437,19 +460,27 @@ struct Message {
             id{std::move(id_)}, conversation_id{std::move(conversation_id_)}, author{std::move(author_)}, timestamp{std::move(timestamp_)}, body{std::move(body_)}, outgoing{std::move(outgoing_)}, send_state{std::move(send_state_)}, sync_state{std::move(sync_state_)}, attachments{std::move(attachments_)}, gallery_viewable{std::move(gallery_viewable_)}, gallery{std::move(gallery_)}, reply_to{std::move(reply_to_)}, deleted{std::move(deleted_)} {}
 };
 
-/// A page of history.
+/// A page of history, oldest first whichever page it is: the direction a transcript is read.
+/// libsession answers newest first because that is the direction paging runs; the shim reverses.
+///
+/// `hasNewer` and `hasOlder` say whether history goes on past the page, counted in the same read
+/// as the messages and over the messages the page would show: with `includeDeleted` false, a
+/// conversation whose only older messages are deleted has `hasOlder` false. For a page read
+/// `before` a cursor `hasNewer` counts from the cursor, and for one read `after`, `hasOlder` does.
 ///
 /// What each attachment's bytes are doing rides on the attachment itself - `availability`,
 /// `fetchDoneBytes`, `fetchTotalBytes` - rather than in a list beside the page. One writer for
 /// the first picture and for every correction after it, which is what stops a window drawing an
 /// attachment as untouched and then taking it back.
-struct MessageListResult {
-    static constexpr std::string_view type_tag = "messageList";
+struct MessagePageResult {
+    static constexpr std::string_view type_tag = "messagePage";
 
     std::vector<::session_bridge::Message> messages;
+    bool has_newer;
+    bool has_older;
 
-    explicit MessageListResult(std::vector<::session_bridge::Message> messages_) :
-            messages{std::move(messages_)} {}
+    MessagePageResult(std::vector<::session_bridge::Message> messages_, bool has_newer_, bool has_older_) :
+            messages{std::move(messages_)}, has_newer{std::move(has_newer_)}, has_older{std::move(has_older_)} {}
 };
 
 struct MessageIdResult {
@@ -785,7 +816,7 @@ using Result = std::variant<
         MnemonicResult,
         ConversationListResult,
         ConversationResult,
-        MessageListResult,
+        MessagePageResult,
         MessageIdResult,
         HexResult,
         PrefResult,
@@ -908,7 +939,8 @@ struct ConversationRemovedSessionEvent {
 ///
 /// Reported for every message in every conversation rather than whichever one is on screen -
 /// there is no notion here of what the app is showing, so deciding what to redraw is the app's.
-/// A message can also arrive here because something it *quotes* changed.
+/// A reply is announced as updated when the message it answers arrives, changes or is deleted,
+/// and when what this device holds of one of that message's attachments changes.
 struct MessagesAddedSessionEvent {
     static constexpr std::string_view type_tag = "messages-added";
 
@@ -1539,16 +1571,31 @@ struct MessageCursor {
             timestamp{std::move(timestamp_)}, id{std::move(id_)} {}
 };
 
+/// A page of history: the newest `limit` messages, or with one of `before`, `after` and `around`,
+/// the page that one names. Refused with more than one of them, or a `limit` that is not positive.
+///
+/// A page is true as of the read. Messages stored later arrive as `messages-added`, and one stored
+/// just before the read can be both in the page and announced after it, so a window merges
+/// announced messages by id and places them by (timestamp, id).
 struct GetMessagesCommand {
     static constexpr std::string_view type_tag = "getMessages";
 
     std::string conversation_id;
     double limit;
+    /// The page older than this cursor, which is not repeated.
     std::optional<::session_bridge::MessageCursor> before;
+    /// The `limit` messages immediately newer than this cursor, which is not repeated.
+    std::optional<::session_bridge::MessageCursor> after;
+    /// A window with this message as near its middle as the history allows: of the rest, half
+    /// older and half newer, an even limit's spare row newer, and a side that runs out gives what
+    /// it lacks to the other. The message is in the page unless it is deleted and `includeDeleted`
+    /// is false; the window is placed by it either way. Refused with `message.not_found` for an
+    /// id this conversation does not hold.
+    std::optional<double> around;
     bool include_deleted;
 
-    GetMessagesCommand(std::string conversation_id_, double limit_, std::optional<::session_bridge::MessageCursor> before_, bool include_deleted_) :
-            conversation_id{std::move(conversation_id_)}, limit{std::move(limit_)}, before{std::move(before_)}, include_deleted{std::move(include_deleted_)} {}
+    GetMessagesCommand(std::string conversation_id_, double limit_, std::optional<::session_bridge::MessageCursor> before_, std::optional<::session_bridge::MessageCursor> after_, std::optional<double> around_, bool include_deleted_) :
+            conversation_id{std::move(conversation_id_)}, limit{std::move(limit_)}, before{std::move(before_)}, after{std::move(after_)}, around{std::move(around_)}, include_deleted{std::move(include_deleted_)} {}
 };
 
 /// A file to send with a message. Sending files needs `cacheDir`.
@@ -1786,6 +1833,15 @@ struct TestAttachment {
             content_type{std::move(content_type_)}, thumbhash{std::move(thumbhash_)}, original_file{std::move(original_file_)} {}
 };
 
+/// The message a forged message says it answers, named as the wire names one.
+struct TestQuote {
+    std::string author;
+    double timestamp;
+
+    TestQuote(std::string author_, double timestamp_) :
+            author{std::move(author_)}, timestamp{std::move(timestamp_)} {}
+};
+
 /// Builds, encrypts and delivers a v1 DM as if it had arrived from the swarm. The sender is
 /// whoever holds `senderSeedHex`, a 32-byte account seed; the recipient is always the client
 /// the command is sent to, since that is the only account it can decrypt for.
@@ -1796,9 +1852,10 @@ struct DeliverTestMessageCommand {
     std::string body;
     double timestamp;
     std::optional<std::vector<::session_bridge::TestAttachment>> attachments;
+    std::optional<::session_bridge::TestQuote> reply_to;
 
-    DeliverTestMessageCommand(std::string sender_seed_hex_, std::string body_, double timestamp_, std::optional<std::vector<::session_bridge::TestAttachment>> attachments_) :
-            sender_seed_hex{std::move(sender_seed_hex_)}, body{std::move(body_)}, timestamp{std::move(timestamp_)}, attachments{std::move(attachments_)} {}
+    DeliverTestMessageCommand(std::string sender_seed_hex_, std::string body_, double timestamp_, std::optional<std::vector<::session_bridge::TestAttachment>> attachments_, std::optional<::session_bridge::TestQuote> reply_to_) :
+            sender_seed_hex{std::move(sender_seed_hex_)}, body{std::move(body_)}, timestamp{std::move(timestamp_)}, attachments{std::move(attachments_)}, reply_to{std::move(reply_to_)} {}
 };
 
 /// This client's own account seed, so the harness can forge messages from it to another.

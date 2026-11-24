@@ -276,16 +276,18 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     },
 
     async getMessages(id, options): Promise<MessagePage> {
-      const before = options?.before
+      const { before, after, around } = options ?? {}
       const response = await call({
         type: 'getMessages',
         conversationId: id,
         limit: options?.limit ?? 50,
         includeDeleted: options?.includeDeleted ?? false,
         ...(before === undefined ? {} : { before }),
+        ...(after === undefined ? {} : { after }),
+        ...(around === undefined ? {} : { around }),
       })
-      const page = resultOf(response, 'messageList')
-      return { messages: page.messages }
+      const { messages, hasNewer, hasOlder } = resultOf(response, 'messagePage')
+      return { messages, hasNewer, hasOlder }
     },
 
     async sendMessage(id, message: OutgoingMessage): Promise<number> {

@@ -115,6 +115,10 @@ const ROLES: Record<string, AccessibleNode['role']> = {
   heading: 'text',
 }
 
+/** Passes `scrollToStart` makes, and how long a page read above the start is given to land. */
+const START_PASSES = 40
+const START_SETTLE_MS = 150
+
 const testIdSelector = (id: string) => `[data-testid=${JSON.stringify(id)}]`
 
 const stringOrNull = (value: unknown): string | null =>
@@ -340,6 +344,34 @@ export class DesktopApp implements ISessionApp, IPerformanceProbe, IFileChooser 
 
   async reveal(id: ElementId, _within: ElementId, at = 0): Promise<void> {
     await this.locator(id).nth(at).scrollIntoViewIfNeeded()
+  }
+
+  async scrollToStart(within: ElementId): Promise<void> {
+    // Again until nothing grows: reaching a transcript's start reads the page before it in.
+    let heightPx = -1
+    for (let pass = 0; pass < START_PASSES; pass++) {
+      const reached = await this.locator(within)
+        .first()
+        .evaluate((root) => {
+          interface Box {
+            scrollTop: number
+            scrollHeight: number
+            clientHeight: number
+            querySelectorAll(selector: string): ArrayLike<Box>
+          }
+          let tallest = 0
+          for (const box of Array.from((root as unknown as Box).querySelectorAll('*')))
+            if (box.scrollHeight > box.clientHeight + 1) {
+              box.scrollTop = 0
+              tallest = Math.max(tallest, box.scrollHeight)
+            }
+          return tallest
+        })
+      if (reached === heightPx) return
+      heightPx = reached
+      await this.page.waitForTimeout(START_SETTLE_MS)
+    }
+    throw new Error(`${within} was still growing after ${String(START_PASSES)} passes`)
   }
 
   async audit(scope?: ElementId): Promise<AuditIssue[]> {
