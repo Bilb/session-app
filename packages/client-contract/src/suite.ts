@@ -961,6 +961,8 @@ export function runSessionClientContract(
       const { alice } = await harness.friends()
       const error = await failure(() => alice.setPushToken('firebase', ''))
       expect(error instanceof SessionClientError).toBe(true)
+      const forced = await failure(() => alice.setPushToken('firebase', '', true))
+      expect(forced instanceof SessionClientError).toBe(true)
     })
 
     it('clears a push subscription that was never made without asking anything', async () => {

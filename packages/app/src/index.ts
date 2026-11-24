@@ -37,6 +37,7 @@ export type {
   DeliveryModeOffer,
   NotificationChannel,
   PushToken,
+  PushInstallMarker,
   PushTokenSource,
   PickedFile,
   NetworkPort,

@@ -59,6 +59,7 @@ export function memoryPorts(overrides: Partial<Ports> = {}): Ports {
       // genuinely this case.
       notificationModesApply: false,
       pushTokens: null,
+      pushInstallMarker: null,
       soundWhenOpenDefault: false,
       notificationsAllowed: null,
       openSettings: null,
