@@ -1,5 +1,5 @@
 import type { Frame } from '@session/client'
-import { applyEvent, emptyState, type SessionState } from '@session/state'
+import { applyEvent, emptyState, emptyWindow, type SessionState } from '@session/state'
 import { afterAll, it } from 'vitest'
 
 import {
@@ -45,7 +45,7 @@ it('a small response arriving behind a batch of messages', () => {
     const loaded: SessionState = {
       ...emptyState,
       histories: {
-        [conversationId]: { ready: true, messages: [], exhausted: true, fetching: false },
+        [conversationId]: { ...emptyWindow, ready: true, messages: [] },
       },
     }
 

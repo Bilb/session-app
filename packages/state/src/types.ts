@@ -5,7 +5,6 @@ import type {
   ConversationId,
   ConversationList,
   Message,
-  MessageCursor,
   NetworkStatus,
   TransferProgress,
 } from '@session/client'
@@ -15,20 +14,70 @@ import type { StartupFailureKind } from './startupFailure'
 /** One of the two lists a conversation can be in, named as the state field holding it. */
 export type ListName = Exclude<ConversationList, 'none'>
 
+/** How many jumps a window remembers the way back from; one more drops the oldest. */
+export const MAX_JUMPS = 20
+
+/** Which message a jump put the reader on. `serial` differs for every landing, repeats included. */
+export interface Landing {
+  messageId: number
+  serial: number
+}
+
 /**
- * One conversation's loaded history.
+ * One conversation's loaded history: a run of consecutive messages, which need not reach either
+ * end of the conversation.
  *
  * `ready` is what tells an empty conversation apart from one nobody has asked for yet -
  * without it a transcript cannot know whether to render "no messages" or a spinner.
  */
 export interface MessageWindow {
   ready: boolean
-  /** In the order a transcript renders, which is the order libsession read them out. */
+  /** Oldest first, ordered by (timestamp, id) as libsession orders history. */
   messages: Message[]
-  oldestCursor?: MessageCursor
-  exhausted: boolean
-  /** Guards against firing a second page request while the first is still out. */
+  /** Whether history goes on past the oldest message held, as libsession last said. */
+  hasOlder: boolean
+  /**
+   * Whether history goes on past the newest message held. While it does, a message announced
+   * beyond that end is not this window's to hold: paging newer reads it.
+   */
+  hasNewer: boolean
+  /** The first page is being read. */
   fetching: boolean
+  /**
+   * The last read of the first page failed. Nothing asks for it again by itself: the transcript
+   * asks whenever nothing is being read, so a failure that only cleared `fetching` would ask in a
+   * loop. Reading it again clears this.
+   */
+  firstPageFailed: boolean
+  /** Guard against asking for a page twice while the first request is still out. */
+  fetchingOlder: boolean
+  /** The last read of the page before the window failed; reading it again clears this. */
+  olderPageFailed: boolean
+  /** Guard against asking for the page after the window twice. */
+  fetchingNewer: boolean
+  /** The last read of the page after the window failed; reading it again clears this. */
+  newerPageFailed: boolean
+  /**
+   * The replies whose quotes were followed, oldest jump first, each the message to return to.
+   * At most `MAX_JUMPS`. Dropped with the window, so leaving the conversation empties it.
+   */
+  jumps: readonly number[]
+  /** The last landing, for the screen to scroll to and highlight. */
+  landing?: Landing
+}
+
+export const emptyWindow: MessageWindow = {
+  ready: false,
+  messages: [],
+  hasOlder: false,
+  hasNewer: false,
+  fetching: false,
+  firstPageFailed: false,
+  fetchingOlder: false,
+  olderPageFailed: false,
+  fetchingNewer: false,
+  newerPageFailed: false,
+  jumps: [],
 }
 
 /**

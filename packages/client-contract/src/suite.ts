@@ -85,6 +85,21 @@ export interface ContractHarness {
     conversationId: string
     receive: (contentTypes: readonly string[]) => Promise<Message>
   }>
+  /**
+   * A client a friend's messages are delivered to one at a time, dated and quoting as told, so a
+   * scenario decides what arrives in which order. `receive` answers once the client holds it.
+   */
+  receivesMessages(): Promise<{
+    client: SessionClient
+    /** The conversation they land in, which is also the account they come from. */
+    conversationId: string
+    receive: (message: {
+      body: string
+      timestamp: number
+      /** The message it answers, as the wire names one: whether the client has it or not. */
+      replyTo?: { author: string; timestamp: number }
+    }) => Promise<void>
+  }>
   /** Stops and restarts a client against the same data. */
   restart(client: SessionClient): Promise<SessionClient>
   /**
@@ -160,7 +175,17 @@ function placementsOf(events: SessionEvent[], id: string): ListPlacement[] {
   )
 }
 
-/** What a `messages-updated` event says about one attachment, if it mentions it. */
+/** A message as each `messages-updated` reported it, oldest report first. */
+function updatesOf(events: SessionEvent[], messageId: number): Message[] {
+  return messagesOf(events, 'messages-updated').filter((m) => m.id === messageId)
+}
+
+function cursorOf(message: Message): { timestamp: number; id: number } {
+  return { timestamp: message.timestamp, id: message.id }
+}
+
+const bodiesOf = (page: MessagePage): string[] => page.messages.map((m) => m.body)
+
 type ProgressEvent = Extract<SessionEvent, { type: 'attachment-progress' }>
 
 /** A message's upload reports, in the order they arrived. */
@@ -677,6 +702,245 @@ export function runSessionClientContract(
 
       const overlap = older.filter((m) => newest.some((n) => n.id === m.id))
       expect(overlap.length).toBe(0)
+    })
+
+    /** Nine messages of alice's, `m1` the oldest, as she lists them. */
+    const nineMessages = async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      for (let i = 1; i <= 9; i += 1) {
+        await alice.sendMessage(bobId, { body: `m${String(i)}` })
+        await settle()
+      }
+      const { messages } = await alice.getMessages(bobId, { limit: 20 })
+      const idOf = (body: string): number => {
+        const found = messages.find((m) => m.body === body)
+        if (!found) throw new Error(`${body} was not stored`)
+        return found.id
+      }
+      return { alice, bobId, messages, idOf }
+    }
+
+    it('says whether history goes on past a page, either way', async () => {
+      const { alice, bobId, messages } = await nineMessages()
+
+      const newest = await alice.getMessages(bobId, { limit: 3 })
+      expect(bodiesOf(newest)).toEqual(['m7', 'm8', 'm9'])
+      expect([newest.hasOlder, newest.hasNewer]).toEqual([true, false])
+
+      const whole = await alice.getMessages(bobId, { limit: 9 })
+      expect([whole.hasOlder, whole.hasNewer]).toEqual([false, false])
+
+      // Read before a cursor, newer counts from the cursor: the caller holds that message.
+      const m7 = messages[6]
+      const m4 = messages[3]
+      if (!m7 || !m4) throw new Error('unreachable')
+      const middle = await alice.getMessages(bobId, { limit: 3, before: cursorOf(m7) })
+      expect(bodiesOf(middle)).toEqual(['m4', 'm5', 'm6'])
+      expect([middle.hasOlder, middle.hasNewer]).toEqual([true, true])
+
+      const oldest = await alice.getMessages(bobId, { limit: 3, before: cursorOf(m4) })
+      expect(bodiesOf(oldest)).toEqual(['m1', 'm2', 'm3'])
+      expect([oldest.hasOlder, oldest.hasNewer]).toEqual([false, true])
+    })
+
+    it('reads a window around a message, filling a short side from the other', async () => {
+      const { alice, bobId, idOf } = await nineMessages()
+      const around = (body: string, limit: number) =>
+        alice.getMessages(bobId, { limit, around: idOf(body) })
+
+      // Of the rest, half older and half newer; an even limit's spare row is newer.
+      const middle = await around('m5', 5)
+      expect(bodiesOf(middle)).toEqual(['m3', 'm4', 'm5', 'm6', 'm7'])
+      expect([middle.hasOlder, middle.hasNewer]).toEqual([true, true])
+      expect(bodiesOf(await around('m5', 4))).toEqual(['m4', 'm5', 'm6', 'm7'])
+
+      const first = await around('m1', 5)
+      expect(bodiesOf(first)).toEqual(['m1', 'm2', 'm3', 'm4', 'm5'])
+      expect([first.hasOlder, first.hasNewer]).toEqual([false, true])
+
+      const last = await around('m9', 5)
+      expect(bodiesOf(last)).toEqual(['m5', 'm6', 'm7', 'm8', 'm9'])
+      expect([last.hasOlder, last.hasNewer]).toEqual([true, false])
+
+      const all = await around('m5', 20)
+      expect(all.messages.length).toBe(9)
+      expect([all.hasOlder, all.hasNewer]).toEqual([false, false])
+    })
+
+    it('places a window by a deleted message it leaves out', async () => {
+      const { alice, bobId, idOf } = await nineMessages()
+      await alice.deleteMessage(idOf('m5'), 'here')
+
+      const hidden = await alice.getMessages(bobId, { limit: 5, around: idOf('m5') })
+      expect(bodiesOf(hidden)).toEqual(['m3', 'm4', 'm6', 'm7', 'm8'])
+
+      const shown = await alice.getMessages(bobId, {
+        limit: 5,
+        around: idOf('m5'),
+        includeDeleted: true,
+      })
+      expect(shown.messages.map((m) => m.id)[2]).toBe(idOf('m5'))
+    })
+
+    it('refuses a window around a message the conversation does not hold', async () => {
+      const { alice, bobId } = await nineMessages()
+      const refused = await failure(() => alice.getMessages(bobId, { limit: 5, around: 987_654 }))
+      expect(refused instanceof SessionClientError).toBe(true)
+      expect((refused as SessionClientError).code).toBe(MESSAGE_NOT_FOUND)
+    })
+
+    it('refuses a page asked for from two positions', async () => {
+      const { alice, bobId, messages, idOf } = await nineMessages()
+      const m5 = messages[4]
+      if (!m5) throw new Error('unreachable')
+      const cursor = cursorOf(m5)
+      const asked = [
+        { before: cursor, after: cursor },
+        { before: cursor, around: idOf('m5') },
+        { after: cursor, around: idOf('m5') },
+      ]
+      for (const positions of asked) {
+        const refused = await failure(() => alice.getMessages(bobId, { limit: 3, ...positions }))
+        expect(refused instanceof Error).toBe(true)
+      }
+    })
+
+    it('pages newer from a window to the newest message, repeating nothing', async () => {
+      const { alice, bobId, idOf } = await nineMessages()
+
+      let page = await alice.getMessages(bobId, { limit: 3, around: idOf('m2') })
+      const read = bodiesOf(page)
+      expect(read).toEqual(['m1', 'm2', 'm3'])
+      let pages = 0
+      while (page.hasNewer) {
+        const last = page.messages[page.messages.length - 1]
+        if (!last) throw new Error('a page said there was more and held nothing')
+        page = await alice.getMessages(bobId, { limit: 3, after: cursorOf(last) })
+        // Read after a cursor, older counts from the cursor.
+        expect(page.hasOlder).toBe(true)
+        read.push(...bodiesOf(page))
+        pages += 1
+      }
+
+      expect(pages).toBe(2)
+      expect(read).toEqual(['m1', 'm2', 'm3', 'm4', 'm5', 'm6', 'm7', 'm8', 'm9'])
+    })
+
+    it('carries a reply to the other side with the message it answers', async () => {
+      const { alice, bob, aliceId, bobId, settle } = await harness.friends()
+      const questionId = await alice.sendMessage(bobId, { body: 'question' })
+      await settle()
+      const question = (await bob.getMessages(aliceId)).messages.find((m) => m.body === 'question')
+      if (!question) throw new Error('the question did not arrive')
+
+      await bob.sendMessage(aliceId, { body: 'answer', replyTo: question.id })
+      await settle()
+
+      // Each side resolves the reference against its own copy: the same message, under each
+      // side's own id, and outgoing only for whoever wrote it.
+      const sent = (await bob.getMessages(aliceId)).messages.find((m) => m.body === 'answer')
+      expect(sent?.replyTo?.author).toBe(aliceId)
+      expect(sent?.replyTo?.timestamp).toBe(question.timestamp)
+      expect(sent?.replyTo?.messageId).toBe(question.id)
+      expect(sent?.replyTo?.message).toEqual({
+        id: question.id,
+        outgoing: false,
+        body: 'question',
+        attachments: [],
+      })
+
+      const received = (await alice.getMessages(bobId)).messages.find((m) => m.body === 'answer')
+      expect(received?.replyTo?.author).toBe(aliceId)
+      expect(received?.replyTo?.message).toEqual({
+        id: questionId,
+        outgoing: true,
+        body: 'question',
+        attachments: [],
+      })
+    })
+
+    it('refuses a reply to a message the conversation does not hold, storing nothing', async () => {
+      const { alice, bobId } = await harness.friends()
+      const refused = await failure(() =>
+        alice.sendMessage(bobId, { body: 'to nothing', replyTo: 987_654 }),
+      )
+      expect(refused instanceof Error).toBe(true)
+      expect((await alice.getMessages(bobId)).messages.length).toBe(0)
+    })
+
+    it('names who a reply answers before that message is here, and resolves it once it is', async () => {
+      const { client, conversationId, receive } = await harness.receivesMessages()
+      const asked = Date.now()
+
+      await receive({
+        body: 'answer',
+        timestamp: asked + 1000,
+        replyTo: { author: conversationId, timestamp: asked },
+      })
+      const before = (await client.getMessages(conversationId)).messages
+      expect(before.map((m) => m.body)).toEqual(['answer'])
+      // The wire names a message by its author and time, so both are known without it.
+      expect(before[0]?.replyTo).toEqual({ author: conversationId, timestamp: asked })
+
+      const seen = collect(client)
+      await receive({ body: 'question', timestamp: asked })
+      // History is ordered by each message's own time, not by arrival.
+      const after = (await client.getMessages(conversationId)).messages
+      expect(after.map((m) => m.body)).toEqual(['question', 'answer'])
+      const [question, answer] = after
+      if (!question || !answer) throw new Error('unreachable')
+
+      const resolved = updatesOf(seen.events, answer.id).pop()
+      expect(resolved?.replyTo?.messageId).toBe(question.id)
+      expect(resolved?.replyTo?.message?.body).toBe('question')
+      expect(answer.replyTo?.message?.body).toBe('question')
+      seen.stop()
+    })
+
+    it('reports a reply again when the message it answers is deleted', async () => {
+      const { alice, bobId, settle } = await harness.friends()
+      const questionId = await alice.sendMessage(bobId, { body: 'question' })
+      const answerId = await alice.sendMessage(bobId, { body: 'answer', replyTo: questionId })
+      await settle()
+
+      const seen = collect(alice)
+      await alice.deleteMessage(questionId, 'here')
+      await settle()
+
+      // Still here, as a row with nothing in it: a reply can tell deleted from never received.
+      const expected = {
+        id: questionId,
+        outgoing: true,
+        body: '',
+        attachments: [],
+        deleted: 'here',
+      }
+      expect(updatesOf(seen.events, answerId).pop()?.replyTo?.message).toEqual(expected)
+      const answer = (await alice.getMessages(bobId)).messages.find((m) => m.id === answerId)
+      expect(answer?.replyTo?.messageId).toBe(questionId)
+      expect(answer?.replyTo?.message).toEqual(expected)
+      seen.stop()
+    })
+
+    it('reports a reply again when a thumbnail of the picture it answers is made', async () => {
+      const { client, conversationId, messageId, index, settle } = await harness.withAttachment()
+      const replyId = await client.sendMessage(conversationId, { body: 'nice', replyTo: messageId })
+      await settle()
+      const quotedOf = (message: Message | undefined) =>
+        message?.replyTo?.message?.attachments.find((a) => a.index === index)
+      const sent = (await client.getMessages(conversationId)).messages.find((m) => m.id === replyId)
+      expect(quotedOf(sent)?.hasThumbnail).toBe(false)
+      expect(quotedOf(sent)?.availability).toBe('absent')
+
+      const seen = collect(client)
+      const running = client.downloadAttachment(messageId, index)
+      await settle()
+      await running
+
+      const reported = updatesOf(seen.events, replyId).map((m) => quotedOf(m))
+      expect(reported.some((a) => a?.availability === 'fetching')).toBe(true)
+      expect(reported.pop()?.hasThumbnail).toBe(true)
+      seen.stop()
     })
 
     it('leaves an interrupted send visible after a restart', async () => {
