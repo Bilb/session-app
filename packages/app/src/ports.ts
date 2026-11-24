@@ -168,6 +168,19 @@ export interface PushTokenSource {
   onChange(listener: () => void): () => void
 }
 
+/**
+ * Whether this install has subscribed for pushes, kept where an uninstall always removes it.
+ *
+ * libsession keeps the subscription it last sent in the database and sends nothing while it still
+ * matches. On iOS the database can be in the app group, which can outlive the app: a reinstall
+ * then finds a matching record for a subscription the push server may have dropped, and gets no
+ * pushes until the record is a day old. So the first subscription of an install is forced.
+ */
+export interface PushInstallMarker {
+  subscribed(): boolean
+  markSubscribed(): void
+}
+
 export interface NotificationsPort {
   /**
    * Whether this build has a push service behind it.
@@ -211,6 +224,8 @@ export interface NotificationsPort {
    * which is also when `fastModeAvailable` is false. See `PushTokenSource`.
    */
   readonly pushTokens: PushTokenSource | null
+  /** Null where there is no push service. See `PushInstallMarker`. */
+  readonly pushInstallMarker: PushInstallMarker | null
   requestPermission(): Promise<boolean>
   show(notification: { conversationId: string; title: string; body: string }): Promise<void>
   onTap(handler: (conversationId: string) => void): () => void

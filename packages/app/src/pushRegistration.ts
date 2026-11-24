@@ -1,12 +1,13 @@
 import type { SessionClient } from '@session/client'
 import type { SessionState } from '@session/state'
 
-import type { PushTokenSource } from './ports'
+import type { PushInstallMarker, PushTokenSource } from './ports'
 
 export interface PushRegistrationDeps {
   store: { getState(): SessionState; subscribe(listener: () => void): () => void }
   client: Pick<SessionClient, 'setPushToken' | 'clearPushToken'>
   source: PushTokenSource | null
+  marker: PushInstallMarker | null
   log: (level: 'info' | 'warn', message: string) => void
 }
 
@@ -15,14 +16,15 @@ export interface PushRegistrationDeps {
  *
  * In fast mode, once there is an account and a network, the token is fetched and handed to
  * libsession, which subscribes with the push server or does nothing when the stored subscription
- * already matches. In slow mode the subscription is removed. Run again whenever the mode, the
+ * already matches, or forced, the first time this install subscribes: see `PushInstallMarker`. In
+ * slow mode the subscription is removed. Run again whenever the mode, the
  * account or the token changes, and whenever the network comes back after a refusal, so a
  * registration that failed offline is not left failed.
  *
  * One step at a time: a change arriving while one runs is applied after it.
  */
 export function followPushRegistration(deps: PushRegistrationDeps): () => void {
-  const { store, client, source, log } = deps
+  const { store, client, source, marker, log } = deps
   /** What was last applied successfully: the mode, and the token for fast mode. */
   let applied: string | null = null
   let running = false
@@ -52,9 +54,16 @@ export function followPushRegistration(deps: PushRegistrationDeps): () => void {
     }
     const key = `fast:${token.service}:${token.token}`
     if (applied === key) return
-    const sent = await client.setPushToken(token.service, token.token)
+    const force = marker !== null && !marker.subscribed()
+    const sent = await client.setPushToken(token.service, token.token, force)
+    if (force) marker.markSubscribed()
     applied = key
-    log('info', sent ? `push subscription sent (${token.service})` : 'push subscription unchanged')
+    log(
+      'info',
+      sent
+        ? `push subscription sent (${token.service}${force ? ', first since install' : ''})`
+        : 'push subscription unchanged',
+    )
   }
 
   const run = (): void => {

@@ -35,6 +35,7 @@ export type {
   MediaProbePort,
   NotificationsPort,
   PushToken,
+  PushInstallMarker,
   PushTokenSource,
   PickedFile,
   NetworkPort,
