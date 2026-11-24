@@ -2002,13 +2002,16 @@ struct JSIConverter<::session_bridge::SetPushTokenCommand> final {
         jsi::Object obj = arg.asObject(runtime);
         return ::session_bridge::SetPushTokenCommand(
                 JSIConverter<::session_bridge::PushService>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "service"))),
-                JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "token"))));
+                JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "token"))),
+                ::session_bridge::optional_from_jsi<bool>(runtime, obj.getProperty(runtime, PropNameIDCache::get(runtime, "force"))));
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const ::session_bridge::SetPushTokenCommand& arg) {
         jsi::Object obj(runtime);
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "type"), ::session_bridge::ascii(runtime, ::session_bridge::SetPushTokenCommand::type_tag));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "service"), JSIConverter<::session_bridge::PushService>::toJSI(runtime, arg.service));
         obj.setProperty(runtime, PropNameIDCache::get(runtime, "token"), JSIConverter<std::string>::toJSI(runtime, arg.token));
+        if (arg.force)
+            obj.setProperty(runtime, PropNameIDCache::get(runtime, "force"), JSIConverter<bool>::toJSI(runtime, *arg.force));
         return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {

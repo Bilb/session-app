@@ -24,7 +24,7 @@ import { attachmentsBytes, databaseSizes } from './storageSizes'
 import { readDatabaseKey, writeDatabaseKey } from './storage/databaseKey'
 import { SecureScreen } from './secureScreen'
 import { plainPath } from './storage/layout'
-import { exportsDirectory, File } from './storage/roots'
+import { exportsDirectory, File, pushInstallMarker } from './storage/roots'
 import { sweepStaged } from './storage/staging'
 
 /** The name the share sheet offers for a QR code. */
@@ -145,6 +145,7 @@ const ports = memoryPorts({
     notificationModesApply: true,
     // No token source yet on either platform: FCM and APNs follow.
     pushTokens: null,
+    pushInstallMarker,
     // TODO: true only when all three hold, which no build trait alone can say:
     // - the variant names a push service (`VARIANT_TRAITS[VARIANT].pushService`);
     // - registration with that service exists, which it does not yet;

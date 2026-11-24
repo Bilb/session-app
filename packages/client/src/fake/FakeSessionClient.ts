@@ -169,7 +169,7 @@ export class FakeSessionClient implements SessionClient {
     }
   }
 
-  setPushToken(service: PushService, token: string): Promise<boolean> {
+  setPushToken(service: PushService, token: string, force?: boolean): Promise<boolean> {
     this.assertOpen()
     if (token === '')
       return Promise.reject(new SessionClientError('setPushToken.token must not be empty'))
@@ -179,6 +179,7 @@ export class FakeSessionClient implements SessionClient {
     const now = this.world.now()
     const recorded = this.pushSubscription
     const unchanged =
+      force !== true &&
       recorded !== null &&
       recorded.service === service &&
       recorded.token === token &&
