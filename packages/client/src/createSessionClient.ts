@@ -255,8 +255,9 @@ export function createSessionClient(transport: BridgeTransport): SessionClient {
     async setReceiving(on): Promise<void> {
       await call({ type: 'setReceiving', on })
     },
-    async setPushToken(service, token): Promise<boolean> {
-      return resultOf(await call({ type: 'setPushToken', service, token }), 'bool').value
+    async setPushToken(service, token, force): Promise<boolean> {
+      const command = { type: 'setPushToken' as const, service, token }
+      return resultOf(await call(force === true ? { ...command, force } : command), 'bool').value
     },
     async clearPushToken(): Promise<void> {
       await call({ type: 'clearPushToken' })

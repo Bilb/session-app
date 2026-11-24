@@ -1775,13 +1775,16 @@ struct Codec<::session_bridge::SetPushTokenCommand> {
         obj.Set("type", Napi::String::New(env, ::session_bridge::SetPushTokenCommand::type_tag.data(), ::session_bridge::SetPushTokenCommand::type_tag.size()));
         obj.Set("service", Codec<::session_bridge::PushService>::to(env, value.service));
         obj.Set("token", Codec<std::string>::to(env, value.token));
+        if (value.force)
+            obj.Set("force", Codec<bool>::to(env, *value.force));
         return obj;
     }
     static ::session_bridge::SetPushTokenCommand from(const Napi::Value& value, std::string_view where) {
         Napi::Object obj = object(value, where);
         return ::session_bridge::SetPushTokenCommand(
                 Codec<::session_bridge::PushService>::from(obj.Get("service"), "SetPushTokenCommand.service"),
-                Codec<std::string>::from(obj.Get("token"), "SetPushTokenCommand.token"));
+                Codec<std::string>::from(obj.Get("token"), "SetPushTokenCommand.token"),
+                optional<bool>(obj.Get("force"), "SetPushTokenCommand.force"));
     }
 };
 

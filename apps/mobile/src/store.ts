@@ -176,6 +176,7 @@ export const storePromise = openTransportOrRefusal().then((transport) => {
     store,
     client,
     source: requirePorts().notifications.pushTokens,
+    marker: requirePorts().notifications.pushInstallMarker,
     log: (level, message) => {
       storeLog(level, 'push', message)
     },

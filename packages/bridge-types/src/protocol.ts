@@ -271,8 +271,12 @@ export type Command =
    *
    * Answers `bool`: true when a request went out and was accepted, false when nothing needed
    * sending. Refused without a network or an account.
+   *
+   * `force` sends whatever is stored. A reinstall on iOS can keep the database, which lives in the
+   * app group, while the push server has dropped the subscription; the stored one then matches
+   * and nothing would be sent for up to a day.
    */
-  | { type: 'setPushToken'; service: PushService; token: string }
+  | { type: 'setPushToken'; service: PushService; token: string; force?: boolean }
   /**
    * Removes this device's push subscription, as when somebody switches to slow mode. Answers `ok`
    * once the push server has accepted the removal, or at once when there was none to remove.

@@ -178,9 +178,10 @@ export interface SessionClient {
   /**
    * Subscribes this device to pushes through `service` with the token it issued, or renews the
    * subscription. True when a request went out, false when the stored one already matched and was
-   * recent. Refused without a network or an account. See `setPushToken` in the protocol.
+   * recent. With `force`, sent whatever is stored. Refused without a network or an account. See
+   * `setPushToken` in the protocol.
    */
-  setPushToken(service: PushService, token: string): Promise<boolean>
+  setPushToken(service: PushService, token: string, force?: boolean): Promise<boolean>
   /** Removes this device's push subscription, if it has one. */
   clearPushToken(): Promise<void>
   /**

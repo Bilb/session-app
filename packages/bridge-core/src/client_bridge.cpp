@@ -1323,9 +1323,11 @@ struct ClientBridge::Impl {
             throw std::invalid_argument{"setPushToken.token must not be empty"};
         push_notifications().subscribe(
                 {push_service(cmd.service), cmd.token},
-                on(id, [this, id](push::SubscribeResult r) {
-                    respond(id, BoolResult{r == push::SubscribeResult::subscribed});
-                }));
+                on(id,
+                   [this, id](push::SubscribeResult r) {
+                       respond(id, BoolResult{r == push::SubscribeResult::subscribed});
+                   }),
+                cmd.force.value_or(false));
     }
 
     void handle(double id, const ClearPushTokenCommand&) {

@@ -1,7 +1,7 @@
 import { emptyState, type SessionState } from '@session/state'
 import { describe, expect, it, vi } from 'vitest'
 
-import type { PushTokenSource } from '#src/ports'
+import type { PushInstallMarker, PushTokenSource } from '#src/ports'
 import { followPushRegistration } from '#src/pushRegistration'
 
 /** A store holding just enough state, whose changes are made by the test. */
@@ -23,7 +23,11 @@ function stateStore(initial: Partial<SessionState>) {
 
 const ACCOUNT = { haveAccount: true, networkAttached: true } as SessionState['account']
 
-function harness(initial: Partial<SessionState>, token = 'token-1') {
+function harness(
+  initial: Partial<SessionState>,
+  token = 'token-1',
+  marker: PushInstallMarker | null = null,
+) {
   const store = stateStore(initial)
   let changed: () => void = () => {}
   const tokenOf = vi.fn(() => Promise.resolve({ service: 'firebase' as const, token }))
@@ -39,7 +43,7 @@ function harness(initial: Partial<SessionState>, token = 'token-1') {
     clearPushToken: vi.fn(() => Promise.resolve()),
   }
   const log = vi.fn()
-  followPushRegistration({ store, client, source, log })
+  followPushRegistration({ store, client, source, marker, log })
   return { store, tokenOf, client, log, tokenChanged: () => changed() }
 }
 
@@ -54,7 +58,7 @@ describe('keeping the push subscription in step with the notification mode', () 
 
     store.set({ networkStatus: 'connected' })
     await drain()
-    expect(client.setPushToken).toHaveBeenCalledWith('firebase', 'token-1')
+    expect(client.setPushToken).toHaveBeenCalledWith('firebase', 'token-1', false)
   })
 
   it('does nothing before onboarding has chosen a mode, or without an account', async () => {
@@ -132,5 +136,55 @@ describe('keeping the push subscription in step with the notification mode', () 
     store.set({ attachmentUploadLimitBytes: 11 })
     await drain()
     expect(tokenOf).toHaveBeenCalledTimes(1)
+  })
+
+  describe('the first subscription of an install', () => {
+    /** A marker in memory, as an install's preferences would hold it. */
+    function installMarker(subscribed: boolean) {
+      let set = subscribed
+      return {
+        subscribed: () => set,
+        markSubscribed: vi.fn(() => {
+          set = true
+        }),
+      }
+    }
+    const READY = {
+      account: ACCOUNT,
+      deliveryMode: 'instant',
+      networkStatus: 'connected',
+    } as const
+
+    it('is forced, and only that once', async () => {
+      const marker = installMarker(false)
+      const { client, tokenChanged } = harness(READY, 'token-1', marker)
+      await drain()
+      expect(client.setPushToken).toHaveBeenLastCalledWith('firebase', 'token-1', true)
+      expect(marker.markSubscribed).toHaveBeenCalledTimes(1)
+
+      tokenChanged()
+      await drain()
+      expect(client.setPushToken).toHaveBeenLastCalledWith('firebase', 'token-1', false)
+    })
+
+    it('is forced again after a refusal, until one is accepted', async () => {
+      const marker = installMarker(false)
+      const { store, client } = harness(READY, 'token-1', marker)
+      client.setPushToken.mockRejectedValueOnce(new Error('no network or no account'))
+      await drain()
+      expect(marker.markSubscribed).not.toHaveBeenCalled()
+
+      store.set({ networkStatus: 'disconnected' })
+      store.set({ networkStatus: 'connected' })
+      await drain()
+      expect(client.setPushToken).toHaveBeenLastCalledWith('firebase', 'token-1', true)
+      expect(marker.markSubscribed).toHaveBeenCalledTimes(1)
+    })
+
+    it('is not forced once an earlier launch of this install has subscribed', async () => {
+      const { client } = harness(READY, 'token-1', installMarker(true))
+      await drain()
+      expect(client.setPushToken).toHaveBeenCalledWith('firebase', 'token-1', false)
+    })
   })
 })
