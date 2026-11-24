@@ -58,6 +58,11 @@ function carrier(a: Peer, b: Peer): () => Promise<void> {
         senderSeedHex: from.seed,
         body: message.body,
         timestamp: message.timestamp,
+        ...(message.replyTo === undefined
+          ? {}
+          : {
+              replyTo: { author: message.replyTo.author, timestamp: message.replyTo.timestamp },
+            }),
       })
     }
   }
@@ -193,6 +198,25 @@ describeAddon('addon', () => {
       }
     },
 
+    async receivesMessages() {
+      const { alice, bob } = await pair()
+      await alice.ask({ type: 'approveTestContact', sessionId: bob.sessionId })
+      return {
+        client: alice.client,
+        conversationId: bob.sessionId,
+        async receive({ body, timestamp, replyTo }) {
+          const delivered = await alice.ask({
+            type: 'deliverTestMessage',
+            senderSeedHex: bob.seed,
+            body,
+            timestamp,
+            ...(replyTo === undefined ? {} : { replyTo }),
+          })
+          if (delivered.error !== undefined) throw new Error(delivered.error)
+        },
+      }
+    },
+
     async unopenable() {
       sequence += 1
       // A database libsession wrote, opened again under a different key: the real way one stops
@@ -252,6 +276,8 @@ describeAddon('addon', () => {
         'joins an export to a running download': OFFLINE_ATTACHMENTS,
         'joins a download to a running export': OFFLINE_ATTACHMENTS,
         'withdraws what was asked of an attachment once it is deleted': OFFLINE_ATTACHMENTS,
+        'reports a reply again when a thumbnail of the picture it answers is made':
+          OFFLINE_ATTACHMENTS,
         'delivers the files of a message to the other side once they are up':
           'needs a file server to upload to; offline every upload fails',
       },

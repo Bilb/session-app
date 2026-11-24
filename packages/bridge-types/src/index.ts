@@ -49,6 +49,7 @@ export type {
   PathHop,
   PixelSize,
   PushService,
+  QuotedMessage,
   Reply,
   SendPlan,
   SendState,

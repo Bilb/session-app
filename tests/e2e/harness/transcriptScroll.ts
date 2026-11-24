@@ -36,13 +36,15 @@ export async function scrollStep(screen: Locator, direction: -1 | 1): Promise<bo
 }
 
 /**
- * Scrolls `screen` towards its end until `target` is mounted. The transcript is a windowed list,
- * so a message far from where it opens is not in the page at all until it is scrolled near, and
- * Playwright's own scrolling only reaches what is mounted.
+ * Scrolls `screen` until `target` is mounted: towards its start first, since a conversation opens
+ * on its newest page and reads older ones in as the start comes near, then back towards its end.
+ * The transcript is a windowed list, so a message far from where it opens is not in the page at
+ * all until it is scrolled near, and Playwright's own scrolling only reaches what is mounted.
  */
 export async function scrollUntilMounted(screen: Locator, target: Locator): Promise<void> {
-  for (let step = 0; step < MAX_SCROLL_STEPS; step++) {
-    if ((await target.count()) > 0) return
-    if (!(await scrollStep(screen, 1))) break
-  }
+  for (const direction of [-1, 1] as const)
+    for (let step = 0; step < MAX_SCROLL_STEPS; step++) {
+      if ((await target.count()) > 0) return
+      if (!(await scrollStep(screen, direction))) break
+    }
 }
