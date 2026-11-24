@@ -53,7 +53,7 @@ final class NotificationPresenter: NSObject, UNUserNotificationCenterDelegate {
 
   /// The conversation on screen, which gets no banner; see `AppGroup`.
   var openConversation: String?
-  var soundWhenOpen = false
+  var soundWhenOpen = true
 
   /// A tap that arrived before JavaScript was listening, as a cold launch from a notification
   /// does: handed over when it asks.

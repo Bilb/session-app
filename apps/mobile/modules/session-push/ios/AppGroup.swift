@@ -13,7 +13,6 @@ enum AppGroup {
   static let wordsKey = "session.push.words"
   static let inFrontUntilKey = "session.push.inFrontUntil"
   static let openConversationKey = "session.push.openConversation"
-  static let soundWhenOpenKey = "session.push.soundWhenOpen"
 
   /// How long the lease lasts without being renewed, and how often the app renews it. Long enough
   /// that a renewal is never missed in practice; short enough that a crash, which cannot clear it,
