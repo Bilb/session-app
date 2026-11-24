@@ -225,8 +225,8 @@ export interface NotificationsPort {
    */
   readonly pushTokens: PushTokenSource | null
   /**
-   * Whether a notification makes its sound while the app is in front, until somebody chooses:
-   * the legacy default for the platform, on for Android and off for iOS.
+   * Whether a notification makes its sound while the app is in front, until somebody chooses. On
+   * for both phones, though legacy iOS has it off.
    */
   readonly soundWhenOpenDefault: boolean
   /** Whether the OS lets the app post notifications, or null where it cannot be asked. */

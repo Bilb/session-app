@@ -27,7 +27,7 @@ type NotificationSettings = Pick<
 
 /** iOS's part of the Notifications page, through `modules/session-push`. */
 export const notificationSettings: NotificationSettings = {
-  soundWhenOpenDefault: false,
+  soundWhenOpenDefault: true,
   notificationsAllowed: SessionPush === null ? null : () => SessionPush.notificationsAllowed(),
   // iOS opens the app's own page in Settings, which is where its notification switches are.
   openSettings: () => {
