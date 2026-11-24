@@ -176,11 +176,17 @@ test('enters a transcript on a message on screen, or the one a click chose @desk
   try {
     await app.tap(ELEMENT.conversationList.row(LONG_ROW))
     await expect(app.locator(CONVERSATION.headerName)).toHaveText('Dracula')
+    // Reaching the start reads the rest of the history in above it, which renumbers the rows.
+    await app.scrollToStart(CONVERSATION.screen)
+    await expect(app.locator(ROW(LONG_NEWEST))).toHaveCount(1)
     await app.locator(ROW(0)).scrollIntoViewIfNeeded()
     await expect(app.locator(ROW(LONG_NEWEST))).not.toBeInViewport()
 
-    // Tab does not scroll away from what is being read.
+    // This far from the newest message, the button back to it sits between the two.
     await enterFromComposer(app)
+    await expectFocusOn(app, CONVERSATION.scrollToLatest)
+    // Tab does not scroll away from what is being read.
+    await press(app, 'Shift+Tab')
     const entered = await app.focusedStop()
     expect(entered?.testID).toMatch(/^message-row-/)
     await expect(app.locator(ROW(0))).toBeInViewport()
@@ -190,6 +196,8 @@ test('enters a transcript on a message on screen, or the one a click chose @desk
     await app.tap(ROW(3))
     await press(app, 'Tab')
     await expectRing(app, 3)
+    await press(app, 'Tab')
+    await expectFocusOn(app, CONVERSATION.scrollToLatest)
     await press(app, 'Tab')
     await expectFocusOn(app, CONVERSATION.attachButton)
 

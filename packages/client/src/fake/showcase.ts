@@ -3,7 +3,78 @@ import type { Attachment, SendState } from '@session/bridge-types'
 import { image, resetPhotos, set } from './attachments'
 import { ensureDm, type FakeSetup, type FixtureName } from './fixtures'
 import { FakeSessionClient } from './FakeSessionClient'
-import { FakeWorld, resetFakeIds } from './world'
+import { FakeWorld, resetFakeIds, type FakeAccount } from './world'
+
+/** As long as a body gets before a quote of it is cut: more than its two lines hold. */
+const LONG_ORIGINAL =
+  'I looked at the three flats on Saturday. The one near the station is the best value but the ' +
+  'kitchen is tiny and the landlord wants six months up front, which is more than I have.'
+
+/**
+ * A reply to each kind of message a quote draws, last in the conversation so nothing above moves.
+ * Each original gets a time of its own first: a reply names what it answers by author and time.
+ */
+function seedReplies(world: FakeWorld, self: FakeAccount, peer: FakeAccount): void {
+  const received = (body: string, attachments: Attachment[] = []): number => {
+    world.advance()
+    return self.deliverFrom(peer, body, world.now(), attachments).id
+  }
+  const sent = (body: string, replyTo?: number): number => {
+    world.advance()
+    const id = self.send(peer.sessionId, body, replyTo)
+    world.settle()
+    return id
+  }
+  const answeredBy = (body: string, ours: number, attachments: Attachment[] = []): void => {
+    const original = self.messages(peer.sessionId).find((m) => m.id === ours)
+    if (!original) throw new Error(`nothing to answer with "${body}"`)
+    world.advance()
+    self.deliverFrom(peer, body, world.now(), attachments, original)
+  }
+
+  sent('Yes, 7pm', received('Are we still on for Thursday?'))
+  answeredBy('No worries', sent('Running 10 minutes late'))
+  sent('Skip that one', received(LONG_ORIGINAL))
+
+  // A picture as the sender's ThumbHash, then one the catalog downloads so its thumbnail draws.
+  sent('Where is this?', received('A view, not downloaded', set(image(1))))
+  sent('Lovely', received('A view, downloaded', set(image(1))))
+  sent('Send me the third one', received('Beach day', set(image(5))))
+  sent('Jealous', received('', set(image(1), { hashed: false })))
+
+  sent('Signed', received('', set(['pdf'])))
+  sent('Both signed', received('', set(['pdf', 'sheet'])))
+  sent('Listening now', received('', set(['audio'])))
+  sent('Watching now', received('', set(['video'])))
+  sent('Can you resend?', received('', set(['pdf'], { expired: true })))
+
+  // A reply that carries pictures of its own under its quote.
+  answeredBy('Here it is', sent('Send me a picture of it'), set(image(2)))
+
+  world.advance()
+  self.deliverFrom(peer, 'What did it say?', world.now(), [], {
+    author: self.sessionId,
+    timestamp: 1,
+  })
+  const regretted = sent('Wrong chat, ignore that')
+  answeredBy('Too late, I read it', regretted)
+  self.deleteMessage(regretted, 'here')
+
+  // Replies that carry files of their own under their quote, ours and theirs: an album with words
+  // and without, and a document. One with no words is found by what it answers.
+  const sentWith = (body: string, answering: number, attachments: Attachment[]): void => {
+    const original = self.messages(peer.sessionId).find((m) => m.id === answering)
+    if (!original) throw new Error(`nothing to answer with "${body}"`)
+    world.advance()
+    self.seedSending(peer.sessionId, body, attachments, 'sent', attachments.length, original)
+    world.settle()
+  }
+  sentWith('Here are the three', received('Send them over'), set(image(3)))
+  sentWith('', received('Any pictures?'), set(image(2)))
+  sentWith('Signed and attached', received('The lease?'), set(['pdf']))
+  answeredBy('', sent('Pictures please'), set(image(2)))
+  answeredBy('The lease, signed', sent('Can you send the lease?'), set(['pdf']))
+}
 
 /**
  * Every shape a message's attachments can take, in one conversation.
@@ -163,6 +234,9 @@ export function showcase(names: readonly [FixtureName, FixtureName] = ['Alice', 
     first.seedSending(second.sessionId, body, attachments, 'uploading', uploaded)
     world.settle()
   }
+
+  resetPhotos()
+  seedReplies(world, first, second)
 
   return {
     world,

@@ -50,6 +50,7 @@ export type {
   PixelSize,
   NotificationContent,
   PushService,
+  QuotedMessage,
   Reply,
   SendPlan,
   SendState,
