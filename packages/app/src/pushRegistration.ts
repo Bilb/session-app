@@ -16,8 +16,8 @@ export interface PushRegistrationDeps {
  *
  * In fast mode, once there is an account and a network, the token is fetched and handed to
  * libsession, which subscribes with the push server or does nothing when the stored subscription
- * already matches, or forced, the first time this install subscribes: see `PushInstallMarker`. In
- * slow mode the subscription is removed. Run again whenever the mode, the
+ * already matches; an install's first subscription is sent whatever is stored (see
+ * `PushInstallMarker`). In slow mode the subscription is removed. Run again whenever the mode, the
  * account or the token changes, and whenever the network comes back after a refusal, so a
  * registration that failed offline is not left failed.
  *
