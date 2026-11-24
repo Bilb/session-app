@@ -6,6 +6,7 @@ import {
   heaviestFirst,
   MAX_SHARDS,
   parsePageFilter,
+  readsPageFilter,
   shardCount,
   type CatalogPageSummary,
 } from '#catalog/shards'
@@ -100,6 +101,15 @@ describe('the page filter', () => {
 
   it('names what matched no page', () => {
     expect(() => filterPages(tier, ['button', 'mesageQuote'])).toThrow(/mesageQuote/)
+  })
+})
+
+describe('a spec that reads the page filter', () => {
+  it('is told apart from one that reads only CATALOG_PAGES_OUT', () => {
+    const before = "const PAGES_OUT = process.env['CATALOG_PAGES_OUT']\n"
+    expect(readsPageFilter(before)).toBe(false)
+    expect(readsPageFilter(`${before}parsePageFilter(process.env['CATALOG_PAGES'])`)).toBe(true)
+    expect(readsPageFilter('process.env["CATALOG_PAGES"]')).toBe(true)
   })
 })
 

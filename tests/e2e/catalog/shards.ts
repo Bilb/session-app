@@ -55,6 +55,12 @@ export function parsePageFilter(value: string | undefined): string[] | undefined
 const matches = (page: CatalogPageSummary, name: string) =>
   page.id === name || page.story === name || page.story.split('.')[0] === name
 
+/**
+ * Whether a catalog spec's source reads `CATALOG_PAGES`; one that does not draws every page.
+ * `CATALOG_PAGES_OUT` is a different variable, which specs read before the filter existed.
+ */
+export const readsPageFilter = (specSource: string) => /['"]CATALOG_PAGES['"]/.test(specSource)
+
 /** The tier's pages the filter names, in tier order; a name that matches none is an error. */
 export function filterPages(
   pages: readonly CatalogPageSummary[],

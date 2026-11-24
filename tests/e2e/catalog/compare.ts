@@ -25,6 +25,7 @@ import {
   type CatalogTier,
   type CompareOptions,
 } from '#catalog/options'
+import { readsPageFilter } from '#catalog/shards'
 import {
   CompareFailure,
   Interrupted,
@@ -114,7 +115,7 @@ const SPEC_SOURCE = 'tests/e2e/specs/catalog.spec.ts'
 /** Whether the spec at `sha` draws only the pages CATALOG_PAGES names; an older one draws all. */
 const specFiltersPages = (sha: string) =>
   gitSucceeds(['cat-file', '-e', `${sha}:${SPEC_SOURCE}`]) &&
-  gitRaw(['show', `${sha}:${SPEC_SOURCE}`]).includes('CATALOG_PAGES')
+  readsPageFilter(gitRaw(['show', `${sha}:${SPEC_SOURCE}`]))
 
 /** The harness that launches Electron, and the colour switch an older copy of it lacks. */
 const HARNESS_SOURCE = 'tests/e2e/harness/DesktopApp.ts'
